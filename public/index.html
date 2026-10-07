@@ -11,7 +11,7 @@ body{display:flex;align-items:center;justify-content:center;height:100vh;}
 #wrap{position:relative;width:720px;height:540px;max-width:100%;background:#000;border:2px solid #222;box-shadow:0 0 40px rgba(0,0,0,0.8);}
 canvas{display:block;width:100%;height:100%;}
 
-/* ---- モダンFPS風 ロビーUI ---- */
+/* ---- ロビーUI ---- */
 #lobby-overlay{position:absolute;inset:0;background:radial-gradient(circle at center, #1a1e29 0%, #0b0d12 100%);display:flex;flex-direction:column;z-index:10;}
 .header{display:flex;justify-content:space-between;align-items:center;padding:15px 30px;border-bottom:1px solid rgba(255,255,255,0.05);}
 .logo{font-family:'Teko',sans-serif;font-size:32px;font-weight:700;color:#ff4655;letter-spacing:2px;line-height:1;}
@@ -19,7 +19,6 @@ canvas{display:block;width:100%;height:100%;}
 .nav-item{font-weight:bold;font-size:14px;color:#8b97a3;cursor:pointer;transition:0.2s;}
 .nav-item.active{color:#fff;border-bottom:2px solid #ff4655;padding-bottom:4px;}
 .nav-item.disabled{opacity:0.5;cursor:not-allowed;}
-.nav-item:hover:not(.disabled){color:#fff;}
 
 .main-content{flex:1;display:flex;flex-direction:column;position:relative;padding:40px;}
 .bg-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Teko',sans-serif;font-size:120px;font-weight:700;color:rgba(255,255,255,0.02);white-space:nowrap;pointer-events:none;}
@@ -128,12 +127,6 @@ function playSE(type) {
         gain.gain.setValueAtTime(0.2, now + idx * 0.08); gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
         osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.2);
       });
-    } 
-    else if (type === 'siren') {
-      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.setValueAtTime(900, now); osc.frequency.linearRampToValueAtTime(600, now + 0.2); osc.frequency.linearRampToValueAtTime(900, now + 0.4);
-      gain.gain.setValueAtTime(0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
-      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.4);
     }
   } catch(e) {}
 }
@@ -218,56 +211,32 @@ function car(X, Y, s, o) {
   }
 }
 
-// 細かく目盛り刻みした気配スペクトラム (40本の極小ブロック)
+// ★波形をしっかり大きく・ダイナミックに描画
 function drawEqualizer(sound) {
   if (!sound) return;
-  const n = 40, w = 6, g = 2, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 10, bH = 2, bG = 1, mB = 16;
-  const cBar = (n - 1) * (Math.max(-1, Math.min(1, sound.relX / 130)) + 1) / 2;
-  const prox = Math.pow(Math.max(0, 1 - Math.max(0, Math.min(320, sound.dist)) / 300), 0.75);
+  const n = 36, w = 8, g = 2, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 15, bH = 6, bG = 2, mB = 14;
+  const prox = Math.max(0, 1 - (sound.dist / 380));
+  if (prox <= 0) return;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(sX - 10, bY - (mB * (bH + bG)) - 16, tW + 20, mB * (bH + bG) + 22);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 4);
+  const cBar = (n - 1) * (Math.max(-1, Math.min(1, sound.relX / 120)) + 1) / 2;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(sX - 12, bY - (mB * (bH + bG)) - 22, tW + 24, mB * (bH + bG) + 30);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 6);
 
   for (let i = 0; i < n; i++) {
     const dC = Math.abs(i - cBar);
-    let blocks = Math.floor(mB * prox * Math.exp(-dC * dC / 18));
-    if (sound.boosting) blocks = Math.min(mB, Math.floor(blocks * 1.4) + 4);
-    const aB = Math.max(0, Math.min(mB, blocks + ((Math.random() < 0.5) ? 0 : Math.floor((Math.random() - 0.4) * 2))));
+    let heightRatio = Math.exp(-dC * dC / 16) * (0.35 + prox * 0.65);
+    if (sound.boosting) heightRatio = Math.min(1, heightRatio * 1.5 + 0.2);
+    
+    let blocks = Math.floor(mB * heightRatio);
+    if (blocks > 0) blocks = Math.max(2, blocks + Math.floor((Math.random() - 0.3) * 3));
+    const aB = Math.max(0, Math.min(mB, blocks));
 
     for (let b = 0; b < aB; b++) {
-      ctx.fillStyle = sound.boosting ? (b > 11 ? '#ff4655' : '#ffcc00') : (b > 12 ? '#ff4655' : (b > 7 ? '#ffaa00' : '#4fc3f7'));
+      ctx.fillStyle = sound.boosting ? (b > 9 ? '#ff4655' : '#ffcc00') : (b > 10 ? '#ff4655' : (b > 6 ? '#ffaa00' : '#4fc3f7'));
       ctx.fillRect(sX + i * (w + g), bY - b * (bH + bG), w, bH);
     }
-  }
-}
-
-// A側画面用のバックミラー (後方カメラ)
-function drawRearMirror(me, enemy, col) {
-  if (!me || !enemy) return;
-  const mW = 160, mH = 50, mX = (W - mW) / 2, mY = 105;
-  
-  ctx.fillStyle = 'rgba(10,12,18,0.85)';
-  ctx.fillRect(mX, mY, mW, mH);
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(mX, mY, mW, mH);
-
-  ctx.fillStyle = '#8b97a3';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('REAR MIRROR', W / 2, mY + 12);
-
-  const dist = me.z - enemy.z;
-  if (dist > 0 && dist < 350) {
-    // 距離に応じたサイズとX位置をバックミラー内に投影
-    const relX = enemy.x - me.x;
-    const mirX = W / 2 + (relX / 130) * (mW / 2 - 15);
-    const scale = Math.max(0.3, 1 - (dist / 350));
-    const mirY = mY + mH - 10;
-
-    // 後方のBをバックミラー内に描画
-    bike(mirX, mirY, scale * 0.45, col, enemy);
   }
 }
 
@@ -301,9 +270,8 @@ function view() {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🚨 パトカー接近！進路を空けろ', W / 2, 125);
   }
 
-  // A側でプレイ中の場合、バックミラーと波形イコライザーを描画
+  // ★A側攻撃時の巨大化波形表示（バックミラー機能は完全に削除）
   if (isA && D.s === 'play') {
-    drawRearMirror(me, D.P[1 - slot], COL[1 - slot]);
     drawEqualizer(D.sound);
   }
 
@@ -346,7 +314,11 @@ function draw() {
   if (!inGame || !D || !D.P[slot]) return;
   view(); topbar();
   if (D.s === 'count') overlay(String(Math.ceil(D.t)), (D.att === slot ? 'あなたは攻撃側(A)' : 'あなたは追越側(B)') + (D.rd >= 6 ? '  SUDDEN DEATH' : ''), '#ff4655');
-  if (D.s === 'result') { const w = D.hist[D.hist.length - 1]; overlay(D.msg, D.sub + (w === slot ? '  (あなたの得点)' : ''), '#4fc3f7'); }
+  if (D.s === 'result') { 
+    const w = D.hist[D.hist.length - 1]; 
+    const sec = Math.max(0, Math.ceil(D.t));
+    overlay(D.msg, D.sub + (w === slot ? ' (あなたの得点)' : '') + `  [次ラウンドまで ${sec}秒]`, '#4fc3f7'); 
+  }
   if (D.s === 'match') overlay(D.msg, D.sub + '  [Enter]:再戦 / [Esc]:ロビーへ', '#ff4655');
   if (D.s === 'play' && D.el < 1.5) { ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('GO!', W / 2, 300); }
 }
