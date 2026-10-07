@@ -1,249 +1,286 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>なにが目的なん？ ONLINE</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; user-select: none; }
-    body { background: #111116; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-    #app { position: relative; width: 800px; height: 600px; background: #1a1a24; border: 3px solid #ff0055; border-radius: 12px; overflow: hidden; box-shadow: 0 0 20px rgba(255, 0, 85, 0.3); }
-    
-    /* タイトル & ロビー画面 */
-    .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(15, 15, 22, 0.95); z-index: 10; }
-    .hidden { display: none !important; }
-    
-    h1 { font-size: 3rem; color: #ff0055; text-shadow: 0 0 10px #ff0055; margin-bottom: 10px; letter-spacing: 2px; }
-    p.sub { color: #aaa; margin-bottom: 30px; font-size: 0.95rem; }
-    
-    .btn-group { margin-bottom: 20px; }
-    button { padding: 12px 24px; font-size: 1rem; font-weight: bold; color: #fff; background: #ff0055; border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(255, 0, 85, 0.5); transition: 0.2s; }
-    button:hover { background: #ff3377; transform: scale(1.05); }
-    
-    .join-box { display: flex; gap: 10px; }
-    input { padding: 10px; font-size: 1rem; text-align: center; border-radius: 6px; border: 1px solid #ff0055; background: #000; color: #fff; width: 140px; text-transform: uppercase; outline: none; }
-    
-    #statusText { margin-top: 20px; font-size: 1.1rem; color: #00f3ff; text-shadow: 0 0 5px #00f3ff; }
-    
-    /* HUD */
-    #hud { position: absolute; top: 15px; left: 20px; right: 20px; display: flex; justify-content: space-between; z-index: 5; font-size: 1.1rem; font-weight: bold; pointer-events: none; }
-    .hud-box { background: rgba(0, 0, 0, 0.6); padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.2); }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>なにが目的なん？ ONLINE</title>
+<style>
+html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;user-select:none}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}
+#wrap{position:relative;width:720px;max-width:100%}
+canvas{display:block;width:100%;height:auto;background:#000;border:2px solid #333;border-radius:4px}
+
+/* ---- ロビー画面（拡張ベース） ---- */
+#lobby-overlay{position:absolute;inset:0;background:rgba(10,12,20,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+.lobby-title{font-size:36px;font-weight:900;margin-bottom:20px;color:#ffd54f;text-shadow:0 0 12px rgba(255,213,79,.4);letter-spacing:2px}
+
+/* メインメニューナビ */
+.menu-grid{display:flex;flex-direction:column;gap:12px;width:280px;margin-bottom:15px}
+.menu-btn{font-size:16px;font-weight:bold;padding:12px;border-radius:8px;border:0;background:#ffd54f;color:#111;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.menu-btn:hover{background:#ffe082;transform:translateY(-1px)}
+.menu-btn.disabled{background:#333a48;color:#778294;cursor:not-allowed;transform:none}
+
+/* ルーム作成・参加エリア */
+#room-panel{display:none;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,.05);padding:18px;border-radius:12px;border:1px solid #333a48;width:300px}
+.join-row{display:flex;gap:8px;width:100%}
+input{font-size:16px;padding:8px 12px;border-radius:6px;border:1px solid #444;background:#181c26;color:#fff;width:120px;text-align:center;letter-spacing:3px}
+.sub-btn{font-size:15px;padding:8px 14px;border-radius:6px;border:0;background:#4fc3f7;color:#000;font-weight:bold;cursor:pointer}
+.back-btn{font-size:13px;padding:6px 12px;border-radius:6px;border:1px solid #555;background:transparent;color:#ccc;cursor:pointer;margin-top:4px}
+
+#st{min-height:20px;font-size:13px;color:#9fd;text-align:center;margin-top:8px}
+p.guide{font-size:12px;color:#889;margin:8px 0 0;text-align:center}
+</style>
 </head>
 <body>
 
-<div id="app">
-  <!-- タイトル & ロビー画面 -->
-  <div id="lobby-screen" class="screen">
-    <h1>なにが目的なん？</h1>
-    <p class="sub">音波（ミュージック波形）でBの位置を察知せよ！</p>
+<div id="wrap">
+  <canvas id="c" width="720" height="540"></canvas>
+  
+  <!-- ロビー画面 -->
+  <div id="lobby-overlay">
+    <div class="lobby-title">なにが目的なん？</div>
     
-    <div class="btn-group">
-      <button onclick="createRoom()">部屋を作成する</button>
-    </div>
-    
-    <div class="join-box">
-      <input type="text" id="roomCodeInput" placeholder="6桁コード" maxlength="6">
-      <button onclick="joinRoom()">部屋に入る</button>
+    <!-- メインロビーメニュー -->
+    <div id="main-menu" class="menu-grid">
+      <button class="menu-btn" onclick="showRoomPanel()">🏁 オンライン対戦</button>
+      <button class="menu-btn disabled" title="準備中">🛒 アイテムショップ <small>(準備中)</small></button>
+      <button class="menu-btn disabled" title="準備中">🔧 自転車修理ラボ <small>(準備中)</small></button>
     </div>
 
-    <div id="statusText"></div>
-  </div>
+    <!-- ルーム選択パネル -->
+    <div id="room-panel">
+      <button class="menu-btn" style="width:100%" id="create">新規ルーム作成</button>
+      <div class="join-row">
+        <input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric">
+        <button class="sub-btn" id="join">参加</button>
+      </div>
+      <button class="back-btn" onclick="showMainMenu()">← メインメニューに戻る</button>
+    </div>
 
-  <!-- HUD -->
-  <div id="hud" class="hidden">
-    <div class="hud-box" id="roleText">Player: -</div>
-    <div class="hud-box" id="roomDisp">ROOM: -</div>
+    <div id="st"></div>
   </div>
-
-  <!-- ゲーム画面 -->
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
 </div>
+
+<p class="guide">左右：A / D または ← / → ｜ アクション(急ブレーキ・ブースト)：W / ↑ / Space ｜ 再戦：Enter</p>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const socket = io();
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
+const socket = io(), cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 540;
+const $ = id => document.getElementById(id), COL = ['#4fc3f7', '#ffb74d'], CAR = ['#c33', '#3a6', '#58c', '#c9a', '#999'];
+const HY = 170, GY = 540, K = 1.9;
+let slot = 0, S = null, D = null, inGame = false, last = { l: 0, r: 0 };
 
-  const lobbyScreen = document.getElementById('lobby-screen');
-  const hud = document.getElementById('hud');
-  const statusText = document.getElementById('statusText');
-  const roleText = document.getElementById('roleText');
-  const roomDisp = document.getElementById('roomDisp');
+// ナビゲーション切り替え
+function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex'; $('st').textContent = ''; }
+function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none'; $('st').textContent = ''; }
 
-  let myPlayerNumber = 0;
-  let roomCode = '';
-  let inGame = false;
+$('create').onclick = () => socket.emit('create', r => { $('st').textContent = 'ルームコード: ' + r.code + ' （相手の参加を待っています…）'; });
+$('join').onclick = () => socket.emit('join', $('code').value.trim(), r => { if (!r.ok) $('st').textContent = r.err; });
 
-  let player = { x: 100, y: 300, vx: 0, vy: 0, speed: 4.5, radius: 20, color: '#00f3ff' };
-  let opponent = { x: 700, y: 300, radius: 20, color: '#ff0055' };
+socket.on('start', d => {
+  slot = d.slot; inGame = true; S = D = null;
+  $('lobby-overlay').style.display = 'none';
+});
+socket.on('left', () => {
+  inGame = false; S = D = null;
+  $('lobby-overlay').style.display = 'flex';
+  showMainMenu();
+  $('st').textContent = '相手が退出しました';
+});
+socket.on('st', s => { S = s; });
+
+const keys = {};
+function sendInp() {
+  const l = +!!(keys.KeyA || keys.ArrowLeft), r = +!!(keys.KeyD || keys.ArrowRight);
+  if (l !== last.l || r !== last.r) { last = { l, r }; socket.emit('inp', { l, r }); }
+}
+addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
+  if (!keys[e.code]) {
+    if (['KeyW', 'ArrowUp', 'Space'].includes(e.code)) socket.emit('act');
+    if (e.code === 'Enter') socket.emit('again');
+  }
+  keys[e.code] = true; sendInp();
+});
+addEventListener('keyup', e => { keys[e.code] = false; sendInp(); });
+
+// ---- スナップショットの平滑化 ----
+function sync(dt) {
+  if (!S) return;
+  if (!D || S.s === 'count' || S.rd !== D.rd) { D = JSON.parse(JSON.stringify(S)); return; }
+  const k = Math.min(1, dt * 18), old = {}; D.obs.forEach(o => old[o.id] = o);
+  const P = S.P.map((t, i) => {
+    const c = D.P[i]; if (!t) return null; if (!c) return t;
+    c.x += (t.x - c.x) * k; c.z += (t.z - c.z) * k; c.v = t.v; c.brk = t.brk; c.brakes = t.brakes; c.boost = t.boost; c.cd = t.cd; return c;
+  });
+  const obs = S.obs.map(o => { const c = old[o.id]; if (!c) return { ...o }; c.x += (o.x - c.x) * k; c.z += (o.z - c.z) * k; return c; });
+  Object.assign(D, { s: S.s, t: S.t, rd: S.rd, att: S.att, sc: S.sc, hist: S.hist, msg: S.msg, sub: S.sub, el: S.el, P, obs, sound: S.sound });
+}
+
+// ---- 描画処理 ----
+function poly(pts, c) { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); }
+
+function bike(X, Y, s, col, p) {
+  const k = s * K * 22;
+  if (p.boost) { ctx.fillStyle = 'rgba(255,230,80,.35)'; ctx.beginPath(); ctx.arc(X, Y - k * 2.5, k * 2.2, 0, 7); ctx.fill(); }
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(X, Y, k * .9, k * .3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.fillRect(X - k * .15, Y - k * 2.2, k * .3, k * 2.2);
+  ctx.fillStyle = col; ctx.fillRect(X - k * .6, Y - k * 3.7, k * 1.2, k * 1.8);
+  ctx.fillStyle = '#ffd7b0'; ctx.beginPath(); ctx.arc(X, Y - k * 4.2, k * .5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#444'; ctx.fillRect(X - k, Y - k * 2.9, k * 2, k * .2);
+  if (p.brk) { ctx.fillStyle = '#f22'; ctx.fillRect(X - k * .45, Y - k * 1.5, k * .9, k * .35); }
+}
+
+function car(X, Y, s, o) {
+  const k = s * K * 22, cop = o.k === 'cop', f = Math.floor(Date.now() / 150) % 2;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(X - k * 1.5, Y - k * .2, k * 3, k * .4);
+  ctx.fillStyle = cop ? '#f4f4f4' : CAR[o.c % 5]; ctx.fillRect(X - k * 1.5, Y - k * 2.2, k * 3, k * 2);
+  ctx.fillStyle = '#223'; ctx.fillRect(X - k * 1.1, Y - k * 3.2, k * 2.2, k * 1.1);
+  if (cop) {
+    ctx.fillStyle = '#111'; ctx.fillRect(X - k * 1.5, Y - k * 1.3, k * 3, k * .4);
+    ctx.fillStyle = f ? '#f22' : '#25f'; ctx.fillRect(X - k * .9, Y - k * 3.5, k * .9, k * .3);
+    ctx.fillStyle = f ? '#25f' : '#f22'; ctx.fillRect(X, Y - k * 3.5, k * .9, k * .3);
+    ctx.fillStyle = '#f33'; ctx.fillRect(X - k * 1.4, Y - k * 1.9, k * .5, k * .3); ctx.fillRect(X + k * .9, Y - k * 1.9, k * .5, k * .3);
+  } else {
+    ctx.fillStyle = '#ff8'; ctx.fillRect(X - k * 1.3, Y - k * 1.1, k * .6, k * .4); ctx.fillRect(X + k * .7, Y - k * 1.1, k * .6, k * .4);
+  }
+}
+
+// ---- 後方エンジン音波スペクトラム描画（A画面下部専用） ----
+function drawEqualizer(sound) {
+  if (!sound) return;
+  const numBars = 32;
+  const barW = 16;
+  const barGap = 4;
+  const totalW = numBars * (barW + barGap);
+  const startX = (W - totalW) / 2;
+  const baseY = H - 12;
+  const blockH = 4;
+  const blockGap = 2;
+  const maxBlocks = 11;
+
+  // Bの位置（relX: -140〜140）をイコライザーの横軸に変換
+  const normX = Math.max(-1, Math.min(1, sound.relX / 130));
+  const centerBar = (numBars - 1) * (normX + 1) / 2;
   
-  let soundWaves = [];
-  const keys = {};
+  // 距離に応じた音量の強さ（近いほど高い）
+  const proximity = Math.max(0, 1 - Math.max(0, sound.dist) / 320);
 
-  window.addEventListener('keydown', (e) => keys[e.key] = true);
-  window.addEventListener('keyup', (e) => keys[e.key] = false);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(startX - 10, baseY - (maxBlocks * (blockH + blockGap)) - 18, totalW + 20, maxBlocks * (blockH + blockGap) + 26);
 
-  function createRoom() {
-    socket.emit('createRoom');
-    statusText.innerText = '部屋を作成中...';
-  }
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🔊 後方気配スペクトラム (Bの足音/エンジン音)', W / 2, baseY - (maxBlocks * (blockH + blockGap)) - 5);
 
-  function joinRoom() {
-    const code = document.getElementById('roomCodeInput').value;
-    if (code) {
-      socket.emit('joinRoom', code);
-      statusText.innerText = '参加中...';
-    }
-  }
-
-  socket.on('roomCreated', (data) => {
-    roomCode = data.roomCode;
-    myPlayerNumber = data.playerNumber;
-    statusText.innerText = `部屋コード: ${roomCode} （相手の参加を待っています）`;
-  });
-
-  socket.on('roomJoined', (data) => {
-    roomCode = data.roomCode;
-    myPlayerNumber = data.playerNumber;
-  });
-
-  socket.on('errorMsg', (msg) => statusText.innerText = msg);
-
-  socket.on('gameStart', () => {
-    inGame = true;
-    lobbyScreen.classList.add('hidden');
-    hud.classList.remove('hidden');
-
-    roomDisp.innerText = `ROOM: ${roomCode}`;
-    if (myPlayerNumber === 1) {
-      player.color = '#00f3ff'; player.x = 100;
-      opponent.color = '#ff0055'; opponent.x = 700;
-      roleText.innerText = 'あなた: プレイヤー A';
-    } else {
-      player.color = '#ff0055'; player.x = 700;
-      opponent.color = '#00f3ff'; opponent.x = 100;
-      roleText.innerText = 'あなた: プレイヤー B';
-    }
-
-    // 移動時に音の波形（音波）を発生させて送信
-    setInterval(() => {
-      if (inGame && (Math.abs(player.vx) > 0 || Math.abs(player.vy) > 0)) {
-        socket.emit('soundPulse', { x: player.x, y: player.y });
-      }
-    }, 300);
-
-    requestAnimationFrame(gameLoop);
-  });
-
-  socket.on('opponentMove', (data) => {
-    opponent.x = data.x;
-    opponent.y = data.y;
-  });
-
-  // 相手の移動音波を受信したとき
-  socket.on('opponentSound', (data) => {
-    soundWaves.push({ x: data.x, y: data.y, radius: 10, alpha: 1.0 });
-  });
-
-  socket.on('playerLeft', () => {
-    alert('対戦相手が退出しました');
-    location.reload();
-  });
-
-  function update() {
-    if (!inGame) return;
-
-    player.vx = 0; player.vy = 0;
-    if (keys['ArrowUp'] || keys['w'] || keys['W']) player.vy = -player.speed;
-    if (keys['ArrowDown'] || keys['s'] || keys['S']) player.vy = player.speed;
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.vx = -player.speed;
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) player.vx = player.speed;
-
-    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x + player.vx));
-    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y + player.vy));
-
-    socket.emit('playerMove', { x: player.x, y: player.y });
-
-    // 音波の拡大＆消滅アニメーション
-    for (let i = soundWaves.length - 1; i >= 0; i--) {
-      let w = soundWaves[i];
-      w.radius += 2.5;
-      w.alpha -= 0.025;
-      if (w.alpha <= 0) soundWaves.splice(i, 1);
-    }
-  }
-
-  function drawSoundWaves() {
-    soundWaves.forEach(w => {
-      ctx.save();
-      
-      // 円形パルス
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(0, 243, 255, ${w.alpha})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // ミュージック波形（音の波）風の演出
-      const numBars = 8;
-      for (let i = 0; i < numBars; i++) {
-        let angle = (i / numBars) * Math.PI * 2;
-        let bx = w.x + Math.cos(angle) * w.radius;
-        let by = w.y + Math.sin(angle) * w.radius;
-        let barLen = Math.sin(Date.now() * 0.01 + i) * 10 + 5;
-
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(bx + Math.cos(angle) * barLen, by + Math.sin(angle) * barLen);
-        ctx.strokeStyle = `rgba(255, 0, 85, ${w.alpha})`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    });
-  }
-
-  function drawPlayer(p, label, isSelf) {
-    ctx.save();
+  for (let i = 0; i < numBars; i++) {
+    const distFromCenter = Math.abs(i - centerBar);
     
-    // プレイヤー本体
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 10;
-    ctx.fill();
+    // 山型のスペクトラム波形を計算
+    let blocks = Math.floor((maxBlocks * proximity * 1.1) * Math.exp(-distFromCenter * distFromCenter / 14));
+    if (sound.boosting) blocks = Math.min(maxBlocks, Math.floor(blocks * 1.5) + 3);
 
-    // ラベル (A または B)
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, p.x, p.y);
+    // イコライザーらしいランダムな微振動
+    const jitter = (Math.random() < 0.6) ? 0 : Math.floor((Math.random() - 0.5) * 3);
+    const activeBlocks = Math.max(1, Math.min(maxBlocks, blocks + jitter));
 
-    ctx.restore();
+    const x = startX + i * (barW + barGap);
+    for (let b = 0; b < activeBlocks; b++) {
+      const y = baseY - b * (blockH + blockGap);
+      
+      let color = '#ffffff';
+      if (sound.boosting) {
+        color = b > 8 ? '#ff3366' : '#ffcc00';
+      } else {
+        color = b > 8 ? '#ff4444' : (b > 6 ? '#ffbb33' : '#ffffff');
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, barW, blockH);
+    }
+  }
+}
+
+function view() {
+  const me = D.P[slot], isA = D.att === slot, camz = me.z - 45, camx = me.x * .6;
+  const g = ctx.createLinearGradient(0, 0, 0, HY); g.addColorStop(0, '#4a90d9'); g.addColorStop(1, '#bfe3ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, HY); ctx.fillStyle = '#3c8a3c'; ctx.fillRect(0, HY, W, H - HY);
+  const S_ = z => 140 / (140 + z - camz), Y = s => HY + (GY - HY) * s, X = (x, s) => W / 2 + (x - camx) * s * K;
+  const q = (x1, x2, z1, z2, c) => { const a = S_(z1), b = S_(z2); poly([[X(x1, a), Y(a)], [X(x2, a), Y(a)], [X(x2, b), Y(b)], [X(x1, b), Y(b)]], c); };
+  
+  q(-150, 150, camz + 1, camz + 2500, '#55575c');
+  for (let z = Math.floor(camz / 40) * 40; z < camz + 1000; z += 40) {
+    if (z + 40 < camz + 1) continue; const zz = Math.max(z, camz + 1), c = ((z / 40) & 1) ? '#e33' : '#eee';
+    q(-160, -150, zz, z + 40, c); q(150, 160, zz, z + 40, c); q(-2, 2, zz, z + 20, '#ddd');
+  }
+  
+  const items = [];
+  D.obs.forEach(o => items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) }));
+  D.P.forEach((p, i) => { if (p) items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) }); });
+  items.filter(i => i.z - camz > 1).sort((a, b) => b.z - a.z).forEach(i => i.f());
+
+  // パトカー警報
+  const cop = D.obs.find(o => o.k === 'cop' && o.z < camz + 1 && camz - o.z < 400);
+  if (cop && D.s === 'play') {
+    const f = Math.floor(Date.now() / 150) % 2;
+    ctx.strokeStyle = f ? 'rgba(255,40,40,.8)' : 'rgba(40,80,255,.8)'; ctx.lineWidth = 14; ctx.strokeRect(7, 67, W - 14, H - 74);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('🚨 パトカー接近！(' + (cop.x < me.x ? '左' : '右') + '寄り) 進路を空けろ', W / 2, 125);
   }
 
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 音波エフェクト（Bが動くと波形が出る）
-    drawSoundWaves();
-
-    // プレイヤー描画
-    drawPlayer(player, myPlayerNumber === 1 ? 'A' : 'B', true);
-    drawPlayer(opponent, myPlayerNumber === 1 ? 'B' : 'A', false);
+  // 攻撃側（A）の画面下部にエンジン音波スペクトラムを描画
+  if (isA && D.s === 'play') {
+    drawEqualizer(D.sound);
   }
 
-  function gameLoop() {
-    if (!inGame) return;
-    update();
-    render();
-    requestAnimationFrame(gameLoop);
+  // HUD
+  const m = D.P[slot]; ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(0, 66, W, 28);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(isA ? '攻撃(A)：後ろは見えない！急ブレーキでBを潰せ' : '追越(B)：Aを抜け！', 10, 85);
+  if (isA) {
+    for (let n = 0; n < 3; n++) { ctx.fillStyle = n < m.brakes ? '#f44' : '#444'; ctx.beginPath(); ctx.arc(W - 20 - n * 26, 80, 9, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('急ブレーキ', W - 90, 85);
+  } else {
+    ctx.fillStyle = '#333'; ctx.fillRect(W - 150, 73, 140, 14); ctx.fillStyle = m.cd <= 0 ? '#7f7' : '#fc4';
+    ctx.fillRect(W - 150, 73, 140 * (m.cd <= 0 ? 1 : 1 - m.cd / 3.5), 14); ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('ブースト', W - 156, 85);
   }
+}
+
+function topbar() {
+  ctx.fillStyle = '#0b0e14'; ctx.fillRect(0, 0, W, 62);
+  const o = 1 - slot;
+  [[slot, 20, 'left', 'あなた'], [o, W - 20, 'right', '相手']].forEach(([i, x, al, lb]) => {
+    ctx.textAlign = al; ctx.fillStyle = COL[i]; ctx.font = 'bold 18px sans-serif'; ctx.fillText(lb + '  ' + D.sc[i], x, 24);
+    ctx.fillStyle = '#ccc'; ctx.font = '12px sans-serif'; ctx.fillText(D.att === i ? '攻撃 (A)' : '追越 (B)', x, 42);
+    for (let n = 0; n < 4; n++) { ctx.fillStyle = n < D.sc[i] ? COL[i] : '#333'; ctx.beginPath(); ctx.arc(al === 'left' ? x + 110 + n * 18 : x - 110 - n * 18, 18, 6, 0, 7); ctx.fill(); }
+  });
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(D.rd >= 6 ? 'SUDDEN DEATH' : 'ROUND ' + (D.rd + 1) + (D.rd < 3 ? ' (前半)' : ' (後半)'), W / 2, 20);
+  const n = Math.max(6, D.hist.length);
+  for (let k = 0; k < n; k++) {
+    const x = W / 2 - (n - 1) * 9 + k * 18, h = D.hist[k]; ctx.strokeStyle = '#888';
+    ctx.fillStyle = k < D.hist.length ? (h < 0 ? '#777' : COL[h]) : '#0b0e14'; ctx.beginPath(); ctx.arc(x, 42, 6, 0, 7); ctx.fill(); ctx.stroke();
+  }
+}
+
+function overlay(t, s, c) {
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 200, W, 150); ctx.textAlign = 'center';
+  ctx.fillStyle = c; ctx.font = 'bold 44px sans-serif'; ctx.fillText(t, W / 2, 265); ctx.fillStyle = '#ddd'; ctx.font = '18px sans-serif'; ctx.fillText(s || '', W / 2, 305);
+}
+
+function draw() {
+  ctx.fillStyle = '#10131a'; ctx.fillRect(0, 0, W, H);
+  if (!inGame || !D || !D.P[slot]) return;
+  view(); topbar();
+  if (D.s === 'count') overlay(String(Math.ceil(D.t)), (D.att === slot ? 'あなたは攻撃側(A)' : 'あなたは追越側(B)') + (D.rd >= 6 ? '  SUDDEN DEATH' : ''), '#ffd54f');
+  if (D.s === 'result') { const w = D.hist[D.hist.length - 1]; overlay(D.msg, D.sub + (w === slot ? '  (あなたの得点)' : ''), '#7fff7f'); }
+  if (D.s === 'match') overlay(D.msg, D.sub + '  Enterで再戦', '#ffd54f');
+  if (D.s === 'play' && D.el < 1.5) { ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('GO!', W / 2, 300); }
+}
+
+let lt = performance.now();
+(function loop(t) { const dt = Math.min(.05, (t - lt) / 1000); lt = t; sync(dt); draw(); requestAnimationFrame(loop); })(lt);
 </script>
 </body>
 </html>
