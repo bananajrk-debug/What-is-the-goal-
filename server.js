@@ -48,28 +48,27 @@ function resetRound(r) {
   r.el = 0;
   r.lastEvent = null;
   
-  // ★車は「たまに現れる」程度に抑える（最初に1台のみ生成）
   spawnObs(r, 900);
 }
 
-// ★障害物の出現を「左側通行（X: -90 〜 -50）」に限定
+// ★障害物車両の速度を大幅に引き上げ (170~210)
 function spawnObs(r, startZ) {
-  const leftLanes = [-90, -50]; // 左車線のみ
+  const leftLanes = [-90, -50];
   const x = leftLanes[Math.floor(Math.random() * leftLanes.length)];
   const maxZ = r.obs.length > 0 ? Math.max(...r.obs.map(o => o.z)) : Math.max(r.P[0]?.z || 0, r.P[1]?.z || 0);
-  const z = startZ || (maxZ + 1000 + Math.random() * 600);
-  const isCop = Math.random() < 0.2;
+  const z = startZ || (maxZ + 1100 + Math.random() * 600);
+  const isCop = Math.random() < 0.25;
   r.obs.push({
     id: Math.random().toString(36).substr(2, 9),
     x,
     z,
-    v: isCop ? 220 : 110 + Math.random() * 30,
+    v: isCop ? 230 : 170 + Math.random() * 35, // スピードアップ
     k: isCop ? 'cop' : 'car',
     c: Math.floor(Math.random() * 5)
   });
 }
 
-// NPC (BOT) AI
+// ★CPU (Bot) AIの強化：積極的に動くように改善
 function updateBot(r) {
   if (!r.isBot || r.s !== 'play') return;
   const botIdx = r.botSlot;
@@ -79,21 +78,30 @@ function updateBot(r) {
 
   const isAttacker = (r.att === botIdx);
   
-  // 障害物回避
+  // 障害物の緊急回避
   let avoidX = 0;
-  const dangerObs = r.obs.find(o => o.z > me.z && o.z - me.z < 180 && Math.abs(o.x - me.x) < 45);
+  const dangerObs = r.obs.find(o => o.z > me.z && o.z - me.z < 220 && Math.abs(o.x - me.x) < 45);
   if (dangerObs) {
     avoidX = me.x > dangerObs.x ? 1 : -1;
   }
 
   if (isAttacker) {
-    me.inp.l = avoidX < 0 ? 1 : 0;
-    me.inp.r = avoidX > 0 ? 1 : 0;
+    // 攻撃側：敵の正面を積極的に塞ぎに行く・急ブレーキをアグレッシブに使用
+    if (avoidX !== 0) {
+      me.inp.l = avoidX < 0 ? 1 : 0;
+      me.inp.r = avoidX > 0 ? 1 : 0;
+    } else {
+      const targetX = enemy.x;
+      const diffX = targetX - me.x;
+      me.inp.l = diffX < -10 ? 1 : 0;
+      me.inp.r = diffX > 10 ? 1 : 0;
+    }
 
     const dist = me.z - enemy.z;
     const relX = Math.abs(me.x - enemy.x);
-    if (dist > 10 && dist < 70 && relX < 35 && me.brakes > 0 && !me.brk) {
-      if (Math.random() < 0.15) {
+    // 敵が背後に迫ってきたら頻繁にブレーキをかける
+    if (dist > 5 && dist < 90 && relX < 40 && me.brakes > 0 && !me.brk) {
+      if (Math.random() < 0.25) {
         me.brk = true;
         me.brakes--;
         r.lastAct = 'brake';
@@ -101,6 +109,7 @@ function updateBot(r) {
       }
     }
   } else {
+    // 追越側：左右に振って隙を狙い、ブーストを積極的に使用
     const dist = enemy.z - me.z;
     const relX = me.x - enemy.x;
 
@@ -108,20 +117,23 @@ function updateBot(r) {
       me.inp.l = avoidX < 0 ? 1 : 0;
       me.inp.r = avoidX > 0 ? 1 : 0;
     } else {
-      if (Math.abs(relX) < 40) {
-        const targetSide = me.x >= 0 ? 1 : -1;
-        me.inp.l = targetSide < 0 ? 1 : 0;
-        me.inp.r = targetSide > 0 ? 1 : 0;
+      // 敵の真後ろ（ブレーキ撃墜ゾーン）を避け、ラインをズラす
+      if (Math.abs(relX) < 35) {
+        const side = (me.x >= 0) ? 1 : -1;
+        me.inp.l = side < 0 ? 1 : 0;
+        me.inp.r = side > 0 ? 1 : 0;
       } else {
-        me.inp.l = relX > 50 ? 1 : 0;
-        me.inp.r = relX < -50 ? 1 : 0;
+        // 抜き去るために前に出るライン取り
+        const offset = relX > 0 ? 45 : -45;
+        const targetX = enemy.x + offset;
+        me.inp.l = me.x > targetX ? 1 : 0;
+        me.inp.r = me.x < targetX ? 1 : 0;
       }
     }
 
+    // クールダウン完了で即座にブースト発動
     if (me.cd <= 0 && !me.boost) {
-      const isAlignedForPass = Math.abs(relX) >= 30;
-      const safeDistance = dist > 40 && dist < 220;
-      if (isAlignedForPass && safeDistance && !enemy.brk) {
+      if (dist > 30 && dist < 300) {
         me.boost = true;
         me.cd = 3.5;
         r.lastAct = 'boost';
@@ -131,11 +143,10 @@ function updateBot(r) {
   }
 }
 
-// ★ラウンド終了処理（結果表示から2.5秒後に自動で次のラウンドを開始）
 function endRound(r, winner, msg, sub, sound) {
   if (r.s === 'result' || r.s === 'match') return;
   r.s = 'result';
-  r.t = 2.5; // 次のラウンドまでの自動カウントダウン
+  r.t = 2.5;
   r.lastEvent = sound;
   r.sc[winner]++;
   r.hist.push(winner);
@@ -143,7 +154,6 @@ function endRound(r, winner, msg, sub, sound) {
   r.sub = sub;
 }
 
-// ゲームメインループ (60fps)
 setInterval(() => {
   const dt = 1 / 60;
   Object.keys(rooms).forEach(code => {
@@ -159,7 +169,6 @@ setInterval(() => {
       return;
     }
 
-    // ★ラウンド結果画面での自動進行処理
     if (r.s === 'result') {
       r.t -= dt;
       if (r.t <= 0) {
@@ -183,7 +192,6 @@ setInterval(() => {
       r.obs.forEach(o => { o.z += o.v * dt; });
       r.obs = r.obs.filter(o => o.z < Math.max(...r.P.map(p => p ? p.z : 0)) + 1200);
       
-      // ★画面内に車が少なくなったらたまに1台だけ補充（同時存在数を最大2台に制限）
       if (r.obs.length < 2) spawnObs(r);
 
       r.P.forEach((p) => {
@@ -198,8 +206,8 @@ setInterval(() => {
         p.z += p.v * dt;
 
         let moveX = 0;
-        if (p.inp.l) moveX -= 130;
-        if (p.inp.r) moveX += 130;
+        if (p.inp.l) moveX -= 140;
+        if (p.inp.r) moveX += 140;
         p.x += moveX * dt;
         p.x = Math.max(-130, Math.min(130, p.x));
       });
@@ -216,13 +224,11 @@ setInterval(() => {
 
       const A = r.P[r.att], B = r.P[1 - r.att];
       if (A && B) {
-        // ★追越成功判定
         if (B.z > A.z + 15) {
           endRound(r, 1 - r.att, '追越成功！', 'BがAを華麗に抜き去った！', 'win');
           return;
         }
 
-        // ★衝突判定
         const distZ = Math.abs(A.z - B.z);
         const distX = Math.abs(A.x - B.x);
 
@@ -235,7 +241,6 @@ setInterval(() => {
           return;
         }
 
-        // 障害物クラッシュ判定
         [A, B].forEach((p, idx) => {
           r.obs.forEach(o => {
             if (Math.abs(p.z - o.z) < 22 && Math.abs(p.x - o.x) < 26) {
@@ -369,7 +374,7 @@ setInterval(() => {
       r.lastAct = null;
     }
   });
-}, 1000 / 30);
+}, 1000 / 60);
 
 server.listen(PORT, () => {
   console.log('Server running on port ' + PORT);
