@@ -1,7 +1,7 @@
 {
-  "name": "bicycle-chase-game",
+  "name": "nanigamokutekinan",
   "version": "2.0.0",
-  "description": "2-Player Bicycle Chase Game with Radar Waves & Lobby",
+  "description": "なにが目的なん？ ONLINE",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
