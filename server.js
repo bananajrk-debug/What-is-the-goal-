@@ -31,7 +31,7 @@ io.on('connection', (socket) => {
       number: 1,
       x: 100,
       y: 300,
-      role: '逃走者（前）'
+      role: 'A'
     };
     socket.join(roomCode);
     socket.roomCode = roomCode;
@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
       number: 2,
       x: 700,
       y: 300,
-      role: '追跡者（後）'
+      role: 'B'
     };
     socket.join(code);
     socket.roomCode = code;
@@ -74,6 +74,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 音の波形パルスを相手に送る
   socket.on('soundPulse', (data) => {
     const code = socket.roomCode;
     if (code) {
