@@ -4,9 +4,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static('public'));
 
@@ -22,26 +20,18 @@ function generateRoomCode() {
 }
 
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
   socket.on('createRoom', () => {
     let roomCode = generateRoomCode();
     while (rooms[roomCode]) {
       roomCode = generateRoomCode();
     }
-    rooms[roomCode] = {
-      players: {},
-      started: false
-    };
+    rooms[roomCode] = { players: {} };
     rooms[roomCode].players[socket.id] = {
       id: socket.id,
       number: 1,
-      x: 150,
+      x: 100,
       y: 300,
-      vx: 0,
-      vy: 0,
-      role: '逃走者',
-      color: '#00f3ff'
+      role: '逃走者（前）'
     };
     socket.join(roomCode);
     socket.roomCode = roomCode;
@@ -56,8 +46,7 @@ io.on('connection', (socket) => {
       socket.emit('errorMsg', '部屋が見つかりません');
       return;
     }
-    const playerCount = Object.keys(room.players).length;
-    if (playerCount >= 2) {
+    if (Object.keys(room.players).length >= 2) {
       socket.emit('errorMsg', '部屋が満員です');
       return;
     }
@@ -65,12 +54,9 @@ io.on('connection', (socket) => {
     room.players[socket.id] = {
       id: socket.id,
       number: 2,
-      x: 650,
+      x: 700,
       y: 300,
-      vx: 0,
-      vy: 0,
-      role: '鬼',
-      color: '#ff0055'
+      role: '追跡者（後）'
     };
     socket.join(code);
     socket.roomCode = code;
@@ -84,8 +70,6 @@ io.on('connection', (socket) => {
     if (code && rooms[code] && rooms[code].players[socket.id]) {
       rooms[code].players[socket.id].x = data.x;
       rooms[code].players[socket.id].y = data.y;
-      rooms[code].players[socket.id].vx = data.vx || 0;
-      rooms[code].players[socket.id].vy = data.vy || 0;
       socket.to(code).emit('opponentMove', rooms[code].players[socket.id]);
     }
   });
@@ -111,6 +95,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
