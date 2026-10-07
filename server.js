@@ -51,7 +51,6 @@ function resetRound(r) {
   spawnObs(r, 900);
 }
 
-// ★障害物車両の速度を大幅に引き上げ (170~210)
 function spawnObs(r, startZ) {
   const leftLanes = [-90, -50];
   const x = leftLanes[Math.floor(Math.random() * leftLanes.length)];
@@ -62,13 +61,13 @@ function spawnObs(r, startZ) {
     id: Math.random().toString(36).substr(2, 9),
     x,
     z,
-    v: isCop ? 230 : 170 + Math.random() * 35, // スピードアップ
+    v: isCop ? 230 : 170 + Math.random() * 35,
     k: isCop ? 'cop' : 'car',
     c: Math.floor(Math.random() * 5)
   });
 }
 
-// ★CPU (Bot) AIの強化：積極的に動くように改善
+// ★CPU (Bot) AIの改善：範囲をもってゆらゆら動く＆逆の挙動を実装
 function updateBot(r) {
   if (!r.isBot || r.s !== 'play') return;
   const botIdx = r.botSlot;
@@ -85,23 +84,25 @@ function updateBot(r) {
     avoidX = me.x > dangerObs.x ? 1 : -1;
   }
 
+  if (avoidX !== 0) {
+    me.inp.l = avoidX < 0 ? 1 : 0;
+    me.inp.r = avoidX > 0 ? 1 : 0;
+    return;
+  }
+
   if (isAttacker) {
-    // 攻撃側：敵の正面を積極的に塞ぎに行く・急ブレーキをアグレッシブに使用
-    if (avoidX !== 0) {
-      me.inp.l = avoidX < 0 ? 1 : 0;
-      me.inp.r = avoidX > 0 ? 1 : 0;
-    } else {
-      const targetX = enemy.x;
-      const diffX = targetX - me.x;
-      me.inp.l = diffX < -10 ? 1 : 0;
-      me.inp.r = diffX > 10 ? 1 : 0;
-    }
+    // 【A（攻撃側）】：完全追尾ではなく、プレイヤーを中心に「3倍幅（約100px）」の範囲を波打つようにワイドに動く
+    const wave = Math.sin(r.el * 3.5) * 55; // プレイヤー中心に±55揺れる
+    const targetX = enemy.x + wave;
+    
+    me.inp.l = me.x > targetX + 8 ? 1 : 0;
+    me.inp.r = me.x < targetX - 8 ? 1 : 0;
 
     const dist = me.z - enemy.z;
     const relX = Math.abs(me.x - enemy.x);
-    // 敵が背後に迫ってきたら頻繁にブレーキをかける
-    if (dist > 5 && dist < 90 && relX < 40 && me.brakes > 0 && !me.brk) {
-      if (Math.random() < 0.25) {
+    // 敵が後ろ近くにいる時にアグレッシブにブレーキ
+    if (dist > 5 && dist < 100 && relX < 45 && me.brakes > 0 && !me.brk) {
+      if (Math.random() < 0.22) {
         me.brk = true;
         me.brakes--;
         r.lastAct = 'brake';
@@ -109,31 +110,19 @@ function updateBot(r) {
       }
     }
   } else {
-    // 追越側：左右に振って隙を狙い、ブーストを積極的に使用
+    // 【B（追越側）】：Aと逆の動き。プレイヤーの正面を避けつつ、大きく幅を使ってゆさぶりをかける
+    const wave = Math.cos(r.el * 2.8) * 80;
+    // プレイヤーの真後ろ（撃墜ゾーン）を意図的に避けるオフセット
+    const dodge = (enemy.x >= 0 ? -60 : 60);
+    const targetX = enemy.x + dodge + wave;
+
+    me.inp.l = me.x > targetX + 8 ? 1 : 0;
+    me.inp.r = me.x < targetX - 8 ? 1 : 0;
+
     const dist = enemy.z - me.z;
-    const relX = me.x - enemy.x;
-
-    if (avoidX !== 0) {
-      me.inp.l = avoidX < 0 ? 1 : 0;
-      me.inp.r = avoidX > 0 ? 1 : 0;
-    } else {
-      // 敵の真後ろ（ブレーキ撃墜ゾーン）を避け、ラインをズラす
-      if (Math.abs(relX) < 35) {
-        const side = (me.x >= 0) ? 1 : -1;
-        me.inp.l = side < 0 ? 1 : 0;
-        me.inp.r = side > 0 ? 1 : 0;
-      } else {
-        // 抜き去るために前に出るライン取り
-        const offset = relX > 0 ? 45 : -45;
-        const targetX = enemy.x + offset;
-        me.inp.l = me.x > targetX ? 1 : 0;
-        me.inp.r = me.x < targetX ? 1 : 0;
-      }
-    }
-
-    // クールダウン完了で即座にブースト発動
+    // クールダウン完了でブースト発動
     if (me.cd <= 0 && !me.boost) {
-      if (dist > 30 && dist < 300) {
+      if (dist > 20 && dist < 320) {
         me.boost = true;
         me.cd = 3.5;
         r.lastAct = 'boost';
@@ -250,128 +239,6 @@ setInterval(() => {
           });
         });
       }
-    }
-  });
-}, 1000 / 60);
-
-io.on('connection', socket => {
-  let curCode = null;
-
-  socket.on('joinBot', cb => {
-    curCode = 'BOT_' + socket.id.substr(0, 5);
-    const r = initRoom(curCode);
-    r.isBot = true;
-    r.botSlot = 1;
-    r.players = [socket.id, 'BOT'];
-    r.sockets = [socket, null];
-    rooms[curCode] = r;
-
-    resetRound(r);
-    cb({ ok: true });
-    socket.emit('start', { slot: 0 });
-  });
-
-  socket.on('create', cb => {
-    curCode = genCode();
-    const r = initRoom(curCode);
-    r.players.push(socket.id);
-    r.sockets.push(socket);
-    rooms[curCode] = r;
-    cb({ code: curCode });
-  });
-
-  socket.on('join', (code, cb) => {
-    const r = rooms[code];
-    if (!r || r.players.length >= 2) return cb({ ok: false, err: 'ルームが存在しないか満員です' });
-    curCode = code;
-    r.players.push(socket.id);
-    r.sockets.push(socket);
-    resetRound(r);
-    cb({ ok: true });
-    
-    r.sockets[0].emit('start', { slot: 0 });
-    r.sockets[1].emit('start', { slot: 1 });
-  });
-
-  socket.on('inp', data => {
-    const r = rooms[curCode];
-    if (!r) return;
-    const idx = r.players.indexOf(socket.id);
-    if (idx !== -1 && r.P[idx]) {
-      r.P[idx].inp = data;
-    }
-  });
-
-  socket.on('act', () => {
-    const r = rooms[curCode];
-    if (!r || r.s !== 'play') return;
-    const idx = r.players.indexOf(socket.id);
-    if (idx === -1) return;
-    const p = r.P[idx];
-
-    if (idx === r.att) {
-      if (p.brakes > 0 && !p.brk) {
-        p.brk = true;
-        p.brakes--;
-        r.lastAct = 'brake';
-        setTimeout(() => { p.brk = false; }, 600);
-      }
-    } else {
-      if (p.cd <= 0 && !p.boost) {
-        p.boost = true;
-        p.cd = 3.5;
-        r.lastAct = 'boost';
-        setTimeout(() => { p.boost = false; }, 800);
-      }
-    }
-  });
-
-  socket.on('again', () => {
-    const r = rooms[curCode];
-    if (!r) return;
-    if (r.s === 'result') {
-      r.rd++;
-      resetRound(r);
-    } else if (r.s === 'match') {
-      r.rd = 0;
-      r.sc = [0, 0];
-      r.hist = [];
-      resetRound(r);
-    }
-  });
-
-  socket.on('leave', () => {
-    if (curCode && rooms[curCode]) {
-      const r = rooms[curCode];
-      delete rooms[curCode];
-      if (r.sockets) {
-        r.sockets.forEach(s => { if (s && s.id !== socket.id) s.emit('left'); });
-      }
-    }
-  });
-
-  socket.on('disconnect', () => {
-    if (curCode && rooms[curCode]) {
-      const r = rooms[curCode];
-      delete rooms[curCode];
-      if (r.sockets) {
-        r.sockets.forEach(s => { if (s && s.id !== socket.id) s.emit('left'); });
-      }
-    }
-  });
-});
-
-setInterval(() => {
-  Object.keys(rooms).forEach(code => {
-    const r = rooms[code];
-    if (r && r.s !== 'lobby') {
-      const state = {
-        s: r.s, t: r.t, rd: r.rd, att: r.att, sc: r.sc, hist: r.hist,
-        msg: r.msg, sub: r.sub, el: r.el, P: r.P, obs: r.obs,
-        sound: r.sound, isBot: r.isBot, lastEvent: r.lastEvent, lastAct: r.lastAct
-      };
-      r.sockets.forEach(s => { if (s) s.emit('st', state); });
-      r.lastAct = null;
     }
   });
 }, 1000 / 60);
