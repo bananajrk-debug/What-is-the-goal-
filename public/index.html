@@ -218,19 +218,20 @@ function car(X, Y, s, o) {
   }
 }
 
+// 2. メモリ（幅）を細かく調整したイコライザー（バー数: 48本）
 function drawEqualizer(sound) {
   if (!sound) return;
-  const n = 32, w = 16, g = 4, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 12, bH = 4, bG = 2, mB = 11;
+  const n = 48, w = 9, g = 3, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 12, bH = 4, bG = 2, mB = 11;
   const cBar = (n - 1) * (Math.max(-1, Math.min(1, sound.relX / 130)) + 1) / 2;
   const prox = Math.pow(Math.max(0, 1 - Math.max(0, Math.min(300, sound.dist)) / 280), 0.75);
 
-  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(sX - 10, bY - (mB * (bH + bG)) - 18, tW + 20, mB * (bH + bG) + 26);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(sX - 8, bY - (mB * (bH + bG)) - 18, tW + 16, mB * (bH + bG) + 26);
   ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 5);
 
   for (let i = 0; i < n; i++) {
     const dC = Math.abs(i - cBar);
-    let blocks = Math.floor(mB * prox * Math.exp(-dC * dC / 12));
+    let blocks = Math.floor(mB * prox * Math.exp(-dC * dC / 20));
     if (sound.boosting) blocks = Math.min(mB, Math.floor(blocks * 1.5) + 3);
     const aB = Math.max(0, Math.min(mB, blocks + ((Math.random() < 0.5) ? 0 : Math.floor((Math.random() - 0.4) * 2))));
 
@@ -256,8 +257,17 @@ function view() {
   
   const items = [];
   D.obs.forEach(o => items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) }));
-  D.P.forEach((p, i) => { if (p) items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) }); });
-  items.filter(i => i.z - camz > 1).sort((a, b) => b.z - a.z).forEach(i => i.f());
+  
+  // 3. A側でもBが一定距離（後方300以内）に迫った時に画面下（手前）に映るように判定変更
+  D.P.forEach((p, i) => { 
+    if (p) {
+      if (i === slot || p.z - camz > -300) {
+        items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) });
+      }
+    } 
+  });
+  
+  items.sort((a, b) => b.z - a.z).forEach(i => i.f());
 
   const cop = D.obs.find(o => o.k === 'cop' && o.z < camz + 1 && camz - o.z < 400);
   if (cop && D.s === 'play') {
