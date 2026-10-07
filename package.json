@@ -1,7 +1,7 @@
 {
-  "name": "multiplayer-chase-game",
+  "name": "bicycle-chase-game",
   "version": "2.0.0",
-  "description": "2-Player Online Action Game with Waves & Lobby UI",
+  "description": "2-Player Bicycle Chase Game with Radar Waves & Lobby",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
