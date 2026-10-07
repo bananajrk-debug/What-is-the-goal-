@@ -11,7 +11,7 @@ body{display:flex;align-items:center;justify-content:center;height:100vh;}
 #wrap{position:relative;width:720px;height:540px;max-width:100%;background:#000;border:2px solid #222;box-shadow:0 0 40px rgba(0,0,0,0.8);}
 canvas{display:block;width:100%;height:100%;}
 
-/* ---- UI ---- */
+/* UI */
 #lobby-overlay{position:absolute;inset:0;background:radial-gradient(circle at center, #1a1e29 0%, #0b0d12 100%);display:flex;flex-direction:column;z-index:10;}
 .header{display:flex;justify-content:space-between;align-items:center;padding:15px 90px 15px 30px;border-bottom:1px solid rgba(255,255,255,0.05);}
 .logo{font-family:'Teko',sans-serif;font-size:32px;font-weight:700;color:#ff4655;letter-spacing:2px;line-height:1;}
@@ -36,7 +36,6 @@ input[type="text"]:focus{outline:none;border-color:#ff4655;}
 #st{color:#4fc3f7;font-size:14px;margin-top:10px;text-align:right;}
 p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#889;text-align:center;}
 
-/* ★設定ボタンの微調整（UI被り防止） */
 #settings-btn{position:absolute;top:14px;right:16px;z-index:25;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,0.5);}
 #settings-btn:hover{background:#ff4655;border-color:#ff4655;}
 
@@ -83,7 +82,7 @@ p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#8
       
       <div class="menu-area">
         <div id="main-menu" style="display:flex;flex-direction:column;gap:15px;align-items:flex-end;">
-          <button class="btn btn-play" onclick="playSE('click'); socket.emit('joinBot', r => { if(!r.ok) alert(r.err); })">▶ VS NPC (ソロ)</button>
+          <button class="btn btn-play" id="btn-solo">▶ VS NPC (ソロ)</button>
           <button class="btn" onclick="playSE('click'); showRoomPanel()">🌐 フレンドと対戦</button>
         </div>
 
@@ -106,13 +105,14 @@ p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#8
 <script>
 let audioCtx = null, bgmGain = null, seGain = null, bgmTimer = null;
 let bgmVolVal = 0.5, seVolVal = 0.7;
+let currentBgmMode = 'lobby'; // 'lobby', 'play', 'result'
 
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     bgmGain = audioCtx.createGain();
-    bgmGain.gain.value = bgmVolVal;
+    bgmGain.gain.value = bgmVolVal * 0.25;
     bgmGain.connect(audioCtx.destination);
 
     seGain = audioCtx.createGain();
@@ -134,32 +134,47 @@ function updateVolume() {
 function openSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'flex'; }
 function closeSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'none'; }
 
+// ★場面ごとにBGMの旋律・テンポを自動切替え
 function startBGM() {
-  if (bgmTimer) return;
-  const notes = [110, 130.81, 146.83, 164.81, 110, 130.81, 196.00, 164.81];
-  let step = 0;
+  if (bgmTimer) clearInterval(bgmTimer);
   
+  const bgmTracks = {
+    lobby: { notes: [110, 130.81, 146.83, 130.81], speed: 300, type: 'sine' },
+    play: { notes: [146.83, 174.61, 196.00, 220.00, 196.00, 246.94, 220.00, 174.61], speed: 130, type: 'sawtooth' },
+    result: { notes: [261.63, 220.00, 196.00, 164.81], speed: 450, type: 'triangle' }
+  };
+
+  let step = 0;
+
   bgmTimer = setInterval(() => {
     if (!audioCtx || bgmVolVal <= 0) return;
     try {
+      const track = bgmTracks[currentBgmMode] || bgmTracks.lobby;
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(notes[step % notes.length], now);
+      osc.type = track.type;
+      osc.frequency.setValueAtTime(track.notes[step % track.notes.length], now);
       
       gain.gain.setValueAtTime(bgmVolVal * 0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (track.speed / 1000) * 0.9);
       
       osc.connect(gain);
       gain.connect(bgmGain);
       
       osc.start(now);
-      osc.stop(now + 0.2);
+      osc.stop(now + (track.speed / 1000));
       step++;
     } catch(e){}
-  }, 200);
+  }, 180);
+}
+
+function setBgmMode(mode) {
+  if (currentBgmMode !== mode) {
+    currentBgmMode = mode;
+    startBGM();
+  }
 }
 
 function playSE(type) {
@@ -210,18 +225,49 @@ let slot = 0, S = null, D = null, inGame = false, last = { l: 0, r: 0 };
 
 function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex';$('st').textContent = ''; }
 function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none';$('st').textContent = ''; }
-function returnToLobby() { playSE('click'); socket.emit('leave'); inGame = false; S = D = null; $('lobby-overlay').style.display = 'flex'; showMainMenu(); }
+function returnToLobby() { 
+  playSE('click'); 
+  socket.emit('leave'); 
+  inGame = false; S = D = null; 
+  setBgmMode('lobby');
+  $('lobby-overlay').style.display = 'flex'; 
+  showMainMenu(); 
+}
 
-$('create').onclick = () => { playSE('click'); socket.emit('create', r => {$('st').textContent = 'コード: ' + r.code + ' (対戦相手待ち)'; }); };
-$('join').onclick = () => { playSE('click'); socket.emit('join', $('code').value.trim(), r => { if (!r.ok)$('st').textContent = r.err; }); };
+// ボタンイベントリスナーの登録
+$('btn-solo').onclick = () => {
+  initAudio();
+  playSE('click');
+  socket.emit('joinBot', r => {
+    if (!r.ok) alert(r.err || 'エラーが発生しました');
+  });
+};
 
-socket.on('start', d => { slot = d.slot; inGame = true; S = D = null; $('lobby-overlay').style.display = 'none'; playSE('win'); });
+$('create').onclick = () => { initAudio(); playSE('click'); socket.emit('create', r => {$('st').textContent = 'コード: ' + r.code + ' (対戦相手待ち)'; }); };
+$('join').onclick = () => { initAudio(); playSE('click'); socket.emit('join', $('code').value.trim(), r => { if (!r.ok)$('st').textContent = r.err; }); };
+
+socket.on('start', d => { 
+  slot = d.slot; 
+  inGame = true; 
+  S = D = null; 
+  setBgmMode('play');
+  $('lobby-overlay').style.display = 'none'; 
+  playSE('win'); 
+});
+
 socket.on('left', () => { if(inGame) { alert('相手が退出しました'); returnToLobby(); } });
 
 let lastEv = null;
 socket.on('st', s => {
-  S = s; if (S.lastAct) playSE(S.lastAct);
+  S = s; 
+  if (S.lastAct) playSE(S.lastAct);
   if (S.lastEvent && S.lastEvent !== lastEv) { playSE(S.lastEvent); lastEv = S.lastEvent; }
+
+  // 場面変更によるBGM自動変化の監視
+  if (inGame) {
+    if (S.s === 'play' || S.s === 'count') setBgmMode('play');
+    else if (S.s === 'result' || S.s === 'match') setBgmMode('result');
+  }
 });
 
 const keys = {};
@@ -311,14 +357,12 @@ function drawEqualizer(sound) {
   }
 }
 
-// ★マリオカート風・後方ブースト接近インジケーターの描画
 function drawBoostWarning(me, camz, X, S_) {
   if (D.s !== 'play') return;
   const oppSlot = 1 - slot;
   const opp = D.P[oppSlot];
   if (!opp || !opp.boost) return;
 
-  // 相手が自分の後ろにいてブースト中の場合
   const dist = me.z - opp.z;
   if (dist > 0 && dist < 600) {
     const oppScreenX = X(opp.x, S_(opp.z));
@@ -326,18 +370,15 @@ function drawBoostWarning(me, camz, X, S_) {
     const pulse = Math.sin(Date.now() / 60) * 4;
 
     ctx.save();
-    // 警告マーカー背景
     ctx.fillStyle = 'rgba(255, 70, 85, 0.9)';
     ctx.beginPath();
     ctx.arc(oppScreenX, warnY, 22 + pulse, 0, Math.PI * 2);
     ctx.fill();
 
-    // 枠線の輝き
     ctx.strokeStyle = '#ffcc00';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // アイコン＆テキスト
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
@@ -396,7 +437,6 @@ function view() {
     drawEqualizer(D.sound);
   }
 
-  // ★マリオカート風ブースト接近インジケーター呼び出し
   drawBoostWarning(me, camz, X, S_);
 
   const m = D.P[slot]; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 66, W, 32);
@@ -411,7 +451,6 @@ function view() {
   }
 }
 
-// ★設定ボタンと重ならないよう、右側スコアテキストの位置を微調整(W - 110)
 function topbar() {
   ctx.fillStyle = '#0f1115'; ctx.fillRect(0, 0, W, 66);
   const o = 1 - slot;
