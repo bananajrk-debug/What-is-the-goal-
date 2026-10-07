@@ -34,7 +34,7 @@ function endRound(R, w, pen, text) {
   if (w >= 0) R.sc[w]++;
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   R.hist.push(w);
-  R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
+  R.msg = w >= 0 ? 'なにもく POINT GET!' : 'DRAW';
   R.sub = (w >= 0 ? 'プレイヤー' + (w + 1) + '  ' : '') + text;
   R.state = 'result'; R.timer = 2.5;
 }
@@ -43,7 +43,7 @@ function afterResult(R) {
   if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
     R.state = 'match';
     R.msg = 'MATCH WINNER: プレイヤー' + (w + 1);
-    R.sub = R.round >= 6 ? 'サドンデス決着' : '';
+    R.sub = R.round >= 6 ? 'サドンデス' : '';
     return;
   }
   R.round++; newRound(R);
@@ -99,7 +99,7 @@ function step(R, dt) {
   if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！');
   for (const i of [0, 1]) if (lost[i]) {
     return lost[i] === 'cop'
-      ? endRound(R, 1 - i, i, 'プレイヤー' + (i + 1) + ' パトカー違反で逮捕！(-1pt)')
+      ? endRound(R, 1 - i, i, 'プレイヤー' + (i + 1) + ' 違反で逮捕！(-1pt)')
       : endRound(R, 1 - i, -1, 'プレイヤー' + (i + 1) + ' 車と衝突！');
   }
 
