@@ -11,14 +11,13 @@ body{display:flex;align-items:center;justify-content:center;height:100vh;}
 #wrap{position:relative;width:720px;height:540px;max-width:100%;background:#000;border:2px solid #222;box-shadow:0 0 40px rgba(0,0,0,0.8);}
 canvas{display:block;width:100%;height:100%;}
 
-/* ---- ロビーUI ---- */
+/* ---- UI ---- */
 #lobby-overlay{position:absolute;inset:0;background:radial-gradient(circle at center, #1a1e29 0%, #0b0d12 100%);display:flex;flex-direction:column;z-index:10;}
 .header{display:flex;justify-content:space-between;align-items:center;padding:15px 30px;border-bottom:1px solid rgba(255,255,255,0.05);}
 .logo{font-family:'Teko',sans-serif;font-size:32px;font-weight:700;color:#ff4655;letter-spacing:2px;line-height:1;}
 .nav{display:flex;gap:30px;}
 .nav-item{font-weight:bold;font-size:14px;color:#8b97a3;cursor:pointer;transition:0.2s;}
 .nav-item.active{color:#fff;border-bottom:2px solid #ff4655;padding-bottom:4px;}
-.nav-item.disabled{opacity:0.5;cursor:not-allowed;}
 
 .main-content{flex:1;display:flex;flex-direction:column;position:relative;padding:40px;}
 .bg-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Teko',sans-serif;font-size:120px;font-weight:700;color:rgba(255,255,255,0.02);white-space:nowrap;pointer-events:none;}
@@ -31,16 +30,44 @@ canvas{display:block;width:100%;height:100%;}
 
 #room-panel{display:none;flex-direction:column;align-items:flex-end;gap:10px;background:rgba(0,0,0,0.6);padding:20px;border-left:4px solid #ff4655;}
 .input-row{display:flex;gap:8px;}
-input{background:#111;border:1px solid #444;color:#fff;font-size:16px;padding:10px;width:120px;text-align:center;letter-spacing:4px;}
-input:focus{outline:none;border-color:#ff4655;}
+input[type="text"]{background:#111;border:1px solid #444;color:#fff;font-size:16px;padding:10px;width:120px;text-align:center;letter-spacing:4px;}
+input[type="text"]:focus{outline:none;border-color:#ff4655;}
 
 #st{color:#4fc3f7;font-size:14px;margin-top:10px;text-align:right;}
 p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#889;text-align:center;}
+
+/* ---- 設定ボタン＆モーダル ---- */
+#settings-btn{position:absolute;top:15px;right:15px;z-index:20;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;}
+#settings-btn:hover{background:rgba(255,255,255,0.2);}
+
+#settings-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:30;flex-direction:column;align-items:center;justify-content:center;}
+.modal-box{background:#1a1e29;border:2px solid #ff4655;padding:30px;width:320px;border-radius:8px;box-shadow:0 0 20px rgba(0,0,0,0.8);}
+.modal-title{font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;color:#ff4655;border-bottom:1px solid #333;padding-bottom:10px;}
+.setting-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:14px;}
+.setting-item input[type="range"]{width:140px;accent-color:#ff4655;}
 </style>
 </head>
 <body>
 
 <div id="wrap">
+  <button id="settings-btn" onclick="openSettings()">⚙ 設定</button>
+
+  <!-- 音量設定モーダル -->
+  <div id="settings-modal">
+    <div class="modal-box">
+      <div class="modal-title">AUDIO SETTINGS</div>
+      <div class="setting-item">
+        <span>BGM 音量</span>
+        <input type="range" id="bgm-vol" min="0" max="100" value="50" oninput="updateVolume()">
+      </div>
+      <div class="setting-item">
+        <span>SE 音量</span>
+        <input type="range" id="se-vol" min="0" max="100" value="70" oninput="updateVolume()">
+      </div>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:10px;background:#ff4655;border:none;" onclick="closeSettings()">閉じる</button>
+    </div>
+  </div>
+
   <canvas id="c" width="720" height="540"></canvas>
   
   <div id="lobby-overlay">
@@ -48,8 +75,6 @@ p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#8
       <div class="logo">NANIGA MOKUTEKINAN?</div>
       <div class="nav">
         <div class="nav-item active">PLAY</div>
-        <div class="nav-item disabled">SHOP</div>
-        <div class="nav-item disabled">LAB</div>
       </div>
       <div style="font-size:13px;color:#8b97a3">🚴 Player</div>
     </div>
@@ -66,7 +91,7 @@ p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#8
         <div id="room-panel">
           <button class="btn" style="width:100%;justify-content:center" id="create">新規ルーム作成</button>
           <div class="input-row">
-            <input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric">
+            <input type="text" id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric">
             <button class="btn" style="background:#4fc3f7;color:#000;border:none;" id="join">参加</button>
           </div>
           <button class="btn" style="font-size:12px;padding:6px 12px;background:transparent;border:none;color:#888;" onclick="playSE('click'); showMainMenu()">キャンセル</button>
@@ -80,52 +105,102 @@ p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#8
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-let audioCtx = null;
-function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+// ---- オーディオ & BGM システム ----
+let audioCtx = null, bgmGain = null, seGain = null, bgmTimer = null;
+let bgmVolVal = 0.5, seVolVal = 0.7;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    bgmGain = audioCtx.createGain();
+    bgmGain.gain.value = bgmVolVal;
+    bgmGain.connect(audioCtx.destination);
+
+    seGain = audioCtx.createGain();
+    seGain.gain.value = seVolVal;
+    seGain.connect(audioCtx.destination);
+
+    startBGM();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function updateVolume() {
+  bgmVolVal = document.getElementById('bgm-vol').value / 100;
+  seVolVal = document.getElementById('se-vol').value / 100;
+  if (bgmGain) bgmGain.gain.setValueAtTime(bgmVolVal * 0.25, audioCtx.currentTime);
+  if (seGain) seGain.gain.setValueAtTime(seVolVal, audioCtx.currentTime);
+}
+
+function openSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'flex'; }
+function closeSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'none'; }
+
+// ★ドライブ風ループBGM生成
+function startBGM() {
+  if (bgmTimer) return;
+  const notes = [110, 130.81, 146.83, 164.81, 110, 130.81, 196.00, 164.81];
+  let step = 0;
+  
+  bgmTimer = setInterval(() => {
+    if (!audioCtx || bgmVolVal <= 0) return;
+    try {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(notes[step % notes.length], now);
+      
+      gain.gain.setValueAtTime(bgmVolVal * 0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      
+      osc.connect(gain);
+      gain.connect(bgmGain);
+      
+      osc.start(now);
+      osc.stop(now + 0.2);
+      step++;
+    } catch(e){}
+  }, 200);
+}
 
 function playSE(type) {
   try {
-    initAudio(); if (!audioCtx) return; const now = audioCtx.currentTime;
+    initAudio(); if (!audioCtx || seVolVal <= 0) return; const now = audioCtx.currentTime;
     if (type === 'click') {
       const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
       osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
-      gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
-      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.05);
+      gain.gain.setValueAtTime(seVolVal * 0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+      osc.connect(gain); gain.connect(seGain); osc.start(now); osc.stop(now + 0.05);
     } 
     else if (type === 'brake') {
       const bSize = audioCtx.sampleRate * 0.3; const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
       const d = buf.getChannelData(0); for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
       const noise = audioCtx.createBufferSource(); noise.buffer = buf;
       const fil = audioCtx.createBiquadFilter(); fil.type = 'bandpass'; fil.frequency.setValueAtTime(1200, now); fil.Q.setValueAtTime(3, now);
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-      noise.connect(fil); fil.connect(gain); gain.connect(audioCtx.destination); noise.start(now);
+      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(seVolVal * 0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      noise.connect(fil); fil.connect(gain); gain.connect(seGain); noise.start(now);
     } 
     else if (type === 'boost') {
       const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
       osc.type = 'triangle'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(280, now + 0.5);
-      gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.5);
-
-      const bSize = audioCtx.sampleRate * 0.5; const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
-      const d = buf.getChannelData(0); for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
-      const noise = audioCtx.createBufferSource(); noise.buffer = buf;
-      const fil = audioCtx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.setValueAtTime(400, now); fil.frequency.linearRampToValueAtTime(1200, now + 0.5);
-      const ngain = audioCtx.createGain(); ngain.gain.setValueAtTime(0.3, now); ngain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-      noise.connect(fil); fil.connect(ngain); ngain.connect(audioCtx.destination); noise.start(now);
+      gain.gain.setValueAtTime(seVolVal * 0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain); gain.connect(seGain); osc.start(now); osc.stop(now + 0.5);
     } 
     else if (type === 'crash') {
       const bSize = audioCtx.sampleRate * 0.5; const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
       const d = buf.getChannelData(0); for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
       const noise = audioCtx.createBufferSource(); noise.buffer = buf;
       const fil = audioCtx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.setValueAtTime(800, now); fil.frequency.linearRampToValueAtTime(100, now + 0.5);
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.7, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-      noise.connect(fil); fil.connect(gain); gain.connect(audioCtx.destination); noise.start(now);
+      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(seVolVal * 0.8, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+      noise.connect(fil); fil.connect(gain); gain.connect(seGain); noise.start(now);
     } 
     else if (type === 'win') {
       [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.frequency.setValueAtTime(f, now + idx * 0.08);
-        gain.gain.setValueAtTime(0.2, now + idx * 0.08); gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.2);
+        gain.gain.setValueAtTime(seVolVal * 0.3, now + idx * 0.08); gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+        osc.connect(gain); gain.connect(seGain); osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.2);
       });
     }
   } catch(e) {}
@@ -211,7 +286,6 @@ function car(X, Y, s, o) {
   }
 }
 
-// ★波形をしっかり大きく・ダイナミックに描画
 function drawEqualizer(sound) {
   if (!sound) return;
   const n = 36, w = 8, g = 2, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 15, bH = 6, bG = 2, mB = 14;
@@ -240,11 +314,20 @@ function drawEqualizer(sound) {
   }
 }
 
+// ★カメラ視点と描画範囲の調整：接近時にしっかり画面下部に映るように変更
 function view() {
-  const me = D.P[slot], isA = D.att === slot, camz = me.z - 45, camx = me.x * .6;
+  const me = D.P[slot], isA = D.att === slot;
+  
+  // カメラを従来より手前に引き、自分の直近後方も視界に入れる
+  const camz = me.z - 75; 
+  const camx = me.x * 0.5;
+
   const g = ctx.createLinearGradient(0, 0, 0, HY); g.addColorStop(0, '#1a1e29'); g.addColorStop(1, '#4a5568');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, HY); ctx.fillStyle = '#2d3748'; ctx.fillRect(0, HY, W, H - HY);
-  const S_ = z => 140 / (140 + z - camz), Y = s => HY + (GY - HY) * s, X = (x, s) => W / 2 + (x - camx) * s * K;
+
+  const S_ = z => 140 / (140 + Math.max(5, z - camz)); 
+  const Y = s => HY + (GY - HY) * s; 
+  const X = (x, s) => W / 2 + (x - camx) * s * K;
   const q = (x1, x2, z1, z2, c) => { const a = S_(z1), b = S_(z2); poly([[X(x1, a), Y(a)], [X(x2, a), Y(a)], [X(x2, b), Y(b)], [X(x1, b), Y(b)]], c); };
   
   q(-150, 150, camz + 1, camz + 2500, '#111318');
@@ -254,10 +337,15 @@ function view() {
   }
   
   const items = [];
-  D.obs.forEach(o => items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) }));
+  D.obs.forEach(o => {
+    if (o.z >= camz + 10) {
+      items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) });
+    }
+  });
   
+  // ★自分の後ろから近づいてくる相手（me.z - 60 程度）も画面に正しく描画
   D.P.forEach((p, i) => { 
-    if (p && (i === slot || p.z >= me.z)) {
+    if (p && p.z >= camz + 10) {
       items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) });
     } 
   });
@@ -270,7 +358,6 @@ function view() {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🚨 パトカー接近！進路を空けろ', W / 2, 125);
   }
 
-  // ★A側攻撃時の巨大化波形表示（バックミラー機能は完全に削除）
   if (isA && D.s === 'play') {
     drawEqualizer(D.sound);
   }
