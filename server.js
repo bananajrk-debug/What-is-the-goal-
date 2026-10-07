@@ -67,7 +67,6 @@ function spawnObs(r, startZ) {
   });
 }
 
-// ★CPU (Bot) AIの改善：範囲をもってゆらゆら動く＆逆の挙動を実装
 function updateBot(r) {
   if (!r.isBot || r.s !== 'play') return;
   const botIdx = r.botSlot;
@@ -77,7 +76,6 @@ function updateBot(r) {
 
   const isAttacker = (r.att === botIdx);
   
-  // 障害物の緊急回避
   let avoidX = 0;
   const dangerObs = r.obs.find(o => o.z > me.z && o.z - me.z < 220 && Math.abs(o.x - me.x) < 45);
   if (dangerObs) {
@@ -91,8 +89,7 @@ function updateBot(r) {
   }
 
   if (isAttacker) {
-    // 【A（攻撃側）】：完全追尾ではなく、プレイヤーを中心に「3倍幅（約100px）」の範囲を波打つようにワイドに動く
-    const wave = Math.sin(r.el * 3.5) * 55; // プレイヤー中心に±55揺れる
+    const wave = Math.sin(r.el * 3.5) * 55;
     const targetX = enemy.x + wave;
     
     me.inp.l = me.x > targetX + 8 ? 1 : 0;
@@ -100,7 +97,6 @@ function updateBot(r) {
 
     const dist = me.z - enemy.z;
     const relX = Math.abs(me.x - enemy.x);
-    // 敵が後ろ近くにいる時にアグレッシブにブレーキ
     if (dist > 5 && dist < 100 && relX < 45 && me.brakes > 0 && !me.brk) {
       if (Math.random() < 0.22) {
         me.brk = true;
@@ -110,9 +106,7 @@ function updateBot(r) {
       }
     }
   } else {
-    // 【B（追越側）】：Aと逆の動き。プレイヤーの正面を避けつつ、大きく幅を使ってゆさぶりをかける
     const wave = Math.cos(r.el * 2.8) * 80;
-    // プレイヤーの真後ろ（撃墜ゾーン）を意図的に避けるオフセット
     const dodge = (enemy.x >= 0 ? -60 : 60);
     const targetX = enemy.x + dodge + wave;
 
@@ -120,7 +114,6 @@ function updateBot(r) {
     me.inp.r = me.x < targetX - 8 ? 1 : 0;
 
     const dist = enemy.z - me.z;
-    // クールダウン完了でブースト発動
     if (me.cd <= 0 && !me.boost) {
       if (dist > 20 && dist < 320) {
         me.boost = true;
@@ -143,6 +136,106 @@ function endRound(r, winner, msg, sub, sound) {
   r.sub = sub;
 }
 
+io.on('connection', socket => {
+  socket.on('joinBot', cb => {
+    const code = genCode();
+    const r = initRoom(code);
+    r.isBot = true;
+    r.botSlot = 1;
+    r.sockets = [socket];
+    rooms[code] = r;
+    socket.join(code);
+    socket.roomCode = code;
+    socket.playerSlot = 0;
+
+    resetRound(r);
+    cb({ ok: true });
+    socket.emit('start', { slot: 0 });
+  });
+
+  socket.on('create', cb => {
+    const code = genCode();
+    const r = initRoom(code);
+    r.sockets = [socket];
+    rooms[code] = r;
+    socket.join(code);
+    socket.roomCode = code;
+    socket.playerSlot = 0;
+    cb({ ok: true, code });
+  });
+
+  socket.on('join', (code, cb) => {
+    const r = rooms[code];
+    if (!r || r.sockets.length >= 2 || r.s !== 'lobby') {
+      return cb({ ok: false, err: 'ルームが見つからないか満員です' });
+    }
+    r.sockets.push(socket);
+    socket.join(code);
+    socket.roomCode = code;
+    socket.playerSlot = 1;
+    cb({ ok: true });
+
+    resetRound(r);
+    r.sockets[0].emit('start', { slot: 0 });
+    r.sockets[1].emit('start', { slot: 1 });
+  });
+
+  socket.on('inp', d => {
+    const r = rooms[socket.roomCode];
+    if (!r || r.s !== 'play') return;
+    const p = r.P[socket.playerSlot];
+    if (p) p.inp = d;
+  });
+
+  socket.on('act', () => {
+    const r = rooms[socket.roomCode];
+    if (!r || r.s !== 'play') return;
+    const p = r.P[socket.playerSlot];
+    if (!p) return;
+
+    if (r.att === socket.playerSlot) {
+      if (p.brakes > 0 && !p.brk) {
+        p.brk = true;
+        p.brakes--;
+        r.lastAct = 'brake';
+        setTimeout(() => { p.brk = false; }, 600);
+      }
+    } else {
+      if (p.cd <= 0 && !p.boost) {
+        p.boost = true;
+        p.cd = 3.5;
+        r.lastAct = 'boost';
+        setTimeout(() => { p.boost = false; }, 800);
+      }
+    }
+  });
+
+  socket.on('again', () => {
+    const r = rooms[socket.roomCode];
+    if (!r || r.s !== 'match') return;
+    r.sc = [0, 0];
+    r.hist = [];
+    r.rd = 0;
+    resetRound(r);
+  });
+
+  socket.on('leave', () => {
+    const code = socket.roomCode;
+    if (code && rooms[code]) {
+      socket.to(code).emit('left');
+      delete rooms[code];
+    }
+  });
+
+  socket.on('disconnect', () => {
+    const code = socket.roomCode;
+    if (code && rooms[code]) {
+      socket.to(code).emit('left');
+      delete rooms[code];
+    }
+  });
+});
+
 setInterval(() => {
   const dt = 1 / 60;
   Object.keys(rooms).forEach(code => {
@@ -155,10 +248,7 @@ setInterval(() => {
         r.s = 'play';
         r.el = 0;
       }
-      return;
-    }
-
-    if (r.s === 'result') {
+    } else if (r.s === 'result') {
       r.t -= dt;
       if (r.t <= 0) {
         if (r.sc[0] >= 4 || r.sc[1] >= 4 || r.rd >= 7) {
@@ -171,10 +261,7 @@ setInterval(() => {
           resetRound(r);
         }
       }
-      return;
-    }
-
-    if (r.s === 'play') {
+    } else if (r.s === 'play') {
       r.el += dt;
       updateBot(r);
 
@@ -215,31 +302,32 @@ setInterval(() => {
       if (A && B) {
         if (B.z > A.z + 15) {
           endRound(r, 1 - r.att, '追越成功！', 'BがAを華麗に抜き去った！', 'win');
-          return;
-        }
+        } else {
+          const distZ = Math.abs(A.z - B.z);
+          const distX = Math.abs(A.x - B.x);
 
-        const distZ = Math.abs(A.z - B.z);
-        const distX = Math.abs(A.x - B.x);
-
-        if (distZ < 25 && distX < 28) {
-          if (A.brk) {
-            endRound(r, r.att, '撃墜成功！', 'BはAの急ブレーキに激突した！', 'crash');
-          } else {
-            endRound(r, r.att, '追突事故！', 'Bは回避せず真後ろから激突した！', 'crash');
-          }
-          return;
-        }
-
-        [A, B].forEach((p, idx) => {
-          r.obs.forEach(o => {
-            if (Math.abs(p.z - o.z) < 22 && Math.abs(p.x - o.x) < 26) {
-              const winner = 1 - idx;
-              endRound(r, winner, 'クラッシュ！', (idx === r.att ? 'A' : 'B') + 'が障害物に激突！', 'crash');
+          if (distZ < 25 && distX < 28) {
+            if (A.brk) {
+              endRound(r, r.att, '撃墜成功！', 'BはAの急ブレーキに激突した！', 'crash');
+            } else {
+              endRound(r, r.att, '追突事故！', 'Bは回避せず真後ろから激突した！', 'crash');
             }
-          });
-        });
+          } else {
+            [A, B].forEach((p, idx) => {
+              r.obs.forEach(o => {
+                if (Math.abs(p.z - o.z) < 22 && Math.abs(p.x - o.x) < 26) {
+                  const winner = 1 - idx;
+                  endRound(r, winner, 'クラッシュ！', (idx === r.att ? 'A' : 'B') + 'が障害物に激突！', 'crash');
+                }
+              });
+            });
+          }
+        }
       }
     }
+
+    io.to(code).emit('st', r);
+    r.lastAct = null;
   });
 }, 1000 / 60);
 
