@@ -1,241 +1,374 @@
-// なにが目的なん？ オンライン対戦サーバー (Express + Socket.io)
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
 const io = new Server(server);
 
-const BASE = 110, HW = 150, LIMIT = 25, TICK = 1 / 30;
-const rooms = new Map();
-const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
-const rnd = (a, b) => a + Math.random() * (b - a);
-const mk = (x, z) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0 });
+app.use(express.static('public'));
 
-function newRound(R) {
-  R.att = attOf(R.round);
-  const d = 1 - R.att;
-  R.P = [];
-  R.P[R.att] = mk(rnd(-40, 40), 60);
-  R.P[d] = mk(rnd(-40, 40), 0);
-  R.obs = []; R.nid = 1;
-  R.state = 'count'; R.timer = 3; R.el = 0;
-  R.nextCar = rnd(2, 3.5);
-  R.patrolAt = Math.random() < 0.7 ? rnd(5, 12) : 1e9;
-  R.msg = ''; R.sub = '';
+const PORT = process.env.PORT || 3000;
+const rooms = {};
+
+function genCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-function resetMatch(R) {
-  R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R);
-}
-
-function endRound(R, w, pen, text, eventType) {
-  if (w >= 0) R.sc[w]++;
-  if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
-  R.hist.push(w);
-  R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
-  R.sub = (w >= 0 ? 'プレイヤー' + (w + 1) + '  ' : '') + text;
-  if(R.isBot && w === 1) R.sub = 'NPC(BOT)  ' + text;
-  R.state = 'result'; R.timer = 2.5;
-  R.lastEvent = eventType || 'crash';
-}
-
-function afterResult(R) {
-  const w = R.hist[R.hist.length - 1];
-  if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
-    R.state = 'match';
-    R.msg = 'MATCH WINNER: ' + (w === 1 && R.isBot ? 'NPC(BOT)' : 'プレイヤー' + (w + 1));
-    R.sub = R.round >= 6 ? 'サドンデス決着' : '';
-    return;
-  }
-  R.round++; newRound(R);
-}
-
-// NPC (BOT) のAIロジック
-function runBotAI(R) {
-  if (R.state !== 'play' || !R.isBot) return;
-  const botSlot = 1, pSlot = 0;
-  const me = R.P[botSlot], opp = R.P[pSlot], inp = R.inp[botSlot];
-  const isA = (R.att === botSlot);
-
-  // 障害物回避
-  let targetX = isA ? 0 : (opp.x > 0 ? opp.x - 40 : opp.x + 40);
-  const threat = R.obs.find(o => o.z > me.z && o.z < me.z + 180 && Math.abs(o.x - me.x) < 30);
-  if (threat) targetX = threat.x > 0 ? threat.x - 50 : threat.x + 50;
-
-  inp.l = me.x > targetX + 5;
-  inp.r = me.x < targetX - 5;
-
-  // アクション判断
-  if (isA) {
-    const gap = me.z - opp.z;
-    if (gap > 0 && gap < 70 && Math.abs(me.x - opp.x) < 25 && me.brakes > 0 && Math.random() < 0.05) R.act[botSlot] = true;
-  } else {
-    const gap = opp.z - me.z;
-    if (gap > 10 && gap < 90 && Math.abs(me.x - opp.x) >= 20 && me.cd <= 0) R.act[botSlot] = true;
-  }
-}
-
-function step(R, dt) {
-  if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
-  if (R.state === 'result') { R.timer -= dt; if (R.timer <= 0) afterResult(R); return; }
-  if (R.state !== 'play') return;
-  
-  runBotAI(R); // BOTの思考更新
-
-  R.el += dt;
-  const att = R.att, d = 1 - att, A = R.P[att], B = R.P[d];
-
-  for (const i of [0, 1]) {
-    const p = R.P[i], inp = R.inp[i];
-    const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
-    p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
-  }
-  if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; R.lastAct = 'brake'; }
-  if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; R.lastAct = 'boost'; }
-  R.act = [false, false];
-
-  if (A.brk > 0) { A.v = Math.max(0, A.v - 800 * dt); A.brk -= dt; } else A.v = Math.min(BASE, A.v + 120 * dt);
-  if (B.boost > 0) { B.v = Math.min(220, B.v + 600 * dt); B.boost -= dt; } else B.v = Math.max(BASE, B.v - 300 * dt);
-  B.cd = Math.max(0, B.cd - dt);
-  A.z += A.v * dt; B.z += B.v * dt;
-
-  const front = Math.max(A.z, B.z), back = Math.min(A.z, B.z);
-  R.nextCar -= dt;
-  if (R.nextCar <= 0) {
-    R.nextCar = rnd(2, 3.8);
-    R.obs.push({ id: R.nid++, k: 'car', x: rnd(-115, 115), z: front + rnd(360, 420), vz: -90, c: Math.floor(rnd(0, 5)) });
-  }
-  if (R.el >= R.patrolAt) {
-    R.patrolAt = 1e9;
-    R.obs.push({ id: R.nid++, k: 'cop', x: rnd(-100, 100), z: back - 260, vz: 175, c: 0 });
-  }
-  for (const o of R.obs) o.z += o.vz * dt;
-  R.obs = R.obs.filter(o => (o.k === 'car' ? o.z > back - 100 : o.z < front + 220));
-
-  const lost = [null, null];
-  for (const o of R.obs) for (const i of [0, 1]) {
-    const p = R.P[i], dx = Math.abs(o.x - p.x);
-    if (o.k === 'car' && dx < 24 && Math.abs(o.z - p.z) < 14) lost[i] = lost[i] || 'car';
-    if (o.k === 'cop') {
-      const gap = p.z - o.z;
-      const cutIn = dx < 28 && gap > -16 && gap < 30;
-      const blocked = i === att && p.brk > 0 && dx < 30 && gap > 0 && gap < 70;
-      if (cutIn || blocked) lost[i] = 'cop';
-    }
-  }
-  if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！', 'crash');
-  for (const i of [0, 1]) if (lost[i]) {
-    return lost[i] === 'cop'
-      ? endRound(R, 1 - i, i, (R.isBot && i===1 ? 'NPC' : 'プレイヤー' + (i + 1)) + ' 逮捕(-1pt)', 'siren')
-      : endRound(R, 1 - i, -1, (R.isBot && i===1 ? 'NPC' : 'プレイヤー' + (i + 1)) + ' 車と衝突！', 'crash');
-  }
-
-  const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
-  if (dx < 22 && gap < 18 && gap > -12) {
-    if (A.brk > 0 || B.boost > 0 || A.v < BASE * 0.6) {
-      const reason = (A.brk > 0) ? '急ブレーキで撃墜！' : (B.boost > 0 ? 'ブースト追突事故！(横に避けて抜け)' : '前方車に激突！');
-      return endRound(R, att, -1, reason, 'crash');
-    }
-    B.z = A.z - 18; B.v = Math.min(B.v, A.v);
-  }
-
-  if (B.z > A.z + 16) return endRound(R, d, -1, '追い抜き成功！', 'win');
-  if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)', 'win');
-}
-
-const r1 = n => Math.round(n * 10) / 10;
-function snap(R, slot) {
-  const isA = (slot === R.att);
-  const hide = (R.state === 'play' || R.state === 'count') && isA;
-  const P = R.P.map((p, i) => (hide && i !== slot) ? null :
-    { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
-
-  let sound = null;
-  if (isA && R.P[0] && R.P[1]) sound = { relX: r1(R.P[1 - R.att].x - R.P[R.att].x), dist: r1(R.P[R.att].z - R.P[1 - R.att].z), boosting: R.P[1 - R.att].boost > 0 };
-
-  const snapData = {
-    s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })),
-    sound, lastAct: R.lastAct || null, lastEvent: R.lastEvent || null, isBot: R.isBot
+function initRoom(code) {
+  return {
+    code,
+    players: [],
+    sockets: [],
+    s: 'lobby',
+    t: 0,
+    rd: 0,
+    att: 0,
+    sc: [0, 0],
+    hist: [],
+    msg: '',
+    sub: '',
+    el: 0,
+    obs: [],
+    isBot: false,
+    botSlot: -1,
+    lastEvent: null
   };
-  if(slot === 0) { R.lastAct = null; R.lastEvent = null; }
-  return snapData;
 }
 
-setInterval(() => {
-  for (const [code, R] of rooms.entries()) {
-    if (!R.ids[1]) continue;
-    step(R, TICK);
-    for (const i of [0, 1]) {
-      if (R.ids[i] && R.ids[i] !== 'BOT') io.to(R.ids[i]).emit('st', snap(R, i));
+function resetRound(r) {
+  r.att = r.rd % 2;
+  const def = 1 - r.att;
+  r.P = [];
+  r.P[r.att] = { x: 0, z: 300, v: 220, brk: false, brakes: 3, boost: false, cd: 0, inp: { l: 0, r: 0 } };
+  r.P[def] = { x: 0, z: 0, v: 220, brk: false, brakes: 3, boost: false, cd: 0, inp: { l: 0, r: 0 } };
+  r.obs = [];
+  r.s = 'count';
+  r.t = 3;
+  r.el = 0;
+  r.lastEvent = null;
+  
+  for (let i = 0; i < 8; i++) {
+    spawnObs(r, 400 + i * 300);
+  }
+}
+
+function spawnObs(r, startZ) {
+  const lanes = [-100, -50, 0, 50, 100];
+  const x = lanes[Math.floor(Math.random() * lanes.length)];
+  const z = startZ || (Math.max(...r.obs.map(o => o.z), r.P[r.att].z) + 250 + Math.random() * 150);
+  const isCop = Math.random() < 0.2;
+  r.obs.push({
+    id: Math.random().toString(36).substr(2, 9),
+    x,
+    z,
+    v: isCop ? 230 : 120 + Math.random() * 40,
+    k: isCop ? 'cop' : 'car',
+    c: Math.floor(Math.random() * 5)
+  });
+}
+
+// ---- NPC AI ロジック (賢く微調整) ----
+function updateBot(r) {
+  if (!r.isBot || r.s !== 'play') return;
+  const botIdx = r.botSlot;
+  const me = r.P[botIdx];
+  const enemy = r.P[1 - botIdx];
+  if (!me || !enemy) return;
+
+  const isAttacker = (r.att === botIdx);
+  
+  // 前方の障害物回避
+  let avoidX = 0;
+  const dangerObs = r.obs.find(o => o.z > me.z && o.z - me.z < 180 && Math.abs(o.x - me.x) < 45);
+  if (dangerObs) {
+    avoidX = me.x > dangerObs.x ? 1 : -1;
+  }
+
+  if (isAttacker) {
+    // ---- A側 (攻撃) のAI ----
+    me.inp.l = avoidX < 0 ? 1 : 0;
+    me.inp.r = avoidX > 0 ? 1 : 0;
+
+    // Bが真後ろかつ近距離に迫ってきたらブレーキ攻撃
+    const dist = me.z - enemy.z;
+    const relX = Math.abs(me.x - enemy.x);
+    if (dist > 10 && dist < 70 && relX < 35 && me.brakes > 0 && !me.brk) {
+      if (Math.random() < 0.15) {
+        me.brk = true;
+        me.brakes--;
+        r.lastAct = 'brake';
+        setTimeout(() => { me.brk = false; }, 600);
+      }
+    }
+  } else {
+    // ---- B側 (追越) のAI (強化版) ----
+    const dist = enemy.z - me.z;
+    const relX = me.x - enemy.x;
+
+    if (avoidX !== 0) {
+      // 障害物優先回避
+      me.inp.l = avoidX < 0 ? 1 : 0;
+      me.inp.r = avoidX > 0 ? 1 : 0;
+    } else {
+      // Aの真後ろを避け、左右のラインを確保する
+      if (Math.abs(relX) < 40) {
+        const targetSide = me.x >= 0 ? 1 : -1;
+        me.inp.l = targetSide < 0 ? 1 : 0;
+        me.inp.r = targetSide > 0 ? 1 : 0;
+      } else {
+        // 徐々にAの横に並びかける
+        me.inp.l = relX > 50 ? 1 : 0;
+        me.inp.r = relX < -50 ? 1 : 0;
+      }
+    }
+
+    // ブースト使用判断: Aと距離があり、横軸がずれていて、Aがブレーキ中でない場合のみ発動
+    if (me.cd <= 0 && !me.boost) {
+      const isAlignedForPass = Math.abs(relX) >= 30; // 横にずれているか
+      const safeDistance = dist > 40 && dist < 220;  // 適切な追越距離か
+      if (isAlignedForPass && safeDistance && !enemy.brk) {
+        me.boost = true;
+        me.cd = 3.5;
+        r.lastAct = 'boost';
+        setTimeout(() => { me.boost = false; }, 800);
+      }
     }
   }
-}, TICK * 1000);
+}
+
+// ゲームメインループ (60fps)
+setInterval(() => {
+  const dt = 1 / 60;
+  Object.keys(rooms).forEach(code => {
+    const r = rooms[code];
+    if (!r || r.s === 'lobby') return;
+
+    if (r.s === 'count') {
+      r.t -= dt;
+      if (r.t <= 0) {
+        r.s = 'play';
+        r.el = 0;
+      }
+      return;
+    }
+
+    if (r.s === 'play') {
+      r.el += dt;
+      updateBot(r);
+
+      // 障害物の生成・更新
+      r.obs.forEach(o => { o.z += o.v * dt; });
+      r.obs = r.obs.filter(o => o.z < Math.max(...r.P.map(p => p ? p.z : 0)) + 1200);
+      if (r.obs.length < 8) spawnObs(r);
+
+      // プレイヤー状態更新
+      r.P.forEach((p, i) => {
+        if (!p) return;
+        if (p.cd > 0) p.cd -= dt;
+
+        let targetV = 220;
+        if (p.brk) targetV = 60;
+        if (p.boost) targetV = 360;
+
+        p.v += (targetV - p.v) * dt * 6;
+        p.z += p.v * dt;
+
+        let moveX = 0;
+        if (p.inp.l) moveX -= 130;
+        if (p.inp.r) moveX += 130;
+        p.x += moveX * dt;
+        p.x = Math.max(-130, Math.min(130, p.x));
+      });
+
+      // 後方音波（気配）計算
+      const attP = r.P[r.att];
+      const defP = r.P[1 - r.att];
+      if (attP && defP) {
+        r.sound = {
+          dist: attP.z - defP.z,
+          relX: defP.x - attP.x,
+          boosting: defP.boost
+        };
+      }
+
+      // 衝突・勝敗判定
+      const A = r.P[r.att], B = r.P[1 - r.att];
+      if (A && B) {
+        // BがAを追い抜いた場合 (Bの勝利)
+        if (B.z > A.z + 15) {
+          endRound(r, 1 - r.att, '追越成功！', 'BがAを華麗に抜き去った！', 'win');
+          return;
+        }
+
+        // 衝突判定
+        const distZ = Math.abs(A.z - B.z);
+        const distX = Math.abs(A.x - B.x);
+
+        if (distZ < 25 && distX < 28) {
+          if (A.brk) {
+            // Aがブレーキ中にBが突撃 (Aの勝利)
+            endRound(r, r.att, '撃墜成功！', 'BはAの急ブレーキに激突した！', 'crash');
+          } else {
+            // Bが真後ろから自爆突撃 (Aの勝利)
+            endRound(r, r.att, '追突事故！', 'Bは回避せず真後ろから激突した！', 'crash');
+          }
+          return;
+        }
+
+        // 障害物との衝突判定
+        [A, B].forEach((p, idx) => {
+          r.obs.forEach(o => {
+            if (Math.abs(p.z - o.z) < 22 && Math.abs(p.x - o.x) < 26) {
+              const winner = 1 - idx;
+              endRound(r, winner, 'クラッシュ！', (idx === r.att ? 'A' : 'B') + 'が障害物に激突！', 'crash');
+            }
+          });
+        });
+      }
+    }
+  });
+}, 1000 / 60);
+
+function endRound(r, winner, msg, sub, sound) {
+  r.s = 'result';
+  r.lastEvent = sound;
+  r.sc[winner]++;
+  r.hist.push(winner);
+  r.msg = msg;
+  r.sub = sub;
+
+  // 勝利条件判定 (4点先取 または サドンデス)
+  if (r.sc[winner] >= 4 || r.rd >= 7) {
+    r.s = 'match';
+    r.msg = (winner === 0 ? 'P1' : 'P2') + ' の勝利！';
+    r.sub = '最終スコア: ' + r.sc[0] + ' - ' + r.sc[1];
+  }
+}
 
 io.on('connection', socket => {
-  socket.on('create', cb => {
-    let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    rooms.set(code, { code, ids: [socket.id, null], inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], isBot: false });
-    socket.data = { code, slot: 0 };
-    cb({ code });
-  });
-  
+  let curCode = null;
+
   socket.on('joinBot', cb => {
-    let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    const R = { code, ids: [socket.id, 'BOT'], inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], isBot: true };
-    rooms.set(code, R);
-    socket.data = { code, slot: 0 };
-    resetMatch(R);
+    curCode = 'BOT_' + socket.id.substr(0, 5);
+    const r = initRoom(curCode);
+    r.isBot = true;
+    r.botSlot = 1;
+    r.players = [socket.id, 'BOT'];
+    r.sockets = [socket, null];
+    rooms[curCode] = r;
+
+    resetRound(r);
     cb({ ok: true });
-    io.to(socket.id).emit('start', { slot: 0 });
+    socket.emit('start', { slot: 0 });
+  });
+
+  socket.on('create', cb => {
+    curCode = genCode();
+    const r = initRoom(curCode);
+    r.players.push(socket.id);
+    r.sockets.push(socket);
+    rooms[curCode] = r;
+    cb({ code: curCode });
   });
 
   socket.on('join', (code, cb) => {
-    const R = rooms.get(String(code));
-    if (!R) return cb({ ok: false, err: 'ルームが見つかりません' });
-    if (R.ids[1]) return cb({ ok: false, err: 'ルームは満員です' });
-    R.ids[1] = socket.id; socket.data = { code: R.code, slot: 1 };
-    resetMatch(R);
+    const r = rooms[code];
+    if (!r || r.players.length >= 2) return cb({ ok: false, err: 'ルームが存在しないか満員です' });
+    curCode = code;
+    r.players.push(socket.id);
+    r.sockets.push(socket);
+    resetRound(r);
     cb({ ok: true });
-    for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
+    
+    r.sockets[0].emit('start', { slot: 0 });
+    r.sockets[1].emit('start', { slot: 1 });
   });
 
-  socket.on('inp', d => {
-    const R = rooms.get(socket.data?.code);
-    if (R) R.inp[socket.data.slot] = { l: !!d?.l, r: !!d?.r };
-  });
-  socket.on('act', () => {
-    const R = rooms.get(socket.data?.code);
-    if (R) R.act[socket.data.slot] = true;
-  });
-  socket.on('again', () => {
-    const R = rooms.get(socket.data?.code);
-    if (R && R.state === 'match') resetMatch(R);
-  });
-  
-  // ロビーに戻る処理
-  socket.on('leave', () => {
-    const R = rooms.get(socket.data?.code);
-    if (R) {
-      const other = R.ids[1 - socket.data.slot];
-      if (other && other !== 'BOT') io.to(other).emit('left');
-      rooms.delete(R.code);
+  socket.on('inp', data => {
+    const r = rooms[curCode];
+    if (!r) return;
+    const idx = r.players.indexOf(socket.id);
+    if (idx !== -1 && r.P[idx]) {
+      r.P[idx].inp = data;
     }
-    socket.data = null;
+  });
+
+  socket.on('act', () => {
+    const r = rooms[curCode];
+    if (!r || r.s !== 'play') return;
+    const idx = r.players.indexOf(socket.id);
+    if (idx === -1) return;
+    const p = r.P[idx];
+
+    if (idx === r.att) {
+      if (p.brakes > 0 && !p.brk) {
+        p.brk = true;
+        p.brakes--;
+        r.lastAct = 'brake';
+        setTimeout(() => { p.brk = false; }, 600);
+      }
+    } else {
+      if (p.cd <= 0 && !p.boost) {
+        p.boost = true;
+        p.cd = 3.5;
+        r.lastAct = 'boost';
+        setTimeout(() => { p.boost = false; }, 800);
+      }
+    }
+  });
+
+  socket.on('again', () => {
+    const r = rooms[curCode];
+    if (!r) return;
+    if (r.s === 'result') {
+      r.rd++;
+      resetRound(r);
+    } else if (r.s === 'match') {
+      r.rd = 0;
+      r.sc = [0, 0];
+      r.hist = [];
+      resetRound(r);
+    }
+  });
+
+  socket.on('leave', () => {
+    if (curCode && rooms[curCode]) {
+      const r = rooms[curCode];
+      delete rooms[curCode];
+      if (r.sockets) {
+        r.sockets.forEach(s => { if (s && s.id !== socket.id) s.emit('left'); });
+      }
+    }
   });
 
   socket.on('disconnect', () => {
-    const R = rooms.get(socket.data?.code);
-    if (R) {
-      const other = R.ids[1 - socket.data.slot];
-      if (other && other !== 'BOT') io.to(other).emit('left');
-      rooms.delete(R.code);
+    if (curCode && rooms[curCode]) {
+      const r = rooms[curCode];
+      delete rooms[curCode];
+      if (r.sockets) {
+        r.sockets.forEach(s => { if (s && s.id !== socket.id) s.emit('left'); });
+      }
     }
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('Server running on port ' + PORT));
+// クライアントへ毎フレーム(30fps)状態送信
+setInterval(() => {
+  Object.keys(rooms).forEach(code => {
+    const r = rooms[code];
+    if (r && r.s !== 'lobby') {
+      const state = {
+        s: r.s, t: r.t, rd: r.rd, att: r.att, sc: r.sc, hist: r.hist,
+        msg: r.msg, sub: r.sub, el: r.el, P: r.P, obs: r.obs,
+        sound: r.sound, isBot: r.isBot, lastEvent: r.lastEvent, lastAct: r.lastAct
+      };
+      r.sockets.forEach(s => { if (s) s.emit('st', state); });
+      r.lastAct = null;
+    }
+  });
+}, 1000 / 30);
+
+server.listen(PORT, () => {
+  console.log('Server running on port ' + PORT);
+});
