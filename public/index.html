@@ -101,7 +101,6 @@ function playSE(type) {
       const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
       noise.connect(fil); fil.connect(gain); gain.connect(audioCtx.destination); noise.start(now);
     } 
-    // 不安を煽らない風切り＋モーターブースト音に変更
     else if (type === 'boost') {
       const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
       osc.type = 'triangle'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(280, now + 0.5);
@@ -285,4 +284,35 @@ function topbar() {
   const o = 1 - slot;
   [[slot, 20, 'left', 'あなた'], [o, W - 20, 'right', D.isBot ? 'NPC' : '相手']].forEach(([i, x, al, lb]) => {
     ctx.textAlign = al; ctx.fillStyle = COL[i]; ctx.font = 'bold 18px sans-serif'; ctx.fillText(lb + '  ' + D.sc[i], x, 24);
-    ctx.fillStyle = '#8b97a3'; ctx.font = '12px sans-serif'; ctx.fillText(D
+    ctx.fillStyle = '#8b97a3'; ctx.font = '12px sans-serif'; ctx.fillText(D.att === i ? '攻撃 (A)' : '追越 (B)', x, 42);
+    for (let n = 0; n < 4; n++) { ctx.fillStyle = n < D.sc[i] ? COL[i] : '#333'; ctx.beginPath(); ctx.arc(al === 'left' ? x + 110 + n * 18 : x - 110 - n * 18, 18, 6, 0, 7); ctx.fill(); }
+  });
+  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(D.rd >= 6 ? 'SUDDEN DEATH' : 'ROUND ' + (D.rd + 1) + (D.rd < 3 ? ' (前半)' : ' (後半)'), W / 2, 20);
+  const n = Math.max(6, D.hist.length);
+  for (let k = 0; k < n; k++) {
+    const x = W / 2 - (n - 1) * 9 + k * 18, h = D.hist[k]; ctx.strokeStyle = '#888';
+    ctx.fillStyle = k < D.hist.length ? (h < 0 ? '#777' : COL[h]) : '#0f1115'; ctx.beginPath(); ctx.arc(x, 42, 6, 0, 7); ctx.fill(); ctx.stroke();
+  }
+}
+
+function overlay(t, s, c) {
+  ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(0, 200, W, 150); ctx.textAlign = 'center';
+  ctx.fillStyle = c; ctx.font = 'bold 44px sans-serif'; ctx.fillText(t, W / 2, 265); ctx.fillStyle = '#ddd'; ctx.font = '18px sans-serif'; ctx.fillText(s || '', W / 2, 305);
+}
+
+function draw() {
+  ctx.fillStyle = '#0f1115'; ctx.fillRect(0, 0, W, H);
+  if (!inGame || !D || !D.P[slot]) return;
+  view(); topbar();
+  if (D.s === 'count') overlay(String(Math.ceil(D.t)), (D.att === slot ? 'あなたは攻撃側(A)' : 'あなたは追越側(B)') + (D.rd >= 6 ? '  SUDDEN DEATH' : ''), '#ff4655');
+  if (D.s === 'result') { const w = D.hist[D.hist.length - 1]; overlay(D.msg, D.sub + (w === slot ? '  (あなたの得点)' : ''), '#4fc3f7'); }
+  if (D.s === 'match') overlay(D.msg, D.sub + '  [Enter]:再戦 / [Esc]:ロビーへ', '#ff4655');
+  if (D.s === 'play' && D.el < 1.5) { ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('GO!', W / 2, 300); }
+}
+
+let lt = performance.now();
+(function loop(t) { const dt = Math.min(.05, (t - lt) / 1000); lt = t; sync(dt); draw(); requestAnimationFrame(loop); })(lt);
+</script>
+</body>
+</html>
