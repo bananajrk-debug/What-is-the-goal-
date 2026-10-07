@@ -31,13 +31,14 @@ function resetMatch(R) {
   R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R);
 }
 
-function endRound(R, w, pen, text) {
+function endRound(R, w, pen, text, eventType) {
   if (w >= 0) R.sc[w]++;
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   R.hist.push(w);
   R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
   R.sub = (w >= 0 ? 'プレイヤー' + (w + 1) + '  ' : '') + text;
   R.state = 'result'; R.timer = 2.5;
+  R.lastEvent = eventType || 'crash';
 }
 
 function afterResult(R) {
@@ -63,8 +64,8 @@ function step(R, dt) {
     const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
     p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
   }
-  if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; }
-  if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; }
+  if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; R.lastAct = 'brake'; }
+  if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; R.lastAct = 'boost'; }
   R.act = [false, false];
 
   if (A.brk > 0) { A.v = Math.max(0, A.v - 800 * dt); A.brk -= dt; } else A.v = Math.min(BASE, A.v + 120 * dt);
@@ -98,21 +99,28 @@ function step(R, dt) {
       if (cutIn || blocked) lost[i] = 'cop';
     }
   }
-  if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！');
+  if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！', 'crash');
   for (const i of [0, 1]) if (lost[i]) {
     return lost[i] === 'cop'
-      ? endRound(R, 1 - i, i, 'プレイヤー' + (i + 1) + ' パトカー違反で逮捕！(-1pt)')
-      : endRound(R, 1 - i, -1, 'プレイヤー' + (i + 1) + ' 車と衝突！');
+      ? endRound(R, 1 - i, i, 'プレイヤー' + (i + 1) + ' パトカー違反で逮捕！(-1pt)', 'siren')
+      : endRound(R, 1 - i, -1, 'プレイヤー' + (i + 1) + ' 車と衝突！', 'crash');
   }
 
-  // 接触・抜き去り判定
+  // A ↔ B 接触・追突・追い抜き判定
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
-    if (A.brk > 0 || A.v < BASE * 0.6) return endRound(R, att, -1, '急ブレーキ激突！');
-    B.z = A.z - 18; B.v = Math.min(B.v, A.v); B.boost = 0;
+    // 1. Aが急ブレーキ中、または Bがブースト中に真後ろから激突した場合（追突事故 -> Bの負け）
+    if (A.brk > 0 || B.boost > 0 || A.v < BASE * 0.6) {
+      const reason = (A.brk > 0) ? '急ブレーキで撃墜！' : (B.boost > 0 ? 'ブースト追突事故！(横に避けて抜け)' : '前方車に激突！');
+      return endRound(R, att, -1, reason, 'crash');
+    }
+    // 2. 通常の接触（押し戻されて両者減速）
+    B.z = A.z - 18; B.v = Math.min(B.v, A.v);
   }
-  if (B.z > A.z + 12) return endRound(R, d, -1, '追い抜き成功！');
-  if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)');
+
+  // 追い抜き成功（十分前に出た場合）
+  if (B.z > A.z + 16) return endRound(R, d, -1, '追い抜き成功！', 'win');
+  if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)', 'win');
 }
 
 const r1 = n => Math.round(n * 10) / 10;
@@ -122,7 +130,6 @@ function snap(R, slot) {
   const P = R.P.map((p, i) => (hide && i !== slot) ? null :
     { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
 
-  // Aプレイヤー向け音波・気配データ（直接描画位置を明かさず気配として送信）
   let sound = null;
   if (isA && R.P[0] && R.P[1]) {
     const A = R.P[R.att], B = R.P[1 - R.att];
@@ -133,11 +140,15 @@ function snap(R, slot) {
     };
   }
 
-  return {
+  const snapData = {
     s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
     P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })),
-    sound
+    sound,
+    lastAct: R.lastAct || null,
+    lastEvent: R.lastEvent || null
   };
+  R.lastAct = null;
+  return snapData;
 }
 
 setInterval(() => {
