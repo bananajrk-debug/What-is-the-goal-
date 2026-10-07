@@ -218,27 +218,56 @@ function car(X, Y, s, o) {
   }
 }
 
-// 2. メモリ（幅）を細かく調整したイコライザー（バー数: 48本）
+// 細かく目盛り刻みした気配スペクトラム (40本の極小ブロック)
 function drawEqualizer(sound) {
   if (!sound) return;
-  const n = 48, w = 9, g = 3, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 12, bH = 4, bG = 2, mB = 11;
+  const n = 40, w = 6, g = 2, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 10, bH = 2, bG = 1, mB = 16;
   const cBar = (n - 1) * (Math.max(-1, Math.min(1, sound.relX / 130)) + 1) / 2;
-  const prox = Math.pow(Math.max(0, 1 - Math.max(0, Math.min(300, sound.dist)) / 280), 0.75);
+  const prox = Math.pow(Math.max(0, 1 - Math.max(0, Math.min(320, sound.dist)) / 300), 0.75);
 
-  ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(sX - 8, bY - (mB * (bH + bG)) - 18, tW + 16, mB * (bH + bG) + 26);
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 5);
+  ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(sX - 10, bY - (mB * (bH + bG)) - 16, tW + 20, mB * (bH + bG) + 22);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 4);
 
   for (let i = 0; i < n; i++) {
     const dC = Math.abs(i - cBar);
-    let blocks = Math.floor(mB * prox * Math.exp(-dC * dC / 20));
-    if (sound.boosting) blocks = Math.min(mB, Math.floor(blocks * 1.5) + 3);
+    let blocks = Math.floor(mB * prox * Math.exp(-dC * dC / 18));
+    if (sound.boosting) blocks = Math.min(mB, Math.floor(blocks * 1.4) + 4);
     const aB = Math.max(0, Math.min(mB, blocks + ((Math.random() < 0.5) ? 0 : Math.floor((Math.random() - 0.4) * 2))));
 
     for (let b = 0; b < aB; b++) {
-      ctx.fillStyle = sound.boosting ? (b > 7 ? '#ff4655' : '#ffcc00') : (b > 8 ? '#ff4655' : (b > 5 ? '#ffaa00' : '#fff'));
+      ctx.fillStyle = sound.boosting ? (b > 11 ? '#ff4655' : '#ffcc00') : (b > 12 ? '#ff4655' : (b > 7 ? '#ffaa00' : '#4fc3f7'));
       ctx.fillRect(sX + i * (w + g), bY - b * (bH + bG), w, bH);
     }
+  }
+}
+
+// A側画面用のバックミラー (後方カメラ)
+function drawRearMirror(me, enemy, col) {
+  if (!me || !enemy) return;
+  const mW = 160, mH = 50, mX = (W - mW) / 2, mY = 105;
+  
+  ctx.fillStyle = 'rgba(10,12,18,0.85)';
+  ctx.fillRect(mX, mY, mW, mH);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mX, mY, mW, mH);
+
+  ctx.fillStyle = '#8b97a3';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('REAR MIRROR', W / 2, mY + 12);
+
+  const dist = me.z - enemy.z;
+  if (dist > 0 && dist < 350) {
+    // 距離に応じたサイズとX位置をバックミラー内に投影
+    const relX = enemy.x - me.x;
+    const mirX = W / 2 + (relX / 130) * (mW / 2 - 15);
+    const scale = Math.max(0.3, 1 - (dist / 350));
+    const mirY = mY + mH - 10;
+
+    // 後方のBをバックミラー内に描画
+    bike(mirX, mirY, scale * 0.45, col, enemy);
   }
 }
 
@@ -258,12 +287,9 @@ function view() {
   const items = [];
   D.obs.forEach(o => items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) }));
   
-  // 3. A側でもBが一定距離（後方300以内）に迫った時に画面下（手前）に映るように判定変更
   D.P.forEach((p, i) => { 
-    if (p) {
-      if (i === slot || p.z - camz > -300) {
-        items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) });
-      }
+    if (p && (i === slot || p.z >= me.z)) {
+      items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) });
     } 
   });
   
@@ -275,7 +301,11 @@ function view() {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🚨 パトカー接近！進路を空けろ', W / 2, 125);
   }
 
-  if (isA && D.s === 'play') drawEqualizer(D.sound);
+  // A側でプレイ中の場合、バックミラーと波形イコライザーを描画
+  if (isA && D.s === 'play') {
+    drawRearMirror(me, D.P[1 - slot], COL[1 - slot]);
+    drawEqualizer(D.sound);
+  }
 
   const m = D.P[slot]; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 66, W, 32);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left';
