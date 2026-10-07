@@ -1,494 +1,85 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>なにが目的なん？ ONLINE</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&display=swap');
-html,body{margin:0;padding:0;background:#0f1115;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;user-select:none;overflow:hidden;}
-body{display:flex;align-items:center;justify-content:center;height:100vh;}
-#wrap{position:relative;width:720px;height:540px;max-width:100%;background:#000;border:2px solid #222;box-shadow:0 0 40px rgba(0,0,0,0.8);}
-canvas{display:block;width:100%;height:100%;}
-
-/* UI */
-#lobby-overlay{position:absolute;inset:0;background:radial-gradient(circle at center, #1a1e29 0%, #0b0d12 100%);display:flex;flex-direction:column;z-index:10;}
-.header{display:flex;justify-content:space-between;align-items:center;padding:15px 90px 15px 30px;border-bottom:1px solid rgba(255,255,255,0.05);}
-.logo{font-family:'Teko',sans-serif;font-size:32px;font-weight:700;color:#ff4655;letter-spacing:2px;line-height:1;}
-.nav{display:flex;gap:30px;}
-.nav-item{font-weight:bold;font-size:14px;color:#8b97a3;cursor:pointer;transition:0.2s;}
-.nav-item.active{color:#fff;border-bottom:2px solid #ff4655;padding-bottom:4px;}
-
-.main-content{flex:1;display:flex;flex-direction:column;position:relative;padding:40px;}
-.bg-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Teko',sans-serif;font-size:120px;font-weight:700;color:rgba(255,255,255,0.02);white-space:nowrap;pointer-events:none;}
-
-.menu-area{position:absolute;bottom:40px;right:40px;display:flex;flex-direction:column;align-items:flex-end;gap:15px;}
-.btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:16px;font-weight:bold;padding:12px 24px;cursor:pointer;transition:0.2s;display:flex;align-items:center;gap:10px;}
-.btn:hover{background:rgba(255,255,255,0.2);}
-.btn-play{background:#ff4655;border:none;color:#fff;font-size:24px;font-weight:900;padding:15px 40px;clip-path:polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);letter-spacing:1px;}
-.btn-play:hover{background:#ff5e6b;transform:translateY(-2px);}
-
-#room-panel{display:none;flex-direction:column;align-items:flex-end;gap:10px;background:rgba(0,0,0,0.6);padding:20px;border-left:4px solid #ff4655;}
-.input-row{display:flex;gap:8px;}
-input[type="text"]{background:#111;border:1px solid #444;color:#fff;font-size:16px;padding:10px;width:120px;text-align:center;letter-spacing:4px;}
-input[type="text"]:focus{outline:none;border-color:#ff4655;}
-
-#st{color:#4fc3f7;font-size:14px;margin-top:10px;text-align:right;}
-p.guide{position:absolute;bottom:-35px;left:0;width:100%;font-size:12px;color:#889;text-align:center;}
-
-#settings-btn{position:absolute;top:14px;right:16px;z-index:25;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,0.5);}
-#settings-btn:hover{background:#ff4655;border-color:#ff4655;}
-
-#settings-modal{display:none;position:absolute;inset:0;background:rgba(0,0,0,0.85);z-index:40;flex-direction:column;align-items:center;justify-content:center;}
-.modal-box{background:#1a1e29;border:2px solid #ff4655;padding:30px;width:320px;border-radius:8px;box-shadow:0 0 20px rgba(0,0,0,0.8);}
-.modal-title{font-size:20px;font-weight:bold;margin-bottom:20px;text-align:center;color:#ff4655;border-bottom:1px solid #333;padding-bottom:10px;}
-.setting-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:14px;}
-.setting-item input[type="range"]{width:140px;accent-color:#ff4655;}
-</style>
-</head>
-<body>
-
-<div id="wrap">
-  <button id="settings-btn" onclick="openSettings()">⚙ 設定</button>
-
-  <div id="settings-modal">
-    <div class="modal-box">
-      <div class="modal-title">AUDIO SETTINGS</div>
-      <div class="setting-item">
-        <span>BGM 音量</span>
-        <input type="range" id="bgm-vol" min="0" max="100" value="50" oninput="updateVolume()">
-      </div>
-      <div class="setting-item">
-        <span>SE 音量</span>
-        <input type="range" id="se-vol" min="0" max="100" value="70" oninput="updateVolume()">
-      </div>
-      <button class="btn" style="width:100%;justify-content:center;margin-top:10px;background:#ff4655;border:none;" onclick="closeSettings()">閉じる</button>
-    </div>
-  </div>
-
-  <canvas id="c" width="720" height="540"></canvas>
-  
-  <div id="lobby-overlay">
-    <div class="header">
-      <div class="logo">NANIGA MOKUTEKINAN?</div>
-      <div class="nav">
-        <div class="nav-item active">PLAY</div>
-      </div>
-      <div style="font-size:13px;color:#8b97a3">🚴 Player</div>
-    </div>
-    
-    <div class="main-content">
-      <div class="bg-title">CHASE OR BE CHASED</div>
-      
-      <div class="menu-area">
-        <div id="main-menu" style="display:flex;flex-direction:column;gap:15px;align-items:flex-end;">
-          <button class="btn btn-play" id="btn-solo">▶ VS NPC (ソロ)</button>
-          <button class="btn" onclick="playSE('click'); showRoomPanel()">🌐 フレンドと対戦</button>
-        </div>
-
-        <div id="room-panel">
-          <button class="btn" style="width:100%;justify-content:center" id="create">新規ルーム作成</button>
-          <div class="input-row">
-            <input type="text" id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric">
-            <button class="btn" style="background:#4fc3f7;color:#000;border:none;" id="join">参加</button>
-          </div>
-          <button class="btn" style="font-size:12px;padding:6px 12px;background:transparent;border:none;color:#888;" onclick="playSE('click'); showMainMenu()">キャンセル</button>
-          <div id="st"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<p class="guide">左右:A/D or ←/→ ｜ アクション:W / ↑ / Space ｜ 再戦:Enter ｜ 終了:Esc</p>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-let audioCtx = null, bgmGain = null, seGain = null, bgmTimer = null;
-let bgmVolVal = 0.5, seVolVal = 0.7;
-let currentBgmMode = 'lobby'; // 'lobby', 'play', 'result'
-
-function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    bgmGain = audioCtx.createGain();
-    bgmGain.gain.value = bgmVolVal * 0.25;
-    bgmGain.connect(audioCtx.destination);
-
-    seGain = audioCtx.createGain();
-    seGain.gain.value = seVolVal;
-    seGain.connect(audioCtx.destination);
-
-    startBGM();
-  }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-
-function updateVolume() {
-  bgmVolVal = document.getElementById('bgm-vol').value / 100;
-  seVolVal = document.getElementById('se-vol').value / 100;
-  if (bgmGain) bgmGain.gain.setValueAtTime(bgmVolVal * 0.25, audioCtx.currentTime);
-  if (seGain) seGain.gain.setValueAtTime(seVolVal, audioCtx.currentTime);
-}
-
-function openSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'flex'; }
-function closeSettings() { playSE('click'); document.getElementById('settings-modal').style.display = 'none'; }
-
-// ★場面ごとにBGMの旋律・テンポを自動切替え
-function startBGM() {
-  if (bgmTimer) clearInterval(bgmTimer);
-  
-  const bgmTracks = {
-    lobby: { notes: [110, 130.81, 146.83, 130.81], speed: 300, type: 'sine' },
-    play: { notes: [146.83, 174.61, 196.00, 220.00, 196.00, 246.94, 220.00, 174.61], speed: 130, type: 'sawtooth' },
-    result: { notes: [261.63, 220.00, 196.00, 164.81], speed: 450, type: 'triangle' }
-  };
-
-  let step = 0;
-
-  bgmTimer = setInterval(() => {
-    if (!audioCtx || bgmVolVal <= 0) return;
-    try {
-      const track = bgmTracks[currentBgmMode] || bgmTracks.lobby;
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = track.type;
-      osc.frequency.setValueAtTime(track.notes[step % track.notes.length], now);
-      
-      gain.gain.setValueAtTime(bgmVolVal * 0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + (track.speed / 1000) * 0.9);
-      
-      osc.connect(gain);
-      gain.connect(bgmGain);
-      
-      osc.start(now);
-      osc.stop(now + (track.speed / 1000));
-      step++;
-    } catch(e){}
-  }, 180);
-}
-
-function setBgmMode(mode) {
-  if (currentBgmMode !== mode) {
-    currentBgmMode = mode;
-    startBGM();
-  }
-}
-
 function playSE(type) {
   try {
-    initAudio(); if (!audioCtx || seVolVal <= 0) return; const now = audioCtx.currentTime;
+    initAudio(); 
+    if (!audioCtx || seVolVal <= 0) return; 
+    const now = audioCtx.currentTime;
+
     if (type === 'click') {
-      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
-      gain.gain.setValueAtTime(seVolVal * 0.3, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
-      osc.connect(gain); gain.connect(seGain); osc.start(now); osc.stop(now + 0.05);
+      const osc = audioCtx.createOscillator(); 
+      const gain = audioCtx.createGain();
+      osc.type = 'sine'; 
+      osc.frequency.setValueAtTime(800, now); 
+      osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+      gain.gain.setValueAtTime(seVolVal * 0.3, now); 
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+      osc.connect(gain); 
+      gain.connect(seGain); 
+      osc.start(now); 
+      osc.stop(now + 0.05);
     } 
     else if (type === 'brake') {
-      const bSize = audioCtx.sampleRate * 0.3; const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
-      const d = buf.getChannelData(0); for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
-      const noise = audioCtx.createBufferSource(); noise.buffer = buf;
-      const fil = audioCtx.createBiquadFilter(); fil.type = 'bandpass'; fil.frequency.setValueAtTime(1200, now); fil.Q.setValueAtTime(3, now);
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(seVolVal * 0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-      noise.connect(fil); fil.connect(gain); gain.connect(seGain); noise.start(now);
+      const bSize = audioCtx.sampleRate * 0.3; 
+      const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+      const d = buf.getChannelData(0); 
+      for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
+      const noise = audioCtx.createBufferSource(); 
+      noise.buffer = buf;
+      const fil = audioCtx.createBiquadFilter(); 
+      fil.type = 'bandpass'; 
+      fil.frequency.setValueAtTime(1200, now); 
+      fil.Q.setValueAtTime(3, now);
+      const gain = audioCtx.createGain(); 
+      gain.gain.setValueAtTime(seVolVal * 0.5, now); 
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+      noise.connect(fil); 
+      fil.connect(gain); 
+      gain.connect(seGain); 
+      noise.start(now);
     } 
     else if (type === 'boost') {
-      const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-      osc.type = 'triangle'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(280, now + 0.5);
-      gain.gain.setValueAtTime(seVolVal * 0.5, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-      osc.connect(gain); gain.connect(seGain); osc.start(now); osc.stop(now + 0.5);
+      const osc = audioCtx.createOscillator(); 
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle'; 
+      osc.frequency.setValueAtTime(120, now); 
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.5);
+      gain.gain.setValueAtTime(seVolVal * 0.5, now); 
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain); 
+      gain.connect(seGain); 
+      osc.start(now); 
+      osc.stop(now + 0.5);
     } 
     else if (type === 'crash') {
-      const bSize = audioCtx.sampleRate * 0.5; const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
-      const d = buf.getChannelData(0); for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
-      const noise = audioCtx.createBufferSource(); noise.buffer = buf;
-      const fil = audioCtx.createBiquadFilter(); fil.type = 'lowpass'; fil.frequency.setValueAtTime(800, now); fil.frequency.linearRampToValueAtTime(100, now + 0.5);
-      const gain = audioCtx.createGain(); gain.gain.setValueAtTime(seVolVal * 0.8, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-      noise.connect(fil); fil.connect(gain); gain.connect(seGain); noise.start(now);
+      const bSize = audioCtx.sampleRate * 0.5; 
+      const buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+      const d = buf.getChannelData(0); 
+      for (let i = 0; i < bSize; i++) d[i] = Math.random() * 2 - 1;
+      const noise = audioCtx.createBufferSource(); 
+      noise.buffer = buf;
+      const fil = audioCtx.createBiquadFilter(); 
+      fil.type = 'lowpass'; 
+      fil.frequency.setValueAtTime(800, now); 
+      fil.frequency.linearRampToValueAtTime(100, now + 0.5);
+      const gain = audioCtx.createGain(); 
+      gain.gain.setValueAtTime(seVolVal * 0.8, now); 
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+      noise.connect(fil); 
+      fil.connect(gain); 
+      gain.connect(seGain); 
+      noise.start(now);
     } 
     else if (type === 'win') {
       [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.frequency.setValueAtTime(f, now + idx * 0.08);
-        gain.gain.setValueAtTime(seVolVal * 0.3, now + idx * 0.08); gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
-        osc.connect(gain); gain.connect(seGain); osc.start(now + idx * 0.08); osc.stop(now + idx * 0.08 + 0.2);
+        const osc = audioCtx.createOscillator(); 
+        const gain = audioCtx.createGain(); 
+        osc.frequency.setValueAtTime(f, now + idx * 0.08);
+        gain.gain.setValueAtTime(seVolVal * 0.3, now + idx * 0.08); 
+        gain.gain.linearRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+        osc.connect(gain); 
+        gain.connect(seGain); 
+        osc.start(now + idx * 0.08); 
+        osc.stop(now + idx * 0.08 + 0.2);
       });
     }
   } catch(e) {}
 }
-
-const socket = io(), cv = document.getElementById('c'), ctx = cv.getContext('2d'), W = 720, H = 540;
-const $ = id => document.getElementById(id), COL = ['#4fc3f7', '#ff4655'], CAR = ['#c33', '#3a6', '#58c', '#c9a', '#999'];
-const HY = 170, GY = 540, K = 1.9;
-let slot = 0, S = null, D = null, inGame = false, last = { l: 0, r: 0 };
-
-function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex';$('st').textContent = ''; }
-function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none';$('st').textContent = ''; }
-function returnToLobby() { 
-  playSE('click'); 
-  socket.emit('leave'); 
-  inGame = false; S = D = null; 
-  setBgmMode('lobby');
-  $('lobby-overlay').style.display = 'flex'; 
-  showMainMenu(); 
-}
-
-// ボタンイベントリスナーの登録
-$('btn-solo').onclick = () => {
-  initAudio();
-  playSE('click');
-  socket.emit('joinBot', r => {
-    if (!r.ok) alert(r.err || 'エラーが発生しました');
-  });
-};
-
-$('create').onclick = () => { initAudio(); playSE('click'); socket.emit('create', r => {$('st').textContent = 'コード: ' + r.code + ' (対戦相手待ち)'; }); };
-$('join').onclick = () => { initAudio(); playSE('click'); socket.emit('join', $('code').value.trim(), r => { if (!r.ok)$('st').textContent = r.err; }); };
-
-socket.on('start', d => { 
-  slot = d.slot; 
-  inGame = true; 
-  S = D = null; 
-  setBgmMode('play');
-  $('lobby-overlay').style.display = 'none'; 
-  playSE('win'); 
-});
-
-socket.on('left', () => { if(inGame) { alert('相手が退出しました'); returnToLobby(); } });
-
-let lastEv = null;
-socket.on('st', s => {
-  S = s; 
-  if (S.lastAct) playSE(S.lastAct);
-  if (S.lastEvent && S.lastEvent !== lastEv) { playSE(S.lastEvent); lastEv = S.lastEvent; }
-
-  // 場面変更によるBGM自動変化の監視
-  if (inGame) {
-    if (S.s === 'play' || S.s === 'count') setBgmMode('play');
-    else if (S.s === 'result' || S.s === 'match') setBgmMode('result');
-  }
-});
-
-const keys = {};
-function sendInp() {
-  const l = +!!(keys.KeyA || keys.ArrowLeft), r = +!!(keys.KeyD || keys.ArrowRight);
-  if (l !== last.l || r !== last.r) { last = { l, r }; socket.emit('inp', { l, r }); }
-}
-addEventListener('keydown', e => {
-  initAudio();
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
-  
-  if (e.code === 'Escape' && inGame && D && (D.s === 'match' || D.s === 'result')) { returnToLobby(); }
-  
-  if (!keys[e.code]) {
-    if (['KeyW', 'ArrowUp', 'Space'].includes(e.code)) socket.emit('act');
-    if (e.code === 'Enter') socket.emit('again');
-  }
-  keys[e.code] = true; sendInp();
-});
-addEventListener('keyup', e => { keys[e.code] = false; sendInp(); });
-
-function sync(dt) {
-  if (!S) return;
-  if (!D || S.s === 'count' || S.rd !== D.rd) { D = JSON.parse(JSON.stringify(S)); return; }
-  const k = Math.min(1, dt * 18), old = {}; D.obs.forEach(o => old[o.id] = o);
-  const P = S.P.map((t, i) => {
-    const c = D.P[i]; if (!t) return null; if (!c) return t;
-    c.x += (t.x - c.x) * k; c.z += (t.z - c.z) * k; c.v = t.v; c.brk = t.brk; c.brakes = t.brakes; c.boost = t.boost; c.cd = t.cd; return c;
-  });
-  const obs = S.obs.map(o => { const c = old[o.id]; if (!c) return { ...o }; c.x += (o.x - c.x) * k; c.z += (o.z - c.z) * k; return c; });
-  Object.assign(D, { s: S.s, t: S.t, rd: S.rd, att: S.att, sc: S.sc, hist: S.hist, msg: S.msg, sub: S.sub, el: S.el, P, obs, sound: S.sound, isBot: S.isBot });
-}
-
-function poly(pts, c) { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); }
-
-function bike(X, Y, s, col, p) {
-  const k = s * K * 22;
-  if (p.boost) { ctx.fillStyle = 'rgba(255,230,80,.35)'; ctx.beginPath(); ctx.arc(X, Y - k * 2.5, k * 2.2, 0, 7); ctx.fill(); }
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(X, Y, k * .9, k * .3, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#222'; ctx.fillRect(X - k * .15, Y - k * 2.2, k * .3, k * 2.2);
-  ctx.fillStyle = col; ctx.fillRect(X - k * .6, Y - k * 3.7, k * 1.2, k * 1.8);
-  ctx.fillStyle = '#ffd7b0'; ctx.beginPath(); ctx.arc(X, Y - k * 4.2, k * .5, 0, 7); ctx.fill();
-  ctx.fillStyle = '#444'; ctx.fillRect(X - k, Y - k * 2.9, k * 2, k * .2);
-  if (p.brk) { ctx.fillStyle = '#f22'; ctx.fillRect(X - k * .45, Y - k * 1.5, k * .9, k * .35); }
-}
-
-function car(X, Y, s, o) {
-  const k = s * K * 22, cop = o.k === 'cop', f = Math.floor(Date.now() / 150) % 2;
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(X - k * 1.5, Y - k * .2, k * 3, k * .4);
-  ctx.fillStyle = cop ? '#f4f4f4' : CAR[o.c % 5]; ctx.fillRect(X - k * 1.5, Y - k * 2.2, k * 3, k * 2);
-  ctx.fillStyle = '#223'; ctx.fillRect(X - k * 1.1, Y - k * 3.2, k * 2.2, k * 1.1);
-  if (cop) {
-    ctx.fillStyle = '#111'; ctx.fillRect(X - k * 1.5, Y - k * 1.3, k * 3, k * .4);
-    ctx.fillStyle = f ? '#f22' : '#25f'; ctx.fillRect(X - k * .9, Y - k * 3.5, k * .9, k * .3);
-    ctx.fillStyle = f ? '#25f' : '#f22'; ctx.fillRect(X, Y - k * 3.5, k * .9, k * .3);
-    ctx.fillStyle = '#f33'; ctx.fillRect(X - k * 1.4, Y - k * 1.9, k * .5, k * .3); ctx.fillRect(X + k * .9, Y - k * 1.9, k * .5, k * .3);
-  } else {
-    ctx.fillStyle = '#ff8'; ctx.fillRect(X - k * 1.3, Y - k * 1.1, k * .6, k * .4); ctx.fillRect(X + k * .7, Y - k * 1.1, k * .6, k * .4);
-  }
-}
-
-function drawEqualizer(sound) {
-  if (!sound) return;
-  const n = 36, w = 8, g = 2, tW = n * (w + g), sX = (W - tW) / 2, bY = H - 15, bH = 6, bG = 2, mB = 14;
-  const prox = Math.max(0, 1 - (sound.dist / 380));
-  if (prox <= 0) return;
-
-  const cBar = (n - 1) * (Math.max(-1, Math.min(1, sound.relX / 120)) + 1) / 2;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(sX - 12, bY - (mB * (bH + bG)) - 22, tW + 24, mB * (bH + bG) + 30);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('🔊 後方気配スペクトラム', W / 2, bY - (mB * (bH + bG)) - 6);
-
-  for (let i = 0; i < n; i++) {
-    const dC = Math.abs(i - cBar);
-    let heightRatio = Math.exp(-dC * dC / 16) * (0.35 + prox * 0.65);
-    if (sound.boosting) heightRatio = Math.min(1, heightRatio * 1.5 + 0.2);
-    
-    let blocks = Math.floor(mB * heightRatio);
-    if (blocks > 0) blocks = Math.max(2, blocks + Math.floor((Math.random() - 0.3) * 3));
-    const aB = Math.max(0, Math.min(mB, blocks));
-
-    for (let b = 0; b < aB; b++) {
-      ctx.fillStyle = sound.boosting ? (b > 9 ? '#ff4655' : '#ffcc00') : (b > 10 ? '#ff4655' : (b > 6 ? '#ffaa00' : '#4fc3f7'));
-      ctx.fillRect(sX + i * (w + g), bY - b * (bH + bG), w, bH);
-    }
-  }
-}
-
-function drawBoostWarning(me, camz, X, S_) {
-  if (D.s !== 'play') return;
-  const oppSlot = 1 - slot;
-  const opp = D.P[oppSlot];
-  if (!opp || !opp.boost) return;
-
-  const dist = me.z - opp.z;
-  if (dist > 0 && dist < 600) {
-    const oppScreenX = X(opp.x, S_(opp.z));
-    const warnY = H - 55;
-    const pulse = Math.sin(Date.now() / 60) * 4;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 70, 85, 0.9)';
-    ctx.beginPath();
-    ctx.arc(oppScreenX, warnY, 22 + pulse, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#ffcc00';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🚀', oppScreenX, warnY);
-
-    ctx.fillStyle = '#ffcc00';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('APPROACHING!', oppScreenX, warnY - 30);
-    ctx.restore();
-  }
-}
-
-function view() {
-  const me = D.P[slot], isA = D.att === slot;
-  
-  const camz = me.z - 75; 
-  const camx = me.x * 0.5;
-
-  const g = ctx.createLinearGradient(0, 0, 0, HY); g.addColorStop(0, '#1a1e29'); g.addColorStop(1, '#4a5568');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, HY); ctx.fillStyle = '#2d3748'; ctx.fillRect(0, HY, W, H - HY);
-
-  const S_ = z => 140 / (140 + Math.max(5, z - camz)); 
-  const Y = s => HY + (GY - HY) * s; 
-  const X = (x, s) => W / 2 + (x - camx) * s * K;
-  const q = (x1, x2, z1, z2, c) => { const a = S_(z1), b = S_(z2); poly([[X(x1, a), Y(a)], [X(x2, a), Y(a)], [X(x2, b), Y(b)], [X(x1, b), Y(b)]], c); };
-  
-  q(-150, 150, camz + 1, camz + 2500, '#111318');
-  for (let z = Math.floor(camz / 40) * 40; z < camz + 1000; z += 40) {
-    if (z + 40 < camz + 1) continue; const zz = Math.max(z, camz + 1), c = ((z / 40) & 1) ? '#ff4655' : '#e2e8f0';
-    q(-160, -150, zz, z + 40, c); q(150, 160, zz, z + 40, c); q(-2, 2, zz, z + 20, '#333');
-  }
-  
-  const items = [];
-  D.obs.forEach(o => {
-    if (o.z >= camz + 10) {
-      items.push({ z: o.z, f: () => car(X(o.x, S_(o.z)), Y(S_(o.z)), S_(o.z), o) });
-    }
-  });
-  
-  D.P.forEach((p, i) => { 
-    if (p && p.z >= camz + 10) {
-      items.push({ z: p.z, f: () => bike(X(p.x, S_(p.z)), Y(S_(p.z)), S_(p.z), COL[i], p) });
-    } 
-  });
-  
-  items.sort((a, b) => b.z - a.z).forEach(i => i.f());
-
-  const cop = D.obs.find(o => o.k === 'cop' && o.z < camz + 1 && camz - o.z < 400);
-  if (cop && D.s === 'play') {
-    ctx.strokeStyle = (Math.floor(Date.now() / 150) % 2) ? 'rgba(255,70,85,.8)' : 'rgba(40,80,255,.8)'; ctx.lineWidth = 14; ctx.strokeRect(7, 67, W - 14, H - 74);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🚨 パトカー接近！進路を空けろ', W / 2, 125);
-  }
-
-  if (isA && D.s === 'play') {
-    drawEqualizer(D.sound);
-  }
-
-  drawBoostWarning(me, camz, X, S_);
-
-  const m = D.P[slot]; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 66, W, 32);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(isA ? '攻撃(A)：急ブレーキでBを撃墜せよ' : '追越(B)：Aを追い抜け！(真後ろ突撃はNG)', 15, 87);
-  if (isA) {
-    for (let n = 0; n < 3; n++) { ctx.fillStyle = n < m.brakes ? '#ff4655' : '#444'; ctx.beginPath(); ctx.arc(W - 20 - n * 26, 82, 9, 0, 7); ctx.fill(); }
-    ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('BRAKE', W - 90, 86);
-  } else {
-    ctx.fillStyle = '#333'; ctx.fillRect(W - 150, 75, 140, 14); ctx.fillStyle = m.cd <= 0 ? '#4fc3f7' : '#fc4';
-    ctx.fillRect(W - 150, 75, 140 * (m.cd <= 0 ? 1 : 1 - m.cd / 3.5), 14); ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('BOOST', W - 156, 86);
-  }
-}
-
-function topbar() {
-  ctx.fillStyle = '#0f1115'; ctx.fillRect(0, 0, W, 66);
-  const o = 1 - slot;
-  [[slot, 20, 'left', 'あなた'], [o, W - 110, 'right', D.isBot ? 'NPC' : '相手']].forEach(([i, x, al, lb]) => {
-    ctx.textAlign = al; ctx.fillStyle = COL[i]; ctx.font = 'bold 18px sans-serif'; ctx.fillText(lb + '  ' + D.sc[i], x, 24);
-    ctx.fillStyle = '#8b97a3'; ctx.font = '12px sans-serif'; ctx.fillText(D.att === i ? '攻撃 (A)' : '追越 (B)', x, 42);
-    for (let n = 0; n < 4; n++) { ctx.fillStyle = n < D.sc[i] ? COL[i] : '#333'; ctx.beginPath(); ctx.arc(al === 'left' ? x + 110 + n * 18 : x - 110 - n * 18, 18, 6, 0, 7); ctx.fill(); }
-  });
-  ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(D.rd >= 6 ? 'SUDDEN DEATH' : 'ROUND ' + (D.rd + 1) + (D.rd < 3 ? ' (前半)' : ' (後半)'), W / 2, 20);
-  const n = Math.max(6, D.hist.length);
-  for (let k = 0; k < n; k++) {
-    const x = W / 2 - (n - 1) * 9 + k * 18, h = D.hist[k]; ctx.strokeStyle = '#888';
-    ctx.fillStyle = k < D.hist.length ? (h < 0 ? '#777' : COL[h]) : '#0f1115'; ctx.beginPath(); ctx.arc(x, 42, 6, 0, 7); ctx.fill(); ctx.stroke();
-  }
-}
-
-function overlay(t, s, c) {
-  ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(0, 200, W, 150); ctx.textAlign = 'center';
-  ctx.fillStyle = c; ctx.font = 'bold 44px sans-serif'; ctx.fillText(t, W / 2, 265); ctx.fillStyle = '#ddd'; ctx.font = '18px sans-serif'; ctx.fillText(s || '', W / 2, 305);
-}
-
-function draw() {
-  ctx.fillStyle = '#0f1115'; ctx.fillRect(0, 0, W, H);
-  if (!inGame || !D || !D.P[slot]) return;
-  view(); topbar();
-  if (D.s === 'count') overlay(String(Math.ceil(D.t)), (D.att === slot ? 'あなたは攻撃側(A)' : 'あなたは追越側(B)') + (D.rd >= 6 ? '  SUDDEN DEATH' : ''), '#ff4655');
-  if (D.s === 'result') { 
-    const w = D.hist[D.hist.length - 1]; 
-    const sec = Math.max(0, Math.ceil(D.t));
-    overlay(D.msg, D.sub + (w === slot ? ' (あなたの得点)' : '') + `  [次ラウンドまで ${sec}秒]`, '#4fc3f7'); 
-  }
-  if (D.s === 'match') overlay(D.msg, D.sub + '  [Enter]:再戦 / [Esc]:ロビーへ', '#ff4655');
-  if (D.s === 'play' && D.el < 1.5) { ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('GO!', W / 2, 300); }
-}
-
-let lt = performance.now();
-(function loop(t) { const dt = Math.min(.05, (t - lt) / 1000); lt = t; sync(dt); draw(); requestAnimationFrame(loop); })(lt);
-</script>
-</body>
-</html>
