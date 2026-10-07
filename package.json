@@ -1,9 +1,373 @@
-{
-  "name": "nanigamokutekinan-online",
-  "version": "1.0.0",
-  "description": "なにが目的なん？ - 2人対戦オンライン自転車追走ゲーム",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" },
-  "dependencies": { "express": "^4.19.2", "socket.io": "^4.7.5" }
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYBER CHASE - オンライン対戦</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    body {
+      background: #090a0f;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #app {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      background: #10121b;
+      border: 2px solid #00f3ff;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+      overflow: hidden;
+    }
+    /* タイトル & ロビー画面 */
+    .screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at center, #1a1d2e 0%, #090a0f 100%);
+      z-index: 10;
+    }
+    .hidden {
+      display: none !important;
+    }
+    h1 {
+      font-size: 3rem;
+      color: #00f3ff;
+      text-shadow: 0 0 15px #00f3ff;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+    p.sub {
+      color: #8a99ad;
+      margin-bottom: 40px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 14px 28px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #090a0f;
+      background: #00f3ff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.8);
+    }
+    input {
+      padding: 12px;
+      font-size: 1.1rem;
+      border-radius: 6px;
+      border: 1px solid #00f3ff;
+      background: #090a0f;
+      color: #fff;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      outline: none;
+    }
+    .room-info {
+      font-size: 1.5rem;
+      color: #ff0055;
+      margin-top: 15px;
+      text-shadow: 0 0 10px #ff0055;
+    }
+    /* HUD */
+    #hud {
+      position: absolute;
+      top: 15px; left: 20px; right: 20px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .hud-box {
+      background: rgba(9, 10, 15, 0.7);
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- タイトル・ロビー画面 -->
+  <div id="lobby-screen" class="screen">
+    <h1>CYBER CHASE</h1>
+    <p class="sub">音波レーダーを頼りに相手の位置を追え！</p>
+    
+    <div class="btn-group">
+      <button onclick="createRoom()">部屋を作成</button>
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <input type="text" id="roomCodeInput" placeholder="6桁コード" maxlength="6">
+      <button onclick="joinRoom()">部屋に参加</button>
+    </div>
+
+    <div id="statusText" class="room-info"></div>
+  </div>
+
+  <!-- HUD (ゲーム中表示) -->
+  <div id="hud" class="hidden">
+    <div class="hud-box" id="roleText">Role: -</div>
+    <div class="hud-box" id="roomDisp">Room: -</div>
+  </div>
+
+  <!-- ゲームキャンバス -->
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const lobbyScreen = document.getElementById('lobby-screen');
+  const hud = document.getElementById('hud');
+  const statusText = document.getElementById('statusText');
+  const roleText = document.getElementById('roleText');
+  const roomDisp = document.getElementById('roomDisp');
+
+  let myPlayerNumber = 0;
+  let roomCode = '';
+  let inGame = false;
+
+  let player = { x: 150, y: 300, vx: 0, vy: 0, speed: 4, radius: 16, color: '#00f3ff' };
+  let opponent = { x: 650, y: 300, radius: 16, color: '#ff0055' };
+  
+  // 音波エフェクト（ビジュアル）配列
+  let soundWaves = [];
+
+  const keys = {};
+
+  window.addEventListener('keydown', (e) => keys[e.key] = true);
+  window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+  function createRoom() {
+    socket.emit('createRoom');
+    statusText.innerText = '部屋を作成中...';
+  }
+
+  function joinRoom() {
+    const code = document.getElementById('roomCodeInput').value;
+    if (code) {
+      socket.emit('joinRoom', code);
+      statusText.innerText = '参加中...';
+    }
+  }
+
+  socket.on('roomCreated', (data) => {
+    roomCode = data.roomCode;
+    myPlayerNumber = data.playerNumber;
+    statusText.innerText = `部屋コード: ${roomCode} （対戦相手を待っています...）`;
+  });
+
+  socket.on('roomJoined', (data) => {
+    roomCode = data.roomCode;
+    myPlayerNumber = data.playerNumber;
+  });
+
+  socket.on('errorMsg', (msg) => {
+    statusText.innerText = msg;
+  });
+
+  socket.on('gameStart', (data) => {
+    inGame = true;
+    lobbyScreen.classList.add('hidden');
+    hud.classList.remove('hidden');
+
+    roomDisp.innerText = `ROOM: ${roomCode}`;
+    if (myPlayerNumber === 1) {
+      player.color = '#00f3ff';
+      player.x = 150;
+      opponent.color = '#ff0055';
+      opponent.x = 650;
+      roleText.innerText = 'ROLE: 逃走者 (A)';
+    } else {
+      player.color = '#ff0055';
+      player.x = 650;
+      opponent.color = '#00f3ff';
+      opponent.x = 150;
+      roleText.innerText = 'ROLE: 鬼 (B)';
+    }
+
+    // 移動による音波パルス送信（一定間隔）
+    setInterval(() => {
+      if (inGame && (Math.abs(player.vx) > 0.1 || Math.abs(player.vy) > 0.1)) {
+        socket.emit('soundPulse', { x: player.x, y: player.y });
+      }
+    }, 400);
+
+    requestAnimationFrame(gameLoop);
+  });
+
+  socket.on('opponentMove', (data) => {
+    opponent.x = data.x;
+    opponent.y = data.y;
+  });
+
+  // 相手から音波が届いたときのエフェクト生成
+  socket.on('opponentSound', (data) => {
+    soundWaves.push({
+      x: data.x,
+      y: data.y,
+      radius: 5,
+      maxRadius: 60,
+      alpha: 1.0
+    });
+  });
+
+  socket.on('playerLeft', () => {
+    alert('対戦相手が退出しました');
+    location.reload();
+  });
+
+  function update() {
+    if (!inGame) return;
+
+    let moveX = 0;
+    let moveY = 0;
+
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) moveY -= 1;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) moveY += 1;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) moveX -= 1;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) moveX += 1;
+
+    if (moveX !== 0 && moveY !== 0) {
+      moveX *= 0.7071;
+      moveY *= 0.7071;
+    }
+
+    player.vx = moveX * player.speed;
+    player.vy = moveY * player.speed;
+
+    player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x + player.vx));
+    player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y + player.vy));
+
+    socket.emit('playerMove', { x: player.x, y: player.y, vx: player.vx, vy: player.vy });
+
+    // 音波アニメーションの更新
+    for (let i = soundWaves.length - 1; i >= 0; i--) {
+      let w = soundWaves[i];
+      w.radius += 2;
+      w.alpha -= 0.02;
+      if (w.alpha <= 0 || w.radius >= w.maxRadius) {
+        soundWaves.splice(i, 1);
+      }
+    }
+  }
+
+  function drawGrid() {
+    ctx.strokeStyle = 'rgba(0, 243, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawSoundWaves() {
+    soundWaves.forEach(w => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 230, 0, ${w.alpha})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ffe600';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+
+      // ミュージックイコライザー風（波形グラフィック）
+      const bars = 8;
+      for (let i = 0; i < bars; i++) {
+        let angle = (i / bars) * Math.PI * 2;
+        let bx = w.x + Math.cos(angle) * w.radius;
+        let by = w.y + Math.sin(angle) * w.radius;
+        let h = Math.sin(Date.now() * 0.01 + i) * 12;
+
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + Math.cos(angle) * h, by + Math.sin(angle) * h);
+        ctx.strokeStyle = `rgba(0, 243, 255, ${w.alpha})`;
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+
+  function drawPlayer(p, isSelf) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 15;
+    ctx.fill();
+
+    // 自プレイヤーの中心インジケーター
+    if (isSelf) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawGrid();
+    drawSoundWaves();
+    drawPlayer(player, true);
+    drawPlayer(opponent, false);
+  }
+
+  function gameLoop() {
+    if (!inGame) return;
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+  }
+</script>
+</body>
+</html>
