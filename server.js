@@ -1,4 +1,4 @@
-// なにが目的なん？ オンライン対戦サーバー (Express + Socket.io) — サーバー権威型
+// なにが目的なん？ オンライン対戦サーバー (Express + Socket.io)
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -37,6 +37,7 @@ function endRound(R, w, pen, text, eventType) {
   R.hist.push(w);
   R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
   R.sub = (w >= 0 ? 'プレイヤー' + (w + 1) + '  ' : '') + text;
+  if(R.isBot && w === 1) R.sub = 'NPC(BOT)  ' + text;
   R.state = 'result'; R.timer = 2.5;
   R.lastEvent = eventType || 'crash';
 }
@@ -45,17 +46,45 @@ function afterResult(R) {
   const w = R.hist[R.hist.length - 1];
   if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
     R.state = 'match';
-    R.msg = 'MATCH WINNER: プレイヤー' + (w + 1);
+    R.msg = 'MATCH WINNER: ' + (w === 1 && R.isBot ? 'NPC(BOT)' : 'プレイヤー' + (w + 1));
     R.sub = R.round >= 6 ? 'サドンデス決着' : '';
     return;
   }
   R.round++; newRound(R);
 }
 
+// NPC (BOT) のAIロジック
+function runBotAI(R) {
+  if (R.state !== 'play' || !R.isBot) return;
+  const botSlot = 1, pSlot = 0;
+  const me = R.P[botSlot], opp = R.P[pSlot], inp = R.inp[botSlot];
+  const isA = (R.att === botSlot);
+
+  // 障害物回避
+  let targetX = isA ? 0 : (opp.x > 0 ? opp.x - 40 : opp.x + 40);
+  const threat = R.obs.find(o => o.z > me.z && o.z < me.z + 180 && Math.abs(o.x - me.x) < 30);
+  if (threat) targetX = threat.x > 0 ? threat.x - 50 : threat.x + 50;
+
+  inp.l = me.x > targetX + 5;
+  inp.r = me.x < targetX - 5;
+
+  // アクション判断
+  if (isA) {
+    const gap = me.z - opp.z;
+    if (gap > 0 && gap < 70 && Math.abs(me.x - opp.x) < 25 && me.brakes > 0 && Math.random() < 0.05) R.act[botSlot] = true;
+  } else {
+    const gap = opp.z - me.z;
+    if (gap > 10 && gap < 90 && Math.abs(me.x - opp.x) >= 20 && me.cd <= 0) R.act[botSlot] = true;
+  }
+}
+
 function step(R, dt) {
   if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
   if (R.state === 'result') { R.timer -= dt; if (R.timer <= 0) afterResult(R); return; }
   if (R.state !== 'play') return;
+  
+  runBotAI(R); // BOTの思考更新
+
   R.el += dt;
   const att = R.att, d = 1 - att, A = R.P[att], B = R.P[d];
 
@@ -73,7 +102,6 @@ function step(R, dt) {
   B.cd = Math.max(0, B.cd - dt);
   A.z += A.v * dt; B.z += B.v * dt;
 
-  // 障害物の生成
   const front = Math.max(A.z, B.z), back = Math.min(A.z, B.z);
   R.nextCar -= dt;
   if (R.nextCar <= 0) {
@@ -87,7 +115,6 @@ function step(R, dt) {
   for (const o of R.obs) o.z += o.vz * dt;
   R.obs = R.obs.filter(o => (o.k === 'car' ? o.z > back - 100 : o.z < front + 220));
 
-  // 障害物の判定
   const lost = [null, null];
   for (const o of R.obs) for (const i of [0, 1]) {
     const p = R.P[i], dx = Math.abs(o.x - p.x);
@@ -102,23 +129,19 @@ function step(R, dt) {
   if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！', 'crash');
   for (const i of [0, 1]) if (lost[i]) {
     return lost[i] === 'cop'
-      ? endRound(R, 1 - i, i, 'プレイヤー' + (i + 1) + ' パトカー違反で逮捕！(-1pt)', 'siren')
-      : endRound(R, 1 - i, -1, 'プレイヤー' + (i + 1) + ' 車と衝突！', 'crash');
+      ? endRound(R, 1 - i, i, (R.isBot && i===1 ? 'NPC' : 'プレイヤー' + (i + 1)) + ' 逮捕(-1pt)', 'siren')
+      : endRound(R, 1 - i, -1, (R.isBot && i===1 ? 'NPC' : 'プレイヤー' + (i + 1)) + ' 車と衝突！', 'crash');
   }
 
-  // A ↔ B 接触・追突・追い抜き判定
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
-    // 1. Aが急ブレーキ中、または Bがブースト中に真後ろから激突した場合（追突事故 -> Bの負け）
     if (A.brk > 0 || B.boost > 0 || A.v < BASE * 0.6) {
       const reason = (A.brk > 0) ? '急ブレーキで撃墜！' : (B.boost > 0 ? 'ブースト追突事故！(横に避けて抜け)' : '前方車に激突！');
       return endRound(R, att, -1, reason, 'crash');
     }
-    // 2. 通常の接触（押し戻されて両者減速）
     B.z = A.z - 18; B.v = Math.min(B.v, A.v);
   }
 
-  // 追い抜き成功（十分前に出た場合）
   if (B.z > A.z + 16) return endRound(R, d, -1, '追い抜き成功！', 'win');
   if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)', 'win');
 }
@@ -131,41 +154,45 @@ function snap(R, slot) {
     { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
 
   let sound = null;
-  if (isA && R.P[0] && R.P[1]) {
-    const A = R.P[R.att], B = R.P[1 - R.att];
-    sound = {
-      relX: r1(B.x - A.x),
-      dist: r1(A.z - B.z),
-      boosting: B.boost > 0
-    };
-  }
+  if (isA && R.P[0] && R.P[1]) sound = { relX: r1(R.P[1 - R.att].x - R.P[R.att].x), dist: r1(R.P[R.att].z - R.P[1 - R.att].z), boosting: R.P[1 - R.att].boost > 0 };
 
   const snapData = {
     s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
     P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })),
-    sound,
-    lastAct: R.lastAct || null,
-    lastEvent: R.lastEvent || null
+    sound, lastAct: R.lastAct || null, lastEvent: R.lastEvent || null, isBot: R.isBot
   };
-  R.lastAct = null;
+  if(slot === 0) { R.lastAct = null; R.lastEvent = null; }
   return snapData;
 }
 
 setInterval(() => {
-  for (const R of rooms.values()) {
+  for (const [code, R] of rooms.entries()) {
     if (!R.ids[1]) continue;
     step(R, TICK);
-    for (const i of [0, 1]) io.to(R.ids[i]).emit('st', snap(R, i));
+    for (const i of [0, 1]) {
+      if (R.ids[i] && R.ids[i] !== 'BOT') io.to(R.ids[i]).emit('st', snap(R, i));
+    }
   }
 }, TICK * 1000);
 
 io.on('connection', socket => {
   socket.on('create', cb => {
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    rooms.set(code, { code, ids: [socket.id, null], inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
+    rooms.set(code, { code, ids: [socket.id, null], inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], isBot: false });
     socket.data = { code, slot: 0 };
     cb({ code });
   });
+  
+  socket.on('joinBot', cb => {
+    let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
+    const R = { code, ids: [socket.id, 'BOT'], inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], isBot: true };
+    rooms.set(code, R);
+    socket.data = { code, slot: 0 };
+    resetMatch(R);
+    cb({ ok: true });
+    io.to(socket.id).emit('start', { slot: 0 });
+  });
+
   socket.on('join', (code, cb) => {
     const R = rooms.get(String(code));
     if (!R) return cb({ ok: false, err: 'ルームが見つかりません' });
@@ -175,24 +202,38 @@ io.on('connection', socket => {
     cb({ ok: true });
     for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
   });
+
   socket.on('inp', d => {
-    const R = rooms.get(socket.data && socket.data.code);
-    if (R) R.inp[socket.data.slot] = { l: !!(d && d.l), r: !!(d && d.r) };
+    const R = rooms.get(socket.data?.code);
+    if (R) R.inp[socket.data.slot] = { l: !!d?.l, r: !!d?.r };
   });
   socket.on('act', () => {
-    const R = rooms.get(socket.data && socket.data.code);
+    const R = rooms.get(socket.data?.code);
     if (R) R.act[socket.data.slot] = true;
   });
   socket.on('again', () => {
-    const R = rooms.get(socket.data && socket.data.code);
+    const R = rooms.get(socket.data?.code);
     if (R && R.state === 'match') resetMatch(R);
   });
+  
+  // ロビーに戻る処理
+  socket.on('leave', () => {
+    const R = rooms.get(socket.data?.code);
+    if (R) {
+      const other = R.ids[1 - socket.data.slot];
+      if (other && other !== 'BOT') io.to(other).emit('left');
+      rooms.delete(R.code);
+    }
+    socket.data = null;
+  });
+
   socket.on('disconnect', () => {
-    const R = rooms.get(socket.data && socket.data.code);
-    if (!R) return;
-    const other = R.ids[1 - socket.data.slot];
-    if (other) io.to(other).emit('left');
-    rooms.delete(R.code);
+    const R = rooms.get(socket.data?.code);
+    if (R) {
+      const other = R.ids[1 - socket.data.slot];
+      if (other && other !== 'BOT') io.to(other).emit('left');
+      rooms.delete(R.code);
+    }
   });
 });
 
