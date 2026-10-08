@@ -75,7 +75,7 @@ function sync(dt){
   const P=S.P.map((t,i)=>{const c=D.P[i];if(!t)return null;if(!c)return t;
     c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;return c;});
   const obs=S.obs.map(o=>{const c=old[o.id];if(!c)return{...o};c.x+=(o.x-c.x)*k;c.z+=(o.z-c.z)*k;return c;});
-  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx});
+  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost});
 }
 
 // ---- 描画 ----
@@ -102,43 +102,48 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-// 画面下の端から端までに表示する波形メモリ表示
-function drawFullWidthWave(gap, bx) {
-  if (gap === undefined || gap === null || gap > 220) return;
+// くっきりとした波形表示 (通常: 白, ブースト: 黄色)
+function drawFullWidthWave(gap, bx, isBoost) {
+  if (gap === undefined || gap === null || gap > 240) return;
 
-  const prox = Math.max(0, 1 - gap / 220); // 接近度 0.0 ~ 1.0
-  const numBars = 45; // 端から端まで並べるバーの数
+  const prox = Math.max(0, 1 - gap / 240); // 接近度
+  const numBars = 50;
   const totalW = W;
-  const barW = (totalW / numBars) - 2;
-  const startY = H - 35;
+  const barW = Math.floor(totalW / numBars) - 2;
+  const startY = H - 40;
 
-  // 相手のX位置（-HW〜HW）を 画面の横幅 0 〜 1 に正規化
   const targetNormX = Math.max(0, Math.min(1, (bx + ROAD_W) / (ROAD_W * 2)));
 
-  // 距離に応じた色変化（緑→黄→赤）
-  const col = prox > 0.65 ? '#f44' : prox > 0.3 ? '#ffb74d' : '#7f7';
+  // 通常時はくっきりした白、ブースト時は鮮やかな黄色
+  const mainColor = isBoost ? '#ffea00' : '#ffffff';
+  const strokeColor = isBoost ? '#ff9100' : '#888888';
 
-  // 背景のうすい黒枠
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(0, startY - 5, W, 40);
+  // 背景を暗くして波形をクッキリ立たせる
+  ctx.fillStyle = 'rgba(5, 7, 12, 0.75)';
+  ctx.fillRect(0, startY - 6, W, 46);
+  ctx.fillStyle = isBoost ? 'rgba(255, 234, 0, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+  ctx.fillRect(0, startY - 6, W, 2);
 
-  const time = Date.now() * 0.01;
+  const time = Date.now() * 0.012;
 
   for (let i = 0; i < numBars; i++) {
     const barNormX = i / (numBars - 1);
-    // 相手がいる位置との距離（0に近いほど相手の位置）
     const distFromTarget = Math.abs(barNormX - targetNormX);
 
-    // 相手の位置に近いメモリほど高く立ち上がる（ガウス曲線風）
-    const peak = Math.exp(-Math.pow(distFromTarget * 5, 2));
+    // 山をより鋭く立たせる
+    const peak = Math.exp(-Math.pow(distFromTarget * 6, 2));
+    const wave = Math.sin(time + i * 0.6) * 0.12 + 0.88;
 
-    // 微小な揺れ（生きているような演出）
-    const wave = Math.sin(time + i * 0.5) * 0.15 + 0.85;
+    const barH = Math.max(3, (prox * 30 + 3) * peak * wave);
+    const posX = i * (barW + 2) + 2;
+    const posY = startY + 34 - barH;
 
-    const barH = Math.max(2, (prox * 28 + 2) * peak * wave);
+    // くっきり見えるように黒縁＋塗りを適用
+    ctx.fillStyle = '#000';
+    ctx.fillRect(posX - 1, posY - 1, barW + 2, barH + 2);
 
-    ctx.fillStyle = col;
-    ctx.fillRect(i * (barW + 2) + 1, startY + 30 - barH, barW, barH);
+    ctx.fillStyle = mainColor;
+    ctx.fillRect(posX, posY, barW, barH);
   }
 }
 
@@ -161,7 +166,7 @@ function view(){
 
   // 攻撃側（A）の時に下端の全幅波形を表示
   if(isA) {
-    drawFullWidthWave(D.bgGap, D.bgBx);
+    drawFullWidthWave(D.bgGap, D.bgBx, D.bgBoost);
   }
 
   // パトカー接近警告
