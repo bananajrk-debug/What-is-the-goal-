@@ -160,12 +160,12 @@ function snap(R, slot) {
   const hide = (R.state === 'play' || R.state === 'count') && slot === R.att;
   const att = R.att, d = 1 - att;
   const bgGap = (R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
-  const bgDx = (R.P[att] && R.P[d]) ? (R.P[d].x - R.P[att].x) : 0;
+  const bgBx = (R.P[d]) ? R.P[d].x : 0; // 追越側(B)の絶対X座標
 
   const P = R.P.map((p, i) => (hide && i !== slot) ? null :
     { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
   return { s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    bgGap: r1(bgGap), bgDx: r1(bgDx),
+    bgGap: r1(bgGap), bgBx: r1(bgBx),
     P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) };
 }
 
