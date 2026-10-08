@@ -73,7 +73,8 @@ function updateCpuInp(R) {
   const dx = targetX - cpuP.x;
   R.inp[cpuSlot] = { l: dx < -5, r: dx > 5 };
 
-  if (R.el >= 5) {
+  // CPUのアクション発火条件（3秒経過後）
+  if (R.el >= 3) {
     const isAtt = R.att === cpuSlot;
     if (isAtt) {
       const playerP = R.P[0];
@@ -105,7 +106,8 @@ function step(R, dt) {
     p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
   }
 
-  if (R.el >= 5) {
+  // 解禁時間を 3秒 に変更
+  if (R.el >= 3) {
     if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; }
     if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; }
   }
