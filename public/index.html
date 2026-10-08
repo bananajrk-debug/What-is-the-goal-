@@ -5,25 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>なにが目的なん？ ONLINE</title>
 <style>
-html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}
-#wrap{position:relative;width:720px;max-width:100%;}
-canvas{display:block;width:100%;height:auto;background:#000;border:2px solid #333;border-radius:4px;}
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&display=swap');
+html,body{margin:0;padding:0;background:#0f1115;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;user-select:none;overflow:hidden;}
+body{display:flex;align-items:center;justify-content:center;height:100vh;}
+#wrap{position:relative;width:720px;height:540px;max-width:100%;background:#000;border:2px solid #222;box-shadow:0 0 40px rgba(0,0,0,0.8);}
+canvas{display:block;width:100%;height:100%;}
 
-/* ---- ロビー画面 ---- */
-#lobby-overlay{position:absolute;inset:0;background:rgba(10,12,20,.96);display:flex;flex-direction:column;}
-.lobby-title{font-size:36px;font-weight:900;margin-bottom:20px;color:#ffd54f;text-shadow:0 0 12px rgba(255,213,79,.3);text-align:center;padding-top:40px;}
+/* UI Overlay */
+#lobby-overlay{position:absolute;inset:0;background:radial-gradient(circle at center, #1a1e29 0%, #0b0d12 100%);display:flex;flex-direction:column;z-index:10;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:15px 30px;border-bottom:1px solid rgba(255,255,255,0.05);}
+.logo{font-family:'Teko',sans-serif;font-size:32px;font-weight:700;color:#ff4655;letter-spacing:2px;line-height:1;}
 
-.menu-grid{display:flex;flex-direction:column;gap:12px;width:280px;margin:0 auto 15px;}
-.menu-btn{font-size:16px;font-weight:bold;padding:12px;border-radius:8px;border:0;background:#ffd54f;color:#000;cursor:pointer;transition:transform 0.1s;}
-.menu-btn:hover{background:#ffe082;transform:translateY(-1px);}
-.menu-btn-sub{background:#37474f;color:#fff;}
-.menu-btn-sub:hover{background:#455a64;}
+.main-content{flex:1;display:flex;flex-direction:column;position:relative;padding:40px;}
+.bg-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Teko',sans-serif;font-size:100px;font-weight:700;color:rgba(255,255,255,0.03);white-space:nowrap;pointer-events:none;}
 
-#room-panel{display:none;flex-direction:column;align-items:center;gap:10px;margin-top:10px;}
+.menu-area{position:absolute;bottom:40px;right:40px;display:flex;flex-direction:column;align-items:flex-end;gap:15px;}
+.btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:16px;font-weight:bold;padding:12px 24px;cursor:pointer;transition:0.2s;}
+.btn:hover{background:rgba(255,255,255,0.2);}
+.btn-play{background:#ff4655;border:none;color:#fff;font-size:22px;font-weight:900;padding:14px 36px;clip-path:polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);}
+.btn-play:hover{background:#ff5e6b;}
+
+#room-panel{display:none;flex-direction:column;align-items:flex-end;gap:10px;background:rgba(0,0,0,0.6);padding:20px;border-left:4px solid #ff4655;}
 .input-row{display:flex;gap:8px;}
-input[type="text"]{background:#111;border:1px solid #444;color:#fff;font-size:16px;padding:8px;width:120px;text-align:center;border-radius:4px;}
-#st{color:#4fc3f7;font-size:14px;margin-top:8px;}
+input[type="text"]{background:#111;border:1px solid #444;color:#fff;font-size:16px;padding:8px;width:120px;text-align:center;}
+#st{color:#4fc3f7;font-size:14px;margin-top:6px;}
 </style>
 </head>
 <body>
@@ -32,21 +37,30 @@ input[type="text"]{background:#111;border:1px solid #444;color:#fff;font-size:16
   <canvas id="c" width="720" height="540"></canvas>
   
   <div id="lobby-overlay">
-    <div class="lobby-title">なにが目的なん？ ONLINE</div>
-    
-    <div class="menu-grid" id="main-menu">
-      <button class="menu-btn" id="btn-solo">VS NPC (ソロ)</button>
-      <button class="menu-btn menu-btn-sub" onclick="showRoomPanel()">フレンドと対戦</button>
+    <div class="header">
+      <div class="logo">NANIGA MOKUTEKINAN?</div>
+      <div style="font-size:13px;color:#8b97a3">🚴 ONLINE CHASE</div>
     </div>
+    
+    <div class="main-content">
+      <div class="bg-title">CHASE OR BE CHASED</div>
+      
+      <div class="menu-area">
+        <div id="main-menu" style="display:flex;flex-direction:column;gap:12px;align-items:flex-end;">
+          <button class="btn btn-play" id="btn-solo">▶ VS NPC (ソロ)</button>
+          <button class="btn" onclick="showRoomPanel()">🌐 フレンドと対戦</button>
+        </div>
 
-    <div id="room-panel">
-      <button class="menu-btn" style="width:200px;" id="create">部屋を作成</button>
-      <div class="input-row">
-        <input type="text" id="code" maxlength="6" placeholder="部屋コード">
-        <button class="menu-btn menu-btn-sub" style="padding:8px 16px;" id="join">参加</button>
+        <div id="room-panel">
+          <button class="btn" style="width:100%;" id="create">新規ルーム作成</button>
+          <div class="input-row">
+            <input type="text" id="code" maxlength="6" placeholder="6桁コード">
+            <button class="btn" style="background:#4fc3f7;color:#000;border:none;" id="join">参加</button>
+          </div>
+          <button class="btn" style="font-size:12px;padding:4px 8px;background:transparent;border:none;color:#888;" onclick="showMainMenu()">戻る</button>
+          <div id="st"></div>
+        </div>
       </div>
-      <button class="menu-btn menu-btn-sub" style="font-size:12px;padding:4px 8px;margin-top:10px;" onclick="showMainMenu()">戻る</button>
-      <div id="st"></div>
     </div>
   </div>
 </div>
@@ -57,33 +71,22 @@ const socket = io();
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const W = 720, H = 540;
 const $ = id => document.getElementById(id);
+const COL = ['#4fc3f7', '#ff4655'];
 
 let slot = 0, S = null, inGame = false;
 let last = { l: 0, r: 0 };
 
-function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex'; $('st').textContent = ''; }
-function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none'; $('st').textContent = ''; }
+function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex';$('st').textContent = ''; }
+function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none';$('st').textContent = ''; }
 
-$('btn-solo').onclick = () => {
-  socket.emit('joinBot', res => { if (res && !res.ok) alert(res.err); });
-};
-
-$('create').onclick = () => {
-  socket.emit('create', res => { if (res && res.code) $('st').textContent = 'コード: ' + res.code + ' (対戦相手待ち)'; });
-};
-
+$('btn-solo').onclick = () => socket.emit('joinBot', res => { if (res && !res.ok) alert(res.err); });
+$('create').onclick = () => socket.emit('create', res => { if (res && res.code)$('st').textContent = 'コード: ' + res.code + ' (対戦相手待ち)'; });
 $('join').onclick = () => {
   const codeVal = $('code').value.trim();
-  if (!codeVal) return;
-  socket.emit('join', codeVal, res => { if (res && !res.ok) $('st').textContent = res.err; });
+  if (codeVal) socket.emit('join', codeVal, res => { if (res && !res.ok) $('st').textContent = res.err; });
 };
 
-socket.on('start', d => {
-  slot = d.slot;
-  inGame = true;
-  $('lobby-overlay').style.display = 'none';
-});
-
+socket.on('start', d => { slot = d.slot; inGame = true; $('lobby-overlay').style.display = 'none'; });
 socket.on('left', () => {
   if (inGame) {
     alert('相手が退出しました');
@@ -92,7 +95,6 @@ socket.on('left', () => {
     showMainMenu();
   }
 });
-
 socket.on('st', s => { S = s; });
 
 const keys = {};
@@ -120,7 +122,7 @@ addEventListener('keyup', e => {
 });
 
 function draw() {
-  ctx.fillStyle = '#10131a';
+  ctx.fillStyle = '#0f1115';
   ctx.fillRect(0, 0, W, H);
 
   if (!inGame || !S || !S.P) return;
@@ -128,63 +130,112 @@ function draw() {
   const me = S.P[slot];
   if (!me) return;
 
-  // 道路の横幅を半分（520px -> 260px）に変更
-  const roadWidth = 260;
-  const roadLeft = (W - roadWidth) / 2;
-  ctx.fillStyle = '#222';
-  ctx.fillRect(roadLeft, 0, roadWidth, H);
+  // 【追加要素1】道路の幅を半分に変更（520px -> 260px）
+  const roadW = 260;
+  const roadX = (W - roadW) / 2;
+  
+  // 道路アスファルト
+  ctx.fillStyle = '#1e232d';
+  ctx.fillRect(roadX, 0, roadW, H);
 
-  // 白線（白のサイドライン）
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(roadLeft - 4, 0, 4, H);
-  ctx.fillRect(roadLeft + roadWidth, 0, 4, H);
+  // ガードレール/白線
+  ctx.fillStyle = '#ff4655';
+  ctx.fillRect(roadX - 6, 0, 6, H);
+  ctx.fillRect(roadX + roadW, 0, 6, H);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(roadX + 4, 0, 4, H);
+  ctx.fillRect(roadX + roadW - 8, 0, 4, H);
+
+  // センターライン（動的流れ表現）
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  const offset = (me.z % 60);
+  for (let y = -60; y < H; y += 60) {
+    ctx.fillRect(W / 2 - 2, y + offset, 4, 30);
+  }
+
+  // 障害物の描画
+  if (S.obs) {
+    S.obs.forEach(o => {
+      const px = W / 2 + o.x;
+      const py = H / 2 - (o.z - me.z) * 0.8;
+      if (py > -50 && py < H + 50) {
+        ctx.fillStyle = o.type === 'oil' ? '#111' : '#ff9800';
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
 
   // プレイヤー描画
   S.P.forEach((p, idx) => {
     if (!p) return;
     const px = W / 2 + p.x;
-    const py = H / 2 - (p.z - me.z) * 0.5;
+    const py = H / 2 - (p.z - me.z) * 0.8;
 
-    // ブースト演出（視認化）：オーラと拡大エフェクト
+    // 【追加要素3】ブースト中の視認エフェクト（オーラ＆炎）
     if (p.boost) {
       ctx.save();
       ctx.fillStyle = 'rgba(255, 235, 59, 0.4)';
       ctx.beginPath();
-      ctx.arc(px, py, 22, 0, Math.PI * 2);
+      ctx.arc(px, py, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ブースト軌跡（後ろに伸びる光）
+      ctx.fillStyle = 'rgba(255, 87, 34, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(px - 10, py);
+      ctx.lineTo(px + 10, py);
+      ctx.lineTo(px, py + 35);
+      ctx.closePath();
       ctx.fill();
       ctx.restore();
     }
 
-    ctx.fillStyle = idx === 0 ? '#4fc3f7' : '#ff4655';
+    // 急ブレーキ（赤点滅・煙エフェクト）
+    if (p.brk) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.arc(px + (Math.random() - 0.5) * 10, py + 15, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 本体（バイク/自転車）
+    ctx.fillStyle = COL[idx];
     ctx.beginPath();
     ctx.arc(px, py, 14, 0, Math.PI * 2);
     ctx.fill();
 
-    // ブースト中テキストインジケーター
+    // ブースト文字（両プレイヤーから確認可能）
     if (p.boost) {
       ctx.fillStyle = '#ffeb3b';
-      ctx.font = 'bold 12px sans-serif';
+      ctx.font = '900 12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('BOOST!', px, py - 20);
+      ctx.fillText('⚡ BOOST!', px, py - 22);
     }
   });
 
-  // UI・カウント表示
+  // UI・カウントダウン・ロック表示
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px sans-serif';
   ctx.textAlign = 'center';
+  
   if (S.s === 'count') {
-    ctx.fillText('カウントダウン: ' + Math.ceil(S.t), W / 2, 80);
+    ctx.font = 'bold 32px sans-serif';
+    ctx.fillText(Math.ceil(S.t), W / 2, 100);
   } else if (S.s === 'play') {
-    // 5秒経過前はロックアナウンスを表示
+    // 【追加要素2】開始5秒間のアクションロックアナウンス
     if (S.el < 5.0) {
-      const remaining = (5.0 - S.el).toFixed(1);
+      const rem = (5.0 - S.el).toFixed(1);
       ctx.fillStyle = '#ff9800';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('スキルロック解除まで: ' + remaining + '秒', W / 2, 50);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`🔒 アクション解除まで: ${rem}秒`, W / 2, 40);
     }
   } else if (S.s === 'result') {
-    ctx.fillText(S.msg, W / 2, 80);
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(S.msg, W / 2, 100);
+    ctx.font = '16px sans-serif';
+    ctx.fillText(S.sub, W / 2, 130);
   }
 }
 
