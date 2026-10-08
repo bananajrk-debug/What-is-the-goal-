@@ -56,7 +56,6 @@ addEventListener('keydown',e=>{
   keys[e.code]=true;sendInp();});
 addEventListener('keyup',e=>{keys[e.code]=false;sendInp();});
 
-// マウスクリックで試合終了時のボタン選択を可能に
 cv.addEventListener('click',e=>{
   if(!inGame||!D||D.s!=='match')return;
   const rect=cv.getBoundingClientRect();
@@ -76,7 +75,7 @@ function sync(dt){
   const P=S.P.map((t,i)=>{const c=D.P[i];if(!t)return null;if(!c)return t;
     c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;return c;});
   const obs=S.obs.map(o=>{const c=old[o.id];if(!c)return{...o};c.x+=(o.x-c.x)*k;c.z+=(o.z-c.z)*k;return c;});
-  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgDx:S.bgDx});
+  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx});
 }
 
 // ---- 描画 ----
@@ -103,29 +102,43 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-// 攻撃側の足元に表示する音波（イコライザー）波形描画
-function drawSoundWave(meX, meY, gap, dx) {
-  if (gap === undefined || gap === null || gap > 180) return;
-  const prox = Math.max(0, 1 - gap / 180); // 接近度 0.0 ~ 1.0
-  const numBars = 9;
-  const barW = 6, barGap = 4;
-  const totalW = numBars * barW + (numBars - 1) * barGap;
-  const startX = meX + (dx * 0.8) - totalW / 2; // 相対位置に応じて位置調整
-  const startY = meY + 22;
+// 画面下の端から端までに表示する波形メモリ表示
+function drawFullWidthWave(gap, bx) {
+  if (gap === undefined || gap === null || gap > 220) return;
 
-  const col = prox > 0.7 ? '#f44' : prox > 0.35 ? '#ffb74d' : '#7f7';
-  const time = Date.now() * 0.015;
+  const prox = Math.max(0, 1 - gap / 220); // 接近度 0.0 ~ 1.0
+  const numBars = 45; // 端から端まで並べるバーの数
+  const totalW = W;
+  const barW = (totalW / numBars) - 2;
+  const startY = H - 35;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(startX - 6, startY - 2, totalW + 12, 30);
+  // 相手のX位置（-HW〜HW）を 画面の横幅 0 〜 1 に正規化
+  const targetNormX = Math.max(0, Math.min(1, (bx + ROAD_W) / (ROAD_W * 2)));
+
+  // 距離に応じた色変化（緑→黄→赤）
+  const col = prox > 0.65 ? '#f44' : prox > 0.3 ? '#ffb74d' : '#7f7';
+
+  // 背景のうすい黒枠
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, startY - 5, W, 40);
+
+  const time = Date.now() * 0.01;
 
   for (let i = 0; i < numBars; i++) {
-    const distFromCenter = 1 - Math.abs(i - (numBars - 1) / 2) / ((numBars - 1) / 2);
-    const wave = Math.sin(time + i * 0.8) * 0.5 + 0.5;
-    const h = Math.max(3, (prox * 20 + 4) * (0.3 + 0.7 * distFromCenter) * (0.5 + 0.5 * wave));
-    
+    const barNormX = i / (numBars - 1);
+    // 相手がいる位置との距離（0に近いほど相手の位置）
+    const distFromTarget = Math.abs(barNormX - targetNormX);
+
+    // 相手の位置に近いメモリほど高く立ち上がる（ガウス曲線風）
+    const peak = Math.exp(-Math.pow(distFromTarget * 5, 2));
+
+    // 微小な揺れ（生きているような演出）
+    const wave = Math.sin(time + i * 0.5) * 0.15 + 0.85;
+
+    const barH = Math.max(2, (prox * 28 + 2) * peak * wave);
+
     ctx.fillStyle = col;
-    ctx.fillRect(startX + i * (barW + barGap), startY + 24 - h, barW, h);
+    ctx.fillRect(i * (barW + 2) + 1, startY + 30 - barH, barW, barH);
   }
 }
 
@@ -146,11 +159,9 @@ function view(){
   D.P.forEach((p,i)=>{if(p)items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});});
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // 攻撃側（A）の足元に後方音波を表示
-  if(isA && me) {
-    const meX = X(me.x, S_(me.z));
-    const meY = Y(S_(me.z));
-    drawSoundWave(meX, meY, D.bgGap, D.bgDx);
+  // 攻撃側（A）の時に下端の全幅波形を表示
+  if(isA) {
+    drawFullWidthWave(D.bgGap, D.bgBx);
   }
 
   // パトカー接近警告
@@ -163,7 +174,7 @@ function view(){
   // HUD
   const m=D.P[slot];ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：音波で後ろのBの位置を探れ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下のメモリでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 5;
   if(!actReady){
@@ -196,7 +207,6 @@ function overlay(t,s,c){
   ctx.fillStyle=c;ctx.font='bold 40px sans-serif';ctx.fillText(t,W/2,250);ctx.fillStyle='#ddd';ctx.font='18px sans-serif';ctx.fillText(s||'',W/2,290);
   
   if(isMatchEnd) {
-    // 再戦 & ロビーに戻るボタンのUIガイド表示
     ctx.fillStyle='#ffd54f';ctx.fillRect(W/2-180,310,160,35);
     ctx.fillStyle='#e57373';ctx.fillRect(W/2+20,310,160,35);
     ctx.fillStyle='#000';ctx.font='bold 15px sans-serif';
