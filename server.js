@@ -1,221 +1,111 @@
+// なにが目的なん？ オンライン対戦サーバー (Express + Socket.io)
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
+app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
-
+const BASE = 110, HW = 150, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
+const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const mk = (x, z) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0 });
+
+function newRound(R) {
+  R.s = 'count';
+  R.t = 3;
+  R.el = 0;
+  R.att = attOf(R.rd);
+  const a = R.att, d = 1 - a;
+  R.P[a] = mk(0, HW);
+  R.P[d] = mk(0, 0);
+  R.obs = [];
+  R.lastAct = R.lastEvent = null;
+}
+
+function genObs(R) {
+  if (R.obs.length < 5) {
+    const maxZ = R.obs.reduce((m, o) => Math.max(m, o.z), Math.max(R.P[0].z, R.P[1].z));
+    R.obs.push({
+      id: Math.random(),
+      x: rnd(-80, 80), // 道路幅半減に合わせて障害物の出現範囲を調整 (-80~80)
+      z: maxZ + rnd(150, 250),
+      w: 24,
+      h: 24,
+      type: Math.random() < 0.5 ? 'pylon' : 'oil'
+    });
+  }
+}
 
 function genCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  let c;
+  do { c = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(c));
+  return c;
 }
 
-function createRoomState(roomCode, isBot = false) {
-  return {
-    code: roomCode,
-    isBot: isBot,
-    players: [],
-    s: 'count',
-    t: 3,
-    rd: 0,
-    att: 0,
-    sc: [0, 0],
-    hist: [],
-    msg: '',
-    sub: '',
-    el: 0,
-    P: [
-      { x: 0, z: 0, v: 0, brk: false, brakes: 3, boost: false, cd: 0 },
-      { x: 0, z: -100, v: 0, brk: false, brakes: 3, boost: false, cd: 0 }
-    ],
-    obs: []
-  };
-}
+io.on('connection', socket => {
+  let room = null, slot = -1;
 
-function initRound(room) {
-  room.s = 'count';
-  room.t = 3;
-  room.el = 0;
-  room.att = room.rd % 2;
-  
-  const attSlot = room.att;
-  const defSlot = 1 - attSlot;
-
-  room.P[attSlot] = { x: 0, z: 150, v: 12, brk: false, brakes: 3, boost: false, cd: 0 };
-  room.P[defSlot] = { x: 0, z: 0, v: 12, brk: false, brakes: 3, boost: false, cd: 0 };
-  room.obs = [];
-}
-
-io.on('connection', (socket) => {
-  let currentRoom = null;
-  let playerSlot = -1;
-
-  socket.on('joinBot', (cb) => {
-    const code = 'BOT_' + socket.id.substring(0, 4);
-    const room = createRoomState(code, true);
-    
-    room.players.push({ id: socket.id, slot: 0 });
-    room.players.push({ id: 'BOT', slot: 1 });
-    
+  socket.on('joinBot', cb => {
+    const code = 'BOT_' + socket.id.slice(0, 4);
+    room = {
+      code, isBot: true, players: [{ id: socket.id, slot: 0 }, { id: 'BOT', slot: 1 }],
+      s: 'count', t: 3, rd: 0, att: 0, sc: [0, 0], hist: [], msg: '', sub: '', el: 0,
+      P: [mk(0, HW), mk(0, 0)], obs: []
+    };
     rooms.set(code, room);
-    currentRoom = room;
-    playerSlot = 0;
-
+    slot = 0;
     socket.join(code);
-    initRound(room);
-
+    newRound(room);
     if (typeof cb === 'function') cb({ ok: true, code });
     socket.emit('start', { slot: 0 });
   });
 
-  socket.on('create', (cb) => {
+  socket.on('create', cb => {
     const code = genCode();
-    const room = createRoomState(code, false);
-    
-    room.players.push({ id: socket.id, slot: 0 });
+    room = {
+      code, isBot: false, players: [{ id: socket.id, slot: 0 }],
+      s: 'count', t: 3, rd: 0, att: 0, sc: [0, 0], hist: [], msg: '', sub: '', el: 0,
+      P: [mk(0, HW), mk(0, 0)], obs: []
+    };
     rooms.set(code, room);
-    currentRoom = room;
-    playerSlot = 0;
-
+    slot = 0;
     socket.join(code);
     if (typeof cb === 'function') cb({ ok: true, code });
   });
 
   socket.on('join', (code, cb) => {
-    const room = rooms.get(code);
-    if (!room) {
-      if (typeof cb === 'function') cb({ ok: false, err: '部屋が存在しません' });
-      return;
-    }
-    if (room.players.length >= 2) {
-      if (typeof cb === 'function') cb({ ok: false, err: '満員です' });
-      return;
-    }
-
-    room.players.push({ id: socket.id, slot: 1 });
-    currentRoom = room;
-    playerSlot = 1;
-
+    const R = rooms.get(code);
+    if (!R || R.players.length >= 2) return cb && cb({ ok: false, err: '参加不可' });
+    R.players.push({ id: socket.id, slot: 1 });
+    room = R; slot = 1;
     socket.join(code);
-    initRound(room);
-
-    if (typeof cb === 'function') cb({ ok: true });
-    
-    room.players.forEach(p => {
-      io.to(p.id).emit('start', { slot: p.slot });
-    });
+    newRound(R);
+    if (cb) cb({ ok: true });
+    R.players.forEach(p => io.to(p.id).emit('start', { slot: p.slot }));
   });
 
-  socket.on('inp', (data) => {
-    if (!currentRoom || playerSlot < 0) return;
-    const p = currentRoom.P[playerSlot];
+  socket.on('inp', d => {
+    if (!room || slot < 0) return;
+    const p = room.P[slot];
     if (p) {
-      // 道路幅縮小（260px幅）に伴い移動制限範囲を設定（-110 ~ 110）
-      if (data.l) p.x = Math.max(-110, p.x - 3);
-      if (data.r) p.x = Math.min(110, p.x + 3);
+      // 道路の幅を半分にしたため移動範囲制限を修正 (-110 ~ 110)
+      if (d.l) p.x = Math.max(-110, p.x - 4);
+      if (d.r) p.x = Math.min(110, p.x + 4);
     }
   });
 
   socket.on('act', () => {
-    if (!currentRoom || currentRoom.s !== 'play' || playerSlot < 0) return;
-    
-    // ラウンド開始（el = 経過時間）から5秒未満はアクション使用不可
-    if (currentRoom.el < 5.0) return;
+    if (!room || room.s !== 'play' || slot < 0) return;
 
-    const p = currentRoom.P[playerSlot];
-    const isAtt = currentRoom.att === playerSlot;
+    // 【追加要素】ラウンド開始から5秒間はアクション使用不可
+    if (room.el < 5.0) return;
+
+    const p = room.P[slot];
+    const isAtt = room.att === slot;
 
     if (isAtt) {
-      if (p.brakes > 0) {
-        p.brakes--;
-        p.brk = true;
-        p.v = Math.max(0, p.v - 8);
-        setTimeout(() => { p.brk = false; }, 400);
-      }
-    } else {
-      if (p.cd <= 0) {
-        p.boost = true;
-        p.cd = 3.5;
-        p.v += 10;
-        setTimeout(() => { p.boost = false; }, 800);
-      }
-    }
-  });
-
-  const handleLeave = () => {
-    if (currentRoom) {
-      socket.to(currentRoom.code).emit('left');
-      rooms.delete(currentRoom.code);
-      currentRoom = null;
-    }
-  };
-
-  socket.on('leave', handleLeave);
-  socket.on('disconnect', handleLeave);
-});
-
-setInterval(() => {
-  rooms.forEach((room) => {
-    const dt = 0.05;
-    
-    if (room.s === 'count') {
-      room.t -= dt;
-      if (room.t <= 0) {
-        room.s = 'play';
-        room.t = 0;
-      }
-    } else if (room.s === 'play') {
-      room.el += dt;
-      
-      room.P.forEach((p, idx) => {
-        if (!p) return;
-        if (p.cd > 0) p.cd = Math.max(0, p.cd - dt);
-        p.z += p.v;
-        
-        if (room.isBot && idx === 1) {
-          const target = room.P[0];
-          if (target) {
-            if (p.x < target.x - 5) p.x += 2;
-            else if (p.x > target.x + 5) p.x -= 2;
-          }
-        }
-      });
-
-      const attP = room.P[room.att];
-      const defP = room.P[1 - room.att];
-
-      if (attP && defP && defP.z > attP.z) {
-        room.s = 'result';
-        room.t = 3;
-        const winSlot = 1 - room.att;
-        room.sc[winSlot]++;
-        room.hist.push(winSlot);
-        room.msg = '追越成功！';
-        room.sub = (winSlot === 0 ? 'あなた' : '相手') + 'の勝利';
-      }
-    } else if (room.s === 'result') {
-      room.t -= dt;
-      if (room.t <= 0) {
-        room.rd++;
-        if (room.sc[0] >= 3 || room.sc[1] >= 3) {
-          room.s = 'match';
-          room.msg = room.sc[0] >= 3 ? 'VICTORY!' : 'DEFEAT...';
-          room.sub = '最終スコア ' + room.sc[0] + ' - ' + room.sc[1];
-        } else {
-          initRound(room);
-        }
-      }
-    }
-
-    io.to(room.code).emit('st', room);
-  });
-}, 50);
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+      if (p.brakes > 0
