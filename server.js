@@ -1,4 +1,3 @@
-// なにが目的なん？ オンライン対戦サーバー (Express + Socket.io) — サーバー権威型
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -21,14 +20,18 @@ function newRound(R) {
   R.P[R.att] = mk(rnd(-20, 20), 60);
   R.P[d] = mk(rnd(-20, 20), 0);
   R.obs = []; R.nid = 1;
+  R.inp = [{ l: 0, r: 0 }, { l: 0, r: 0 }];
+  R.act = [false, false];
   R.state = 'count'; R.timer = 3; R.el = 0;
   R.nextCar = rnd(2, 3.5);
   R.patrolAt = Math.random() < 0.7 ? rnd(5, 12) : 1e9;
   R.msg = ''; R.sub = '';
 }
+
 function resetMatch(R) {
   R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R);
 }
+
 function endRound(R, w, pen, text) {
   if (w >= 0) R.sc[w]++;
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
@@ -37,6 +40,7 @@ function endRound(R, w, pen, text) {
   R.sub = (w >= 0 ? (R.isCpu && w === 1 ? 'CPU' : 'プレイヤー' + (w + 1)) + '  ' : '') + text;
   R.state = 'result'; R.timer = 2.5;
 }
+
 function afterResult(R) {
   const w = R.hist[R.hist.length - 1];
   if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
@@ -93,9 +97,10 @@ function step(R, dt) {
   if (R.isCpu) updateCpuInp(R);
 
   const att = R.att, d = 1 - att, A = R.P[att], B = R.P[d];
+  if (!A || !B) return;
 
   for (const i of [0, 1]) {
-    const p = R.P[i], inp = R.inp[i];
+    const p = R.P[i], inp = R.inp[i] || {};
     const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
     p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
   }
@@ -111,7 +116,6 @@ function step(R, dt) {
   B.cd = Math.max(0, B.cd - dt);
   A.z += A.v * dt; B.z += B.v * dt;
 
-  // --- 障害物の生成 ---
   const front = Math.max(A.z, B.z), back = Math.min(A.z, B.z);
   R.nextCar -= dt;
   if (R.nextCar <= 0) {
@@ -125,7 +129,6 @@ function step(R, dt) {
   for (const o of R.obs) o.z += o.vz * dt;
   R.obs = R.obs.filter(o => (o.k === 'car' ? o.z > back - 100 : o.z < front + 220));
 
-  // --- 障害物の判定 ---
   const lost = [null, null];
   for (const o of R.obs) for (const i of [0, 1]) {
     const p = R.P[i], dx = Math.abs(o.x - p.x);
@@ -145,7 +148,6 @@ function step(R, dt) {
       : endRound(R, 1 - i, -1, name + ' 車と衝突！');
   }
 
-  // --- A↔B ---
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
     if (A.brk > 0 || A.v < BASE * 0.6) return endRound(R, att, -1, '急ブレーキ激突！');
@@ -159,15 +161,18 @@ const r1 = n => Math.round(n * 10) / 10;
 function snap(R, slot) {
   const hide = (R.state === 'play' || R.state === 'count') && slot === R.att;
   const att = R.att, d = 1 - att;
-  const bgGap = (R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
-  const bgBx = (R.P[d]) ? R.P[d].x : 0;
-  const bgBoost = (R.P[d]) ? R.P[d].boost > 0 : false;
+  const bgGap = (R.P && R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
+  const bgBx = (R.P && R.P[d]) ? R.P[d].x : 0;
+  const bgBoost = (R.P && R.P[d]) ? R.P[d].boost > 0 : false;
 
-  const P = R.P.map((p, i) => (hide && i !== slot) ? null :
-    { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
-  return { s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
+  const P = (R.P || []).map((p, i) => (p && hide && i !== slot) ? null :
+    p ? { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) } : null);
+
+  return { 
+    s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
     bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost,
-    P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) };
+    P, obs: (R.obs || []).map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) 
+  };
 }
 
 setInterval(() => {
@@ -183,39 +188,45 @@ setInterval(() => {
 io.on('connection', socket => {
   socket.on('solo', () => {
     let code = 'SOLO_' + socket.id;
-    const R = { code, ids: [socket.id, null], isCpu: true, inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] };
+    const R = { code, ids: [socket.id, null], isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] };
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
     socket.emit('start', { slot: 0 });
   });
+
   socket.on('create', cb => {
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    rooms.set(code, { code, ids: [socket.id, null], isCpu: false, inp: [{}, {}], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
+    rooms.set(code, { code, ids: [socket.id, null], isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
     socket.data = { code, slot: 0 };
-    cb({ code });
+    if (typeof cb === 'function') cb({ code });
   });
+
   socket.on('join', (code, cb) => {
     const R = rooms.get(String(code));
-    if (!R) return cb({ ok: false, err: 'ルームが見つかりません' });
-    if (R.ids[1] || R.isCpu) return cb({ ok: false, err: 'ルームに参加できません' });
+    if (!R) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームが見つかりません' }); return; }
+    if (R.ids[1] || R.isCpu) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームに参加できません' }); return; }
     R.ids[1] = socket.id; socket.data = { code: R.code, slot: 1 };
     resetMatch(R);
-    cb({ ok: true });
+    if (typeof cb === 'function') cb({ ok: true });
     for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
   });
+
   socket.on('inp', d => {
     const R = rooms.get(socket.data && socket.data.code);
-    if (R) R.inp[socket.data.slot] = { l: !!(d && d.l), r: !!(d && d.r) };
+    if (R && socket.data) R.inp[socket.data.slot] = { l: !!(d && d.l), r: !!(d && d.r) };
   });
+
   socket.on('act', () => {
     const R = rooms.get(socket.data && socket.data.code);
-    if (R) R.act[socket.data.slot] = true;
+    if (R && socket.data) R.act[socket.data.slot] = true;
   });
+
   socket.on('again', () => {
     const R = rooms.get(socket.data && socket.data.code);
     if (R && R.state === 'match') resetMatch(R);
   });
+
   socket.on('leave', () => {
     const R = rooms.get(socket.data && socket.data.code);
     if (!R) return;
@@ -223,6 +234,7 @@ io.on('connection', socket => {
     if (other) io.to(other).emit('left');
     rooms.delete(R.code);
   });
+
   socket.on('disconnect', () => {
     const R = rooms.get(socket.data && socket.data.code);
     if (!R) return;
