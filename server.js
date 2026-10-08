@@ -108,4 +108,96 @@ io.on('connection', socket => {
     const isAtt = room.att === slot;
 
     if (isAtt) {
-      if (p.brakes > 0
+      if (p.brakes > 0 && !p.brk) {
+        p.brakes--; p.brk = 1;
+        setTimeout(() => p.brk = 0, 400);
+        room.lastAct = 'brake';
+      }
+    } else {
+      if (p.cd <= 0 && !p.boost) {
+        p.boost = 1; p.cd = 3.5;
+        setTimeout(() => p.boost = 0, 800);
+        room.lastAct = 'boost';
+      }
+    }
+  });
+
+  const disconnect = () => {
+    if (room) {
+      socket.to(room.code).emit('left');
+      rooms.delete(room.code);
+      room = null;
+    }
+  };
+  socket.on('leave', disconnect);
+  socket.on('disconnect', disconnect);
+});
+
+// ゲーム更新ループ (30FPS)
+setInterval(() => {
+  rooms.forEach(R => {
+    if (R.s === 'count') {
+      R.t -= TICK;
+      if (R.t <= 0) { R.s = 'play'; R.t = 0; }
+    } else if (R.s === 'play') {
+      R.el += TICK;
+      genObs(R);
+
+      R.P.forEach((p, idx) => {
+        if (p.cd > 0) p.cd = Math.max(0, p.cd - TICK);
+        let targetV = BASE;
+        if (p.brk) targetV = 20;
+        if (p.boost) targetV = 220;
+        p.v += (targetV - p.v) * 0.1;
+        p.z += p.v * TICK;
+
+        // BOT思考
+        if (R.isBot && idx === 1) {
+          const me = R.P[0];
+          if (p.x < me.x - 5) p.x += 2.5;
+          else if (p.x > me.x + 5) p.x -= 2.5;
+          
+          // 5秒経過後のみBOTもスキルを使用
+          if (R.el >= 5.0) {
+            if (R.att === 1 && p.brakes > 0 && Math.abs(p.z - me.z) < 40 && !p.brk) {
+              p.brakes--; p.brk = 1;
+              setTimeout(() => p.brk = 0, 400);
+            } else if (R.att === 0 && p.cd <= 0 && !p.boost) {
+              p.boost = 1; p.cd = 3.5;
+              setTimeout(() => p.boost = 0, 800);
+            }
+          }
+        }
+      });
+
+      // 勝敗判定（逃走側が攻撃側を追い抜いたか）
+      const attP = R.P[R.att], defP = R.P[1 - R.att];
+      if (defP.z > attP.z) {
+        R.s = 'result'; R.t = 3;
+        const winSlot = 1 - R.att;
+        R.sc[winSlot]++;
+        R.hist.push(winSlot);
+        R.msg = '追越成功！';
+        R.sub = (winSlot === 0 ? 'あなた' : '相手') + 'の勝利';
+      }
+    } else if (R.s === 'result') {
+      R.t -= TICK;
+      if (R.t <= 0) {
+        R.rd++;
+        if (R.sc[0] >= 3 || R.sc[1] >= 3) {
+          R.s = 'match';
+          R.msg = R.sc[0] >= 3 ? 'VICTORY!' : 'DEFEAT...';
+          R.sub = `最終スコア ${R.sc[0]} - ${R.sc[1]}`;
+        } else {
+          newRound(R);
+        }
+      }
+    }
+
+    io.to(R.code).emit('st', R);
+    R.lastAct = R.lastEvent = null;
+  });
+}, 1000 / 30);
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('Server started on port ' + PORT));
