@@ -79,13 +79,218 @@ let last = { l: 0, r: 0 };
 function showRoomPanel() { $('main-menu').style.display = 'none'; $('room-panel').style.display = 'flex';$('st').textContent = ''; }
 function showMainMenu() { $('main-menu').style.display = 'flex'; $('room-panel').style.display = 'none';$('st').textContent = ''; }
 
-$('btn-solo').onclick = () => socket.emit('joinBot', res => { if (res && !res.ok) alert(res.err); });
-$('create').onclick = () => socket.emit('create', res => { if (res && res.code)$('st').textContent = 'コード: ' + res.code + ' (対戦相手待ち)'; });
-$('join').onclick = () => {
-  const codeVal = $('code').value.trim();
-  if (codeVal) socket.emit('join', codeVal, res => { if (res && !res.ok) $('st').textContent = res.err; });
+// ソロボタン処理の強化
+$('btn-solo').onclick = () => {
+  socket.emit('joinBot', res => {
+    if (res && !res.ok) {
+      alert(res.err || 'ソロモードの開始に失敗しました');
+    }
+  });
 };
 
-socket.on('start', d => { slot = d.slot; inGame = true; $('lobby-overlay').style.display = 'none'; });
+$('create').onclick = () => {
+  socket.emit('create', res => { 
+    if (res && res.code) $('st').textContent = 'コード: ' + res.code + ' (対戦相手待ち)'; 
+  });
+};
+
+$('join').onclick = () => {
+  const codeVal = $('code').value.trim();
+  if (codeVal) {
+    socket.emit('join', codeVal, res => { 
+      if (res && !res.ok) $('st').textContent = res.err; 
+    });
+  }
+};
+
+socket.on('start', d => { 
+  slot = d ? d.slot : 0; 
+  inGame = true; 
+  $('lobby-overlay').style.display = 'none'; 
+});
+
 socket.on('left', () => {
-  if (in
+  if (inGame) {
+    alert('相手が退出しました');
+    inGame = false;
+    $('lobby-overlay').style.display = 'flex';
+    showMainMenu();
+  }
+});
+
+socket.on('st', s => { S = s; });
+
+const keys = {};
+function sendInp() {
+  const l = +!!(keys.KeyA || keys.ArrowLeft);
+  const r = +!!(keys.KeyD || keys.ArrowRight);
+  if (l !== last.l || r !== last.r) {
+    last = { l, r };
+    socket.emit('inp', { l, r });
+  }
+}
+
+addEventListener('keydown', e => {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
+  if (!keys[e.code]) {
+    if (['KeyW', 'ArrowUp', 'Space'].includes(e.code)) socket.emit('act');
+  }
+  keys[e.code] = true;
+  sendInp();
+});
+
+addEventListener('keyup', e => {
+  keys[e.code] = false;
+  sendInp();
+});
+
+function draw() {
+  ctx.fillStyle = '#0f1115';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!inGame || !S || !S.P) return;
+
+  const me = S.P[slot];
+  if (!me) return;
+
+  const roadW = 260;
+  const roadX = (W - roadW) / 2;
+  
+  ctx.fillStyle = '#1e232d';
+  ctx.fillRect(roadX, 0, roadW, H);
+
+  ctx.fillStyle = '#ff4655';
+  ctx.fillRect(roadX - 6, 0, 6, H);
+  ctx.fillRect(roadX + roadW, 0, 6, H);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(roadX + 4, 0, 4, H);
+  ctx.fillRect(roadX + roadW - 8, 0, 4, H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  const offset = (me.z % 60);
+  for (let y = -60; y < H; y += 60) {
+    ctx.fillRect(W / 2 - 2, y + offset, 4, 30);
+  }
+
+  if (S.obs) {
+    S.obs.forEach(o => {
+      const px = W / 2 + o.x;
+      const py = H / 2 - (o.z - me.z) * 0.8;
+      if (py > -50 && py < H + 50) {
+        ctx.fillStyle = o.type === 'oil' ? '#111' : '#ff9800';
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
+
+  const oppSlot = 1 - slot;
+  const opp = S.P[oppSlot];
+
+  S.P.forEach((p, idx) => {
+    if (!p) return;
+    const px = W / 2 + p.x;
+    const py = H / 2 - (p.z - me.z) * 0.8;
+
+    if (p.boost) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 235, 59, 0.4)';
+      ctx.beginPath();
+      ctx.arc(px, py, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 87, 34, 0.6)';
+      ctx.beginPath();
+      ctx.moveTo(px - 10, py);
+      ctx.lineTo(px + 10, py);
+      ctx.lineTo(px, py + 35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (p.brk) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath();
+      ctx.arc(px + (Math.random() - 0.5) * 10, py + 15, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = COL[idx];
+    ctx.beginPath();
+    ctx.arc(px, py, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (p.boost) {
+      ctx.fillStyle = '#ffeb3b';
+      ctx.font = '900 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ BOOST!', px, py - 22);
+    }
+  });
+
+  if (opp && S.s === 'play') {
+    const oppPy = H / 2 - (opp.z - me.z) * 0.8;
+    
+    if (oppPy < 20) {
+      const relX = (opp.x - me.x);
+      let markerX = W / 2 + relX;
+
+      const minX = roadX + 12;
+      const maxX = roadX + roadW - 12;
+      markerX = Math.max(minX, Math.min(maxX, markerX));
+
+      const markerY = 25;
+      const pulse = Math.sin(Date.now() / 100) * 3;
+
+      ctx.save();
+      ctx.fillStyle = COL[oppSlot];
+      ctx.beginPath();
+      ctx.moveTo(markerX, markerY + 12 + pulse);
+      ctx.lineTo(markerX - 10, markerY - 6);
+      ctx.lineTo(markerX + 10, markerY - 6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('TARGET', markerX, markerY - 10);
+      ctx.restore();
+    }
+  }
+
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  
+  if (S.s === 'count') {
+    ctx.font = 'bold 32px sans-serif';
+    ctx.fillText(Math.ceil(S.t), W / 2, 100);
+  } else if (S.s === 'play') {
+    if (S.el < 5.0) {
+      const rem = (5.0 - S.el).toFixed(1);
+      ctx.fillStyle = '#ff9800';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`🔒 アクション解除まで: ${rem}秒`, W / 2, 40);
+    }
+  } else if (S.s === 'result') {
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(S.msg, W / 2, 100);
+    ctx.font = '16px sans-serif';
+    ctx.fillText(S.sub, W / 2, 130);
+  }
+}
+
+(function loop() {
+  draw();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
