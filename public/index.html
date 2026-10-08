@@ -111,33 +111,40 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-function drawFullWidthWave(gap, bx, isBoost) {
-  if (gap === undefined || gap === null || gap > 250) return;
-  const prox = Math.max(0, 1 - gap / 250);
-  const numBars = 60;
-  const barW = (W / numBars) - 2;
-  const startY = H - 35;
-  const targetNormX = Math.max(0, Math.min(1, (bx + ROAD_W) / (ROAD_W * 2)));
-  const barColor = isBoost ? '#ffeb3b' : '#ffffff';
+// 相手の位置を示す直感的な「三角マーカー（▲）」
+function drawTriangleMarker(gap, bx, isBoost) {
+  if (gap === undefined || gap === null || gap > 260) return;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(0, startY - 5, W, 40);
+  const prox = Math.max(0, 1 - gap / 250); // 接近度 0.0 ~ 1.0
+  const targetX = Math.max(40, Math.min(W - 40, (bx + ROAD_W) / (ROAD_W * 2) * W));
+  
+  // 距離に応じて三角の大きさを変化 (最小12px 〜 最大36px)
+  const size = 12 + prox * 24; 
+  const baseY = H - 15;
+
+  // ガイドバー背景
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, H - 45, W, 45);
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, startY - 5);
-  ctx.lineTo(W, startY - 5);
+  ctx.moveTo(0, H - 45);
+  ctx.lineTo(W, H - 45);
   ctx.stroke();
 
-  for (let i = 0; i < numBars; i++) {
-    const barNormX = i / (numBars - 1);
-    const distFromTarget = Math.abs(barNormX - targetNormX);
-    const peak = Math.max(0, 1 - distFromTarget * 4);
-    const h = Math.max(3, (prox * 28 + 2) * peak);
+  // 三角マーカー（▲）を描画
+  ctx.fillStyle = isBoost ? '#ffeb3b' : '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(targetX, baseY - size * 1.2);          // 頂点
+  ctx.lineTo(targetX - size, baseY);                // 左下
+  ctx.lineTo(targetX + size, baseY);                // 右下
+  ctx.closePath();
+  ctx.fill();
 
-    ctx.fillStyle = barColor;
-    ctx.fillRect(i * (barW + 2) + 1, startY + 32 - h, barW, h);
-  }
+  // 枠線をつけてクッキリさせる
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 function view(){
@@ -158,8 +165,9 @@ function view(){
   if(D.P) D.P.forEach((p,i)=>{if(p)items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});});
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
+  // 攻撃側（A）の時に三角マーカーを表示
   if(isA) {
-    drawFullWidthWave(D.bgGap, D.bgBx, D.bgBoost);
+    drawTriangleMarker(D.bgGap, D.bgBx, D.bgBoost);
   }
 
   const cop=D.obs?D.obs.find(o=>o.k==='cop'&&o.z<camz+1&&camz-o.z<400):null;
@@ -170,11 +178,12 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下のメーターでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▲マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
-  const actReady = D.el >= 5;
+  // アクション解禁時間を 3秒 に変更
+  const actReady = D.el >= 3;
   if(!actReady){
-    const rem = Math.max(0, 5 - D.el).toFixed(1);
+    const rem = Math.max(0, 3 - D.el).toFixed(1);
     ctx.fillStyle='#ffab40';ctx.font='bold 13px sans-serif';ctx.textAlign='right';
     ctx.fillText('アクション解禁まで '+rem+'秒',W-10,85);
   }else{
