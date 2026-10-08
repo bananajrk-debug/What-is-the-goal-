@@ -8,7 +8,6 @@ app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// HW = 75 (道路の横幅を半分に変更)
 const BASE = 110, HW = 75, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
 const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
@@ -50,14 +49,12 @@ function afterResult(R) {
   R.round++; newRound(R);
 }
 
-// CPU AIロジック
 function updateCpuInp(R) {
   if (!R.isCpu || R.state !== 'play') return;
   const cpuSlot = 1;
   const cpuP = R.P[cpuSlot];
   if (!cpuP) return;
 
-  // 対向車 回避 AI
   let targetX = cpuP.x;
   const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 250);
   if (aheadCars.length > 0) {
@@ -72,17 +69,14 @@ function updateCpuInp(R) {
   const dx = targetX - cpuP.x;
   R.inp[cpuSlot] = { l: dx < -5, r: dx > 5 };
 
-  // アクション（5秒経過後）
   if (R.el >= 5) {
     const isAtt = R.att === cpuSlot;
     if (isAtt) {
-      // 攻撃側：敵(プレイヤー)が直後に接近したら急ブレーキ
       const playerP = R.P[0];
       if (playerP && Math.abs(playerP.x - cpuP.x) < 20 && (cpuP.z - playerP.z) < 25 && cpuP.brakes > 0 && cpuP.brk <= 0) {
         if (Math.random() < 0.08) R.act[cpuSlot] = true;
       }
     } else {
-      // 追越側：クールダウン明けにブースト
       if (cpuP.cd <= 0 && cpuP.boost <= 0) {
         if (Math.random() < 0.05) R.act[cpuSlot] = true;
       }
@@ -106,7 +100,6 @@ function step(R, dt) {
     p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
   }
 
-  // アクション実行判定（5秒制限）
   if (R.el >= 5) {
     if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; }
     if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; }
@@ -165,9 +158,14 @@ function step(R, dt) {
 const r1 = n => Math.round(n * 10) / 10;
 function snap(R, slot) {
   const hide = (R.state === 'play' || R.state === 'count') && slot === R.att;
+  const att = R.att, d = 1 - att;
+  const bgGap = (R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
+  const bgDx = (R.P[att] && R.P[d]) ? (R.P[d].x - R.P[att].x) : 0;
+
   const P = R.P.map((p, i) => (hide && i !== slot) ? null :
     { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) });
   return { s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
+    bgGap: r1(bgGap), bgDx: r1(bgDx),
     P, obs: R.obs.map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) };
 }
 
@@ -216,6 +214,13 @@ io.on('connection', socket => {
   socket.on('again', () => {
     const R = rooms.get(socket.data && socket.data.code);
     if (R && R.state === 'match') resetMatch(R);
+  });
+  socket.on('leave', () => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (!R) return;
+    const other = R.ids[1 - socket.data.slot];
+    if (other) io.to(other).emit('left');
+    rooms.delete(R.code);
   });
   socket.on('disconnect', () => {
     const R = rooms.get(socket.data && socket.data.code);
