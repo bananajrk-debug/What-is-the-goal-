@@ -126,7 +126,7 @@ function drawTriangleMarker(me, gap, bx, isBoost) {
   const targetX = Math.max(roadLeftX + 15, Math.min(roadRightX - 15, roadLeftX + normX * (roadRightX - roadLeftX)));
   
   const size = 12 + prox * 20; 
-  const baseY = H - 38; // 逆三角形の上端位置
+  const baseY = H - 38;
 
   const barLeft = Math.max(0, roadLeftX);
   const barRight = Math.min(W, roadRightX);
@@ -139,12 +139,11 @@ function drawTriangleMarker(me, gap, bx, isBoost) {
   ctx.lineTo(barRight, H - 45);
   ctx.stroke();
 
-  // 逆三角形（▼）を描画
   ctx.fillStyle = isBoost ? '#ffeb3b' : '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(targetX - size, baseY);                 // 左上
-  ctx.lineTo(targetX + size, baseY);                 // 右上
-  ctx.lineTo(targetX, baseY + size * 1.2);          // 下の頂点
+  ctx.moveTo(targetX - size, baseY);
+  ctx.lineTo(targetX + size, baseY);
+  ctx.lineTo(targetX, baseY + size * 1.2);
   ctx.closePath();
   ctx.fill();
 
@@ -159,7 +158,9 @@ function view(){
   const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#4a90d9');g.addColorStop(1,'#bfe3ff');
   ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);ctx.fillStyle='#3c8a3c';ctx.fillRect(0,HY,W,H-HY);
   const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
-  const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
+  
+  // 修正箇所: [X(x1,a), Y(a)] の形式に修正（グラフィックバグの回避）
+  const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a),Y(a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
   
   q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#55575c');
   for(let z=Math.floor(camz/40)*40;z<camz+1000;z+=40){
