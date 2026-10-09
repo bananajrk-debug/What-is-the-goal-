@@ -12,12 +12,15 @@ h1{margin:0 0 6px;font-size:38px}
 button,input{font-size:18px;padding:10px 16px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
-input{width:150px;text-align:center;letter-spacing:4px}
+input{width:180px;text-align:center}
+#name-input{width:200px;letter-spacing:1px;font-weight:bold;margin-bottom:8px}
+#code{width:150px;letter-spacing:4px}
 #st{min-height:24px;color:#9fd}
 p{font-size:13px;color:#aab;margin:8px 12px;text-align:center}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
 <div id="lobby"><h1>なにが目的なん？</h1>
+<div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
 <button id="solo" class="solo">ソロ（CPU対戦）</button>
 <button id="create">ルーム作成</button>
 <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
@@ -30,6 +33,8 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 
+function getName(){ const val=$('pname').value.trim(); return val||'プレイヤー'; }
+
 function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
@@ -37,9 +42,9 @@ function returnLobby(){
   $('st').textContent='';
 }
 
-$('solo').onclick=()=>socket.emit('solo');
-$('create').onclick=()=>socket.emit('create',r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';});
-$('join').onclick=()=>socket.emit('join',$('code').value.trim(),r=>{if(!r.ok)$('st').textContent=r.err;});
+$('solo').onclick=()=>socket.emit('solo', { name: getName() });
+$('create').onclick=()=>socket.emit('create', { name: getName() }, r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';});
+$('join').onclick=()=>socket.emit('join', { code: $('code').value.trim(), name: getName() }, r=>{if(!r.ok)$('st').textContent=r.err;});
 socket.on('start',d=>{slot=d.slot;inGame=true;S=D=null;$('lobby').style.display='none';});
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
 socket.on('st',s=>{S=s;});
@@ -85,20 +90,32 @@ function sync(dt){
     c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;return c;
   });
   const obs=(S.obs||[]).map(o=>{const c=old[o.id];if(!c)return{...o};c.x+=(o.x-c.x)*k;c.z+=(o.z-c.z)*k;return c;});
-  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost});
+  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names});
 }
 
 function poly(pts,c){ctx.fillStyle=c;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();}
+
+// 樹木の描画を追加（グラフィック強化）
+function tree(X,Y,s){
+  const k=s*K*28;
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(X,Y,k*.8,k*.25,0,0,7);ctx.fill();
+  ctx.fillStyle='#5c3a21';ctx.fillRect(X-k*.15,Y-k*2.5,k*.3,k*2.5);
+  ctx.fillStyle='#1e5e22';ctx.beginPath();ctx.arc(X,Y-k*3.2,k*1.2,0,7);ctx.fill();
+  ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.arc(X-k*.2,Y-k*3.4,k*.9,0,7);ctx.fill();
+  ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
+}
+
 function bike(X,Y,s,col,p){
   const k=s*K*22;
-  if(p.boost){ctx.fillStyle='rgba(255,230,80,.35)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.2,0,7);ctx.fill();}
+  if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(X,Y,k*.9,k*.3,0,0,7);ctx.fill();
-  ctx.fillStyle='#222';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
+  ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
   ctx.fillStyle=col;ctx.fillRect(X-k*.6,Y-k*3.7,k*1.2,k*1.8);
   ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.5,0,7);ctx.fill();
-  ctx.fillStyle='#444';ctx.fillRect(X-k,Y-k*2.9,k*2,k*.2);
+  ctx.fillStyle='#333';ctx.fillRect(X-k,Y-k*2.9,k*2,k*.2);
   if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);}
 }
+
 function car(X,Y,s,o){
   const k=s*K*22,cop=o.k==='cop',f=Math.floor(Date.now()/150)%2;
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(X-k*1.5,Y-k*.2,k*3,k*.4);
@@ -111,7 +128,6 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-// 逆三角形（▼）マーカーの描画
 function drawTriangleMarker(me, gap, bx, isBoost) {
   if (gap === undefined || gap === null || gap > 260 || !me) return;
 
@@ -155,24 +171,35 @@ function drawTriangleMarker(me, gap, bx, isBoost) {
 function view(){
   if(!D||!D.P||!D.P[slot]) return;
   const me=D.P[slot],isA=D.att===slot,camz=me.z-45,camx=me.x*.6;
-  const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#4a90d9');g.addColorStop(1,'#bfe3ff');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);ctx.fillStyle='#3c8a3c';ctx.fillRect(0,HY,W,H-HY);
-  const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
   
+  // 背景空・地面グラフィック強化
+  const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#2b5c8f');g.addColorStop(1,'#87ceeb');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);
+  const gGrass=ctx.createLinearGradient(0,HY,0,H);gGrass.addColorStop(0,'#2d6a2e');gGrass.addColorStop(1,'#1b431c');
+  ctx.fillStyle=gGrass;ctx.fillRect(0,HY,W,H-HY);
+
+  const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
   const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a),Y(a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
   
-  q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#55575c');
+  q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#4a4d52');
   for(let z=Math.floor(camz/40)*40;z<camz+1000;z+=40){
-    if(z+40<camz+1)continue;const zz=Math.max(z,camz+1),c=((z/40)&1)?'#e33':'#eee';
-    q(-ROAD_W-10,-ROAD_W,zz,z+40,c);q(ROAD_W,ROAD_W+10,zz,z+40,c);q(-2,2,zz,z+20,'#ddd');}
+    if(z+40<camz+1)continue;const zz=Math.max(z,camz+1),c=((z/40)&1)?'#d32f2f':'#ffffff';
+    q(-ROAD_W-12,-ROAD_W,zz,z+40,c);q(ROAD_W,ROAD_W+12,zz,z+40,c);q(-2,2,zz,z+20,'#fbc02d');}
   
   const items=[];
+
+  // 道路沿いの木のオブジェクトを追加生成（左右）
+  for(let z=Math.floor(camz/80)*80;z<camz+1000;z+=80){
+    if(z<camz+5)continue;
+    items.push({z, f:()=>tree(X(-ROAD_W-40, S_(z)), Y(S_(z)), S_(z))});
+    items.push({z, f:()=>tree(X(ROAD_W+40, S_(z)), Y(S_(z)), S_(z))});
+  }
+
   if(D.obs) D.obs.forEach(o=>items.push({z:o.z,f:()=>car(X(o.x,S_(o.z)),Y(S_(o.z)),S_(o.z),o)}));
   
-  // 変更点: 攻撃側(A)の視点時、相手がブースト中なら隠さずに画面上に描画する
   if(D.P) D.P.forEach((p,i)=>{
     if(p) {
-      if(isA && i !== slot && !p.boost) return; // 攻撃側かつ非ブースト時のみ非表示
+      if(isA && i !== slot && !p.boost) return;
       items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});
     }
   });
@@ -196,7 +223,7 @@ function view(){
   if(!actReady){
     const rem = Math.max(0, 3 - D.el).toFixed(1);
     ctx.fillStyle='#ffab40';ctx.font='bold 13px sans-serif';ctx.textAlign='right';
-    ctx.fillText('アクション使用可能まで '+rem+'秒',W-10,85);
+    ctx.fillText('アクション解禁まで '+rem+'秒',W-10,85);
   }else{
     if(isA){for(let n=0;n<3;n++){ctx.fillStyle=n<me.brakes?'#f44':'#444';ctx.beginPath();ctx.arc(W-20-n*26,80,9,0,7);ctx.fill();}
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText('急ブレーキ',W-90,85);}
@@ -209,7 +236,8 @@ function topbar(){
   if(!D) return;
   ctx.fillStyle='#0b0e14';ctx.fillRect(0,0,W,62);
   const o=1-slot;
-  [[slot,20,'left','あなた'],[o,W-20,'right','相手']].forEach(([i,x,al,lb])=>{
+  const names = D.names || ['プレイヤー1', 'プレイヤー2'];
+  [[slot,20,'left',names[slot]||'あなた'],[o,W-20,'right',names[o]||'相手']].forEach(([i,x,al,lb])=>{
     ctx.textAlign=al;ctx.fillStyle=COL[i];ctx.font='bold 18px sans-serif';ctx.fillText(lb+'  '+(D.sc?D.sc[i]:0),x,24);
     ctx.fillStyle='#ccc';ctx.font='12px sans-serif';ctx.fillText(D.att===i?'攻撃 (A)':'追越 (B)',x,42);
     for(let n=0;n<4;n++){ctx.fillStyle=n<(D.sc?D.sc[i]:0)?COL[i]:'#333';ctx.beginPath();ctx.arc(al==='left'?x+110+n*18:x-110-n*18,18,6,0,7);ctx.fill();}});
