@@ -7,7 +7,6 @@ app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 道路の横幅を1.5倍（HW = 112.5）に変更
 const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
 const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
@@ -54,36 +53,54 @@ function afterResult(R) {
   R.round++; newRound(R);
 }
 
+// 強化された CPU AI ロジック
 function updateCpuInp(R) {
   if (!R.isCpu || R.state !== 'play') return;
   const cpuSlot = 1;
   const cpuP = R.P[cpuSlot];
+  const playerP = R.P[0];
   if (!cpuP) return;
 
   let targetX = cpuP.x;
-  const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 250);
+
+  // 1. 車両の危険回避（優先度高）
+  const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 260);
   if (aheadCars.length > 0) {
     aheadCars.sort((a, b) => a.z - b.z);
     const danger = aheadCars[0];
-    if (Math.abs(danger.x - cpuP.x) < 30) {
-      targetX = danger.x > 0 ? danger.x - 45 : danger.x + 45;
+    if (Math.abs(danger.x - cpuP.x) < 32) {
+      targetX = danger.x > 0 ? danger.x - 50 : danger.x + 50;
       targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
+    }
+  } else if (playerP) {
+    // 2. 対人プレイの立ち回り
+    const isAtt = R.att === cpuSlot;
+    if (isAtt) {
+      // 攻撃側CPU: プレイヤーから離れるか、目の前に立ち塞がる
+      if (Math.abs(playerP.x - cpuP.x) < 20) {
+        targetX = playerP.x; // ブロックラインに合わせる
+      }
+    } else {
+      // 追越側CPU: プレイヤーの後方にアグレッシブに接近、追い抜きを狙う
+      targetX = playerP.x; 
     }
   }
 
   const dx = targetX - cpuP.x;
-  R.inp[cpuSlot] = { l: dx < -5, r: dx > 5 };
+  R.inp[cpuSlot] = { l: dx < -3, r: dx > 3 };
 
+  // 3. CPUのアクション（3秒経過後）
   if (R.el >= 3) {
     const isAtt = R.att === cpuSlot;
     if (isAtt) {
-      const playerP = R.P[0];
-      if (playerP && Math.abs(playerP.x - cpuP.x) < 20 && (cpuP.z - playerP.z) < 25 && cpuP.brakes > 0 && cpuP.brk <= 0) {
-        if (Math.random() < 0.08) R.act[cpuSlot] = true;
+      // 攻撃側：プレイヤーが後方超至近距離に接近したら急ブレーキ
+      if (playerP && Math.abs(playerP.x - cpuP.x) < 25 && (cpuP.z - playerP.z) < 35 && cpuP.brakes > 0 && cpuP.brk <= 0) {
+        if (Math.random() < 0.25) R.act[cpuSlot] = true;
       }
     } else {
+      // 追越側：ブースト可能なら高確率で即使用
       if (cpuP.cd <= 0 && cpuP.boost <= 0) {
-        if (Math.random() < 0.05) R.act[cpuSlot] = true;
+        if (Math.random() < 0.3) R.act[cpuSlot] = true;
       }
     }
   }
@@ -149,10 +166,10 @@ function step(R, dt) {
       : endRound(R, 1 - i, -1, name + ' 車と衝突！');
   }
 
-  // --- A↔B 当たり判定（後方の追越側Bが攻撃側Aに当たったらBの負け） ---
+  // A↔B 当たり判定（後方の追越側Bが攻撃側Aに当たったらBの負け）
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
-    return endRound(R, att, -1, '攻撃側に激突！'); // 後ろ側（B）の負け
+    return endRound(R, att, -1, '攻撃側に激突！');
   }
 
   if (B.z > A.z + 12) return endRound(R, d, -1, '追い抜き成功！');
