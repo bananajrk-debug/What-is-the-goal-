@@ -27,7 +27,7 @@ p{font-size:13px;color:#aab;margin:8px 12px;text-align:center}
 <script>
 const socket=io(),cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=720,H=540;
 const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#3a6','#58c','#c9a','#999'];
-const HY=170,GY=540,K=1.9,ROAD_W=112.5; // 道路幅を1.5倍(112.5)に変更
+const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 
 function returnLobby(){
@@ -111,26 +111,23 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-// 道路幅の範囲内に収めた「三角マーカー（▲）」
+// 逆三角形（▼）マーカーの描画
 function drawTriangleMarker(me, gap, bx, isBoost) {
   if (gap === undefined || gap === null || gap > 260 || !me) return;
 
   const prox = Math.max(0, 1 - gap / 250);
   const camx = me.x * 0.6;
-  const sBottom = 1; // 画面一番下でのスケーリング
+  const sBottom = 1;
   
-  // 画面上での道路の左右端の座標を算出
   const roadLeftX = W/2 + (-ROAD_W - camx) * sBottom * K;
   const roadRightX = W/2 + (ROAD_W - camx) * sBottom * K;
 
-  // 相手のX位置を画面上の道路幅の中にマッピング
   const normX = (bx + ROAD_W) / (ROAD_W * 2);
   const targetX = Math.max(roadLeftX + 15, Math.min(roadRightX - 15, roadLeftX + normX * (roadRightX - roadLeftX)));
   
   const size = 12 + prox * 20; 
-  const baseY = H - 15;
+  const baseY = H - 38; // 逆三角形の上端位置
 
-  // ガイドバー背景（道路幅の範囲にのみ描画）
   const barLeft = Math.max(0, roadLeftX);
   const barRight = Math.min(W, roadRightX);
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -142,12 +139,12 @@ function drawTriangleMarker(me, gap, bx, isBoost) {
   ctx.lineTo(barRight, H - 45);
   ctx.stroke();
 
-  // 三角マーカー（▲）を描画
+  // 逆三角形（▼）を描画
   ctx.fillStyle = isBoost ? '#ffeb3b' : '#ffffff';
   ctx.beginPath();
-  ctx.moveTo(targetX, baseY - size * 1.2);
-  ctx.lineTo(targetX - size, baseY);
-  ctx.lineTo(targetX + size, baseY);
+  ctx.moveTo(targetX - size, baseY);                 // 左上
+  ctx.lineTo(targetX + size, baseY);                 // 右上
+  ctx.lineTo(targetX, baseY + size * 1.2);          // 下の頂点
   ctx.closePath();
   ctx.fill();
 
@@ -162,7 +159,7 @@ function view(){
   const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#4a90d9');g.addColorStop(1,'#bfe3ff');
   ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);ctx.fillStyle='#3c8a3c';ctx.fillRect(0,HY,W,H-HY);
   const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
-  const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a),Y(a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
+  const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
   
   q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#55575c');
   for(let z=Math.floor(camz/40)*40;z<camz+1000;z+=40){
@@ -186,7 +183,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▲マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
