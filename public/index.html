@@ -111,24 +111,38 @@ function car(X,Y,s,o){
   else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
 }
 
-function drawTriangleMarker(gap, bx, isBoost) {
-  if (gap === undefined || gap === null || gap > 260) return;
+// 道路幅の範囲内に収めた「三角マーカー（▲）」
+function drawTriangleMarker(me, gap, bx, isBoost) {
+  if (gap === undefined || gap === null || gap > 260 || !me) return;
 
   const prox = Math.max(0, 1 - gap / 250);
-  const targetX = Math.max(40, Math.min(W - 40, (bx + ROAD_W) / (ROAD_W * 2) * W));
+  const camx = me.x * 0.6;
+  const sBottom = 1; // 画面一番下でのスケーリング
   
-  const size = 12 + prox * 24; 
+  // 画面上での道路の左右端の座標を算出
+  const roadLeftX = W/2 + (-ROAD_W - camx) * sBottom * K;
+  const roadRightX = W/2 + (ROAD_W - camx) * sBottom * K;
+
+  // 相手のX位置を画面上の道路幅の中にマッピング
+  const normX = (bx + ROAD_W) / (ROAD_W * 2);
+  const targetX = Math.max(roadLeftX + 15, Math.min(roadRightX - 15, roadLeftX + normX * (roadRightX - roadLeftX)));
+  
+  const size = 12 + prox * 20; 
   const baseY = H - 15;
 
+  // ガイドバー背景（道路幅の範囲にのみ描画）
+  const barLeft = Math.max(0, roadLeftX);
+  const barRight = Math.min(W, roadRightX);
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(0, H - 45, W, 45);
-  ctx.strokeStyle = '#333';
+  ctx.fillRect(barLeft, H - 45, barRight - barLeft, 45);
+  ctx.strokeStyle = '#444';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(0, H - 45);
-  ctx.lineTo(W, H - 45);
+  ctx.moveTo(barLeft, H - 45);
+  ctx.lineTo(barRight, H - 45);
   ctx.stroke();
 
+  // 三角マーカー（▲）を描画
   ctx.fillStyle = isBoost ? '#ffeb3b' : '#ffffff';
   ctx.beginPath();
   ctx.moveTo(targetX, baseY - size * 1.2);
@@ -161,7 +175,7 @@ function view(){
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
   if(isA) {
-    drawTriangleMarker(D.bgGap, D.bgBx, D.bgBoost);
+    drawTriangleMarker(me, D.bgGap, D.bgBx, D.bgBoost);
   }
 
   const cop=D.obs?D.obs.find(o=>o.k==='cop'&&o.z<camz+1&&camz-o.z<400):null;
@@ -172,7 +186,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▲マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！(※Aへの追突は敗北)',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▲マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
