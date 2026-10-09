@@ -7,7 +7,7 @@ app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ROAD_W / HW を1.5倍の112.5に変更
+// 道路の横幅を1.5倍（HW = 112.5）に変更
 const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
 const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
@@ -149,12 +149,12 @@ function step(R, dt) {
       : endRound(R, 1 - i, -1, name + ' 車と衝突！');
   }
 
-  // --- A↔B 接触判定 (BがAの背中に当たったらBの負け) ---
+  // --- A↔B 当たり判定（後方の追越側Bが攻撃側Aに当たったらBの負け） ---
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
-    // 急ブレーキ中かどうかに拘らず、後ろ(B)が前(A)に接触したらAの勝ち(Bの負け)
-    return endRound(R, att, -1, (R.isCpu && d === 1 ? 'CPU' : '追越側') + 'が前に追突！');
+    return endRound(R, att, -1, '攻撃側に激突！'); // 後ろ側（B）の負け
   }
+
   if (B.z > A.z + 12) return endRound(R, d, -1, '追い抜き成功！');
   if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)');
 }
