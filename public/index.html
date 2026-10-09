@@ -429,7 +429,7 @@ function view() {
   const X = (x, s) => W / 2 + (x - camx) * s * K;
   const q = (x1, x2, z1, z2, c) => { const a = S_(z1), b = S_(z2); poly([[X(x1, a), Y(a)], [X(x2, a), Y(a)], [X(x2, b), Y(b)], [X(x1, b), Y(b)]], c); };
   
-  // 道路描画（幅50%削減）
+  // 道路描画
   q(-75, 75, camz + 1, camz + 2500, '#111318');
   for (let z = Math.floor(camz / 40) * 40; z < camz + 1000; z += 40) {
     if (z + 40 < camz + 1) continue; const zz = Math.max(z, camz + 1), c = ((z / 40) & 1) ? '#ff4655' : '#e2e8f0';
@@ -452,7 +452,7 @@ function view() {
 
   ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 66, W, 32);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(isA ? '攻撃(A)：急ブレーキ or ブーストで接触撃墜を狙え！' : '追越(B)：Aを追い抜け！(突撃注意)', 15, 87);
+  ctx.fillText(isA ? '攻撃(A)：急ブレーキでBを撃墜せよ' : '追越(B)：ブーストでAを追い抜け！(突撃注意)', 15, 87);
   
   if (isA) {
     for (let n = 0; n < 3; n++) { ctx.fillStyle = n < me.brakes ? '#ff4655' : '#444'; ctx.beginPath(); ctx.arc(W - 20 - n * 26, 82, 9, 0, 7); ctx.fill(); }
