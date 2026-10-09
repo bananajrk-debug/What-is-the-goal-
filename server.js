@@ -53,7 +53,6 @@ function afterResult(R) {
   R.round++; newRound(R);
 }
 
-// 動的でアグレッシブに攻める CPU AI
 function updateCpuInp(R) {
   if (!R.isCpu || R.state !== 'play') return;
   const cpuSlot = 1;
@@ -63,7 +62,6 @@ function updateCpuInp(R) {
 
   let targetX = cpuP.x;
 
-  // 1. 対向車回避
   const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 260);
   if (aheadCars.length > 0) {
     aheadCars.sort((a, b) => a.z - b.z);
@@ -75,19 +73,16 @@ function updateCpuInp(R) {
   } else if (playerP) {
     const isAtt = R.att === cpuSlot;
     if (isAtt) {
-      // 攻撃側CPU: ジグザグに動いてラインを塞ぐ
       const sway = Math.sin(R.el * 3) * 45;
       targetX = playerP.x + sway;
       targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
     } else {
-      // 追越側CPU: 真後ろに突っ込まず、プレイヤーとX座標をずらして横から抜き去る
       const zGap = playerP.z - cpuP.z;
       if (zGap < 50) {
-        // 接近したらプレイヤーの左右あいている方に即座にハンドルを切って抜きにかかる
         const side = playerP.x > 0 ? -50 : 50;
         targetX = playerP.x + side;
       } else {
-        targetX = playerP.x; // 離れているときはスリップストリームを狙う
+        targetX = playerP.x;
       }
       targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
     }
@@ -96,7 +91,6 @@ function updateCpuInp(R) {
   const dx = targetX - cpuP.x;
   R.inp[cpuSlot] = { l: dx < -4, r: dx > 4 };
 
-  // 2. アクション（3秒経過後）
   if (R.el >= 3) {
     const isAtt = R.att === cpuSlot;
     if (isAtt) {
@@ -104,7 +98,6 @@ function updateCpuInp(R) {
         if (Math.random() < 0.35) R.act[cpuSlot] = true;
       }
     } else {
-      // 追越側：ブーストを即座に使って一気に抜きに行く
       if (cpuP.cd <= 0 && cpuP.boost <= 0) {
         R.act[cpuSlot] = true;
       }
@@ -126,7 +119,8 @@ function step(R, dt) {
   for (const i of [0, 1]) {
     const p = R.P[i], inp = R.inp[i] || {};
     const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
-    p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 190 : 230) * dt));
+    // 変更点: 攻撃側(A)の横移動速度を 190 -> 285 (1.5倍) に変更
+    p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 285 : 230) * dt));
   }
 
   if (R.el >= 3) {
@@ -172,7 +166,6 @@ function step(R, dt) {
       : endRound(R, 1 - i, -1, name + ' 車と衝突！');
   }
 
-  // A↔B 当たり判定（後方の追越側Bが攻撃側Aに当たったらBの負け）
   const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
   if (dx < 22 && gap < 18 && gap > -12) {
     return endRound(R, att, -1, '攻撃側に激突！');
@@ -184,14 +177,21 @@ function step(R, dt) {
 
 const r1 = n => Math.round(n * 10) / 10;
 function snap(R, slot) {
-  const hide = (R.state === 'play' || R.state === 'count') && slot === R.att;
   const att = R.att, d = 1 - att;
   const bgGap = (R.P && R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
   const bgBx = (R.P && R.P[d]) ? R.P[d].x : 0;
   const bgBoost = (R.P && R.P[d]) ? R.P[d].boost > 0 : false;
 
-  const P = (R.P || []).map((p, i) => (p && hide && i !== slot) ? null :
-    p ? { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) } : null);
+  // 変更点: 攻撃側(A)であっても相手(B)がブースト中の場合は、位置データをマスキング(null化)せず渡す
+  const P = (R.P || []).map((p, i) => {
+    if (!p) return null;
+    const isAttacker = slot === att;
+    const isTargetOpponent = i !== slot;
+    if ((R.state === 'play' || R.state === 'count') && isAttacker && isTargetOpponent && p.boost <= 0) {
+      return null;
+    }
+    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) };
+  });
 
   return { 
     s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
