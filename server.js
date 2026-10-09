@@ -37,7 +37,8 @@ function endRound(R, w, pen, text) {
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   R.hist.push(w);
   R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
-  R.sub = (w >= 0 ? (R.isCpu && w === 1 ? 'CPU' : 'プレイヤー' + (w + 1)) + '  ' : '') + text;
+  const name = R.names ? R.names[w] : ('プレイヤー' + (w + 1));
+  R.sub = (w >= 0 ? name + '  ' : '') + text;
   R.state = 'result'; R.timer = 2.5;
 }
 
@@ -45,7 +46,7 @@ function afterResult(R) {
   const w = R.hist[R.hist.length - 1];
   if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
     R.state = 'match';
-    const wName = R.isCpu && w === 1 ? 'CPU' : 'プレイヤー' + (w + 1);
+    const wName = R.names ? R.names[w] : ('プレイヤー' + (w + 1));
     R.msg = 'MATCH WINNER: ' + wName;
     R.sub = R.round >= 6 ? 'サドンデス決着' : '';
     return;
@@ -119,7 +120,6 @@ function step(R, dt) {
   for (const i of [0, 1]) {
     const p = R.P[i], inp = R.inp[i] || {};
     const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
-    // 変更点: 攻撃側(A)の横移動速度を 190 -> 285 (1.5倍) に変更
     p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 285 : 230) * dt));
   }
 
@@ -160,7 +160,7 @@ function step(R, dt) {
   }
   if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！');
   for (const i of [0, 1]) if (lost[i]) {
-    const name = R.isCpu && i === 1 ? 'CPU' : 'プレイヤー' + (i + 1);
+    const name = R.names ? R.names[i] : ('プレイヤー' + (i + 1));
     return lost[i] === 'cop'
       ? endRound(R, 1 - i, i, name + ' パトカー違反で逮捕！(-1pt)')
       : endRound(R, 1 - i, -1, name + ' 車と衝突！');
@@ -182,7 +182,6 @@ function snap(R, slot) {
   const bgBx = (R.P && R.P[d]) ? R.P[d].x : 0;
   const bgBoost = (R.P && R.P[d]) ? R.P[d].boost > 0 : false;
 
-  // 変更点: 攻撃側(A)であっても相手(B)がブースト中の場合は、位置データをマスキング(null化)せず渡す
   const P = (R.P || []).map((p, i) => {
     if (!p) return null;
     const isAttacker = slot === att;
@@ -195,7 +194,7 @@ function snap(R, slot) {
 
   return { 
     s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost,
+    bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names,
     P, obs: (R.obs || []).map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) 
   };
 }
@@ -211,27 +210,34 @@ setInterval(() => {
 }, TICK * 1000);
 
 io.on('connection', socket => {
-  socket.on('solo', () => {
+  socket.on('solo', d => {
     let code = 'SOLO_' + socket.id;
-    const R = { code, ids: [socket.id, null], isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] };
+    const pName = (d && d.name) ? d.name : 'プレイヤー';
+    const R = { code, ids: [socket.id, null], names: [pName, 'CPU'], isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] };
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
     socket.emit('start', { slot: 0 });
   });
 
-  socket.on('create', cb => {
+  socket.on('create', (d, cb) => {
+    if (typeof d === 'function') { cb = d; d = {}; }
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    rooms.set(code, { code, ids: [socket.id, null], isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
+    const pName = (d && d.name) ? d.name : 'プレイヤー1';
+    rooms.set(code, { code, ids: [socket.id, null], names: [pName, 'プレイヤー2'], isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
     socket.data = { code, slot: 0 };
     if (typeof cb === 'function') cb({ code });
   });
 
-  socket.on('join', (code, cb) => {
+  socket.on('join', (d, cb) => {
+    const code = (typeof d === 'object') ? d.code : d;
+    const pName = (typeof d === 'object' && d.name) ? d.name : 'プレイヤー2';
     const R = rooms.get(String(code));
     if (!R) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームが見つかりません' }); return; }
     if (R.ids[1] || R.isCpu) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームに参加できません' }); return; }
-    R.ids[1] = socket.id; socket.data = { code: R.code, slot: 1 };
+    R.ids[1] = socket.id;
+    R.names[1] = pName;
+    socket.data = { code: R.code, slot: 1 };
     resetMatch(R);
     if (typeof cb === 'function') cb({ ok: true });
     for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
