@@ -196,7 +196,7 @@ function view(){
   if(!actReady){
     const rem = Math.max(0, 3 - D.el).toFixed(1);
     ctx.fillStyle='#ffab40';ctx.font='bold 13px sans-serif';ctx.textAlign='right';
-    ctx.fillText('アクション解禁まで '+rem+'秒',W-10,85);
+    ctx.fillText('アクション使用可能まで '+rem+'秒',W-10,85);
   }else{
     if(isA){for(let n=0;n<3;n++){ctx.fillStyle=n<me.brakes?'#f44':'#444';ctx.beginPath();ctx.arc(W-20-n*26,80,9,0,7);ctx.fill();}
       ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText('急ブレーキ',W-90,85);}
