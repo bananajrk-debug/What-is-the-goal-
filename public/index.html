@@ -159,7 +159,6 @@ function view(){
   ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);ctx.fillStyle='#3c8a3c';ctx.fillRect(0,HY,W,H-HY);
   const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
   
-  // 修正箇所: [X(x1,a), Y(a)] の形式に修正（グラフィックバグの回避）
   const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a),Y(a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
   
   q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#55575c');
@@ -169,7 +168,14 @@ function view(){
   
   const items=[];
   if(D.obs) D.obs.forEach(o=>items.push({z:o.z,f:()=>car(X(o.x,S_(o.z)),Y(S_(o.z)),S_(o.z),o)}));
-  if(D.P) D.P.forEach((p,i)=>{if(p)items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});});
+  
+  // 変更点: 攻撃側(A)の視点時、相手がブースト中なら隠さずに画面上に描画する
+  if(D.P) D.P.forEach((p,i)=>{
+    if(p) {
+      if(isA && i !== slot && !p.boost) return; // 攻撃側かつ非ブースト時のみ非表示
+      items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});
+    }
+  });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
   if(isA) {
