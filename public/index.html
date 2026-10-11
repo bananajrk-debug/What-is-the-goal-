@@ -212,30 +212,41 @@ function bike(X,Y,s,col,p){
 
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   
-  // 1. 影とフレームを後ろ側に描画
-  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(X,Y,k*.9,k*.3,0,0,7);ctx.fill();
-  ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
+  // 1. 影とリアホイール（立体感アップ）
+  ctx.fillStyle='rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(X,Y,k*1.1,k*0.35,0,0,7);ctx.fill();
+  ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(X,Y-k*0.2,k*0.4,0,7);ctx.fill();
+  ctx.fillStyle='#444';ctx.beginPath();ctx.arc(X,Y-k*0.2,k*0.2,0,7);ctx.fill();
 
-  // 2. キャラクター（服・顔）を描画
+  // 2. ハンドルをキャラクターの「奥（後ろ側）」に配置
+  ctx.fillStyle='#2a2a2a';
+  ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3); // 横棒ハンドル
+  ctx.fillStyle='#555';
+  ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);  // ステム
+
+  // 3. メインフレーム（縦チューブ）
+  ctx.fillStyle='#111';
+  ctx.fillRect(X-k*.18,Y-k*2.4,k*.36,k*2.4);
+
+  // 4. キャラクター（服・顔・ヘルメットの艶）をハンドルより手前に描画
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
-    const baseH = k * 1.8;
+    const baseH = k * 1.9;
     const baseW = baseH * imgRatio;
-    ctx.drawImage(myArtImg, X - baseW / 2, Y - k * 3.9, baseW, baseH);
+    ctx.drawImage(myArtImg, X - baseW / 2, Y - k * 4.0, baseW, baseH);
   } else {
     ctx.fillStyle = bikeColor;
-    ctx.fillRect(X - k * 0.6, Y - k * 3.7, k * 1.2, k * 1.8);
+    ctx.fillRect(X - k * 0.65, Y - k * 3.8, k * 1.3, k * 1.9);
+    // 服の立体感（ハイライト）
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
   }
 
-  ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.5,0,7);ctx.fill();
+  // 頭部・ヘルメット（立体的なグラデーション風）
+  ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.3,k*.55,0,7);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(X-k*0.15,Y-k*4.5,k*.2,0,7);ctx.fill();
 
-  // 3. ハンドルを一番手前（前側）に立体的に描画
-  ctx.fillStyle='#222';
-  ctx.fillRect(X - k * 1.1, Y - k * 2.8, k * 2.2, k * 0.25); // 横棒ハンドル
-  ctx.fillStyle='#555';
-  ctx.fillRect(X - k * 0.12, Y - k * 2.8, k * 0.24, k * 0.8);  // ステム（突き出し部分）
-
-  if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);}
+  if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.5,Y-k*1.6,k*1.0,k*.4);
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillRect(X-k*.4,Y-k*1.5,k*.8,k*.15);}
 }
 
 function car(X,Y,s,o){
