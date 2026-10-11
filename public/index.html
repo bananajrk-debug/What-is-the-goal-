@@ -7,24 +7,46 @@ html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}
 #wrap{position:relative;max-width:100%}
 canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid #333}
-#lobby{position:absolute;inset:0;background:rgba(10,12,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:10}
-h1{margin:0 0 6px;font-size:38px}
-button,input{font-size:18px;padding:10px 16px;border-radius:8px;border:0}
+#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+h1{margin:0 0 2px;font-size:34px}
+button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
+button.shop-btn{background:#ba68c8;color:#fff}
 input{width:180px;text-align:center}
-#name-input{width:200px;letter-spacing:1px;font-weight:bold;margin-bottom:8px}
-#code{width:150px;letter-spacing:4px}
-#st{min-height:24px;color:#9fd}
-p{font-size:13px;color:#aab;margin:8px 12px;text-align:center}
+#pname{width:180px;font-weight:bold}
+#code{width:130px;letter-spacing:3px}
+#st{min-height:20px;color:#9fd;font-size:14px}
+#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
+#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+.skin-grid{display:flex;gap:10px}
+.skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center}
+.skin-card.selected{border-color:#ffd54f}
+p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
-<div id="lobby"><h1>なにが目的なん？</h1>
-<div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
-<button id="solo" class="solo">ソロ（CPU対戦）</button>
-<button id="create">ルーム作成</button>
-<div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
-<div id="st"></div></div></div>
+<div id="lobby">
+  <h1>なにが目的なん？</h1>
+  <div id="profile-box">
+    <span id="disp-id">ID: ---</span>
+    <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
+  </div>
+  <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
+  <button id="solo" class="solo">ソロ（CPU対戦）</button>
+  <button id="create">ルーム作成</button>
+  <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
+  <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
+  <div id="st"></div>
+</div>
+
+<div id="shop-modal">
+  <h2>🚲 スキンショップ</h2>
+  <p>NMcoinを使って見た目を変更しよう（※ゲーム性能は変わりません）</p>
+  <div class="skin-grid" id="skin-list"></div>
+  <p id="shop-st" style="color:#ffb74d"></p>
+  <button id="close-shop">ロビーへ戻る</button>
+</div>
+</div>
 <p>左右：A / D または ← / →  アクション(急ブレーキ・ブースト)：W / ↑ / Space  再戦：Enter  ロビーへ戻る：Esc</p>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -33,20 +55,95 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 
+// ローカルストレージでNM ID、コイン、所持スキン、装着スキンを管理
+let nmId = localStorage.getItem('nm_id');
+if(!nmId){
+  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
+  localStorage.setItem('nm_id', nmId);
+}
+let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
+let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
+let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
+
+$('disp-id').textContent = 'ID: ' + nmId;
+$('disp-coin').textContent = myCoins;
+
+const SKINS = {
+  'default': { name: 'スタンダード', color: '#c33', price: 0 },
+  'gold':    { name: 'ゴールドバイク', color: '#ffd700', price: 50 },
+  'cyber':   { name: 'サイバーネオン', color: '#00ffcc', price: 100 },
+  'dark':    { name: 'ダークシャドウ', color: '#333333', price: 80 }
+};
+
+function updateShopUI(){
+  $('disp-coin').textContent = myCoins;
+  const list = $('skin-list');
+  list.innerHTML = '';
+  for(const [key, skin] of Object.entries(SKINS)){
+    const owned = ownedSkins.includes(key);
+    const selected = currentSkin === key;
+    const div = document.createElement('div');
+    div.className = 'skin-card' + (selected ? ' selected' : '');
+    div.innerHTML = `<div style="width:30px;height:15px;background:${skin.color};margin:0 auto 6px;border-radius:3px"></div>` +
+                    `<b>${skin.name}</b><br>` +
+                    `<small>${owned ? (selected ? '装着中' : '所持') : skin.price + ' NC'}</small>`;
+    div.onclick = () => {
+      if(owned){
+        currentSkin = key;
+        localStorage.setItem('nm_current_skin', currentSkin);
+        updateShopUI();
+        $('shop-st').textContent = skin.name + 'を装着しました！';
+      } else {
+        if(myCoins >= skin.price){
+          myCoins -= skin.price;
+          localStorage.setItem('nm_coins', myCoins);
+          ownedSkins.push(key);
+          localStorage.setItem('nm_owned_skins', JSON.stringify(ownedSkins));
+          currentSkin = key;
+          localStorage.setItem('nm_current_skin', currentSkin);
+          updateShopUI();
+          $('shop-st').textContent = skin.name + 'を購入しました！';
+        } else {
+          $('shop-st').textContent = 'コインが足りません！';
+        }
+      }
+    };
+    list.appendChild(div);
+  }
+}
+
+$('open-shop').onclick = () => { updateShopUI();$('shop-modal').style.display = 'flex'; };
+$('close-shop').onclick = () => {$('shop-modal').style.display = 'none'; };
+
 function getName(){ const val=$('pname').value.trim(); return val||'プレイヤー'; }
+function getPayload(){ return { name: getName(), id: nmId, skin: currentSkin }; }
 
 function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
-  $('lobby').style.display='flex';
-  $('st').textContent='';
+  $('lobby').style.display='flex';$('st').textContent='';
 }
 
-$('solo').onclick=()=>socket.emit('solo', { name: getName() });
-$('create').onclick=()=>socket.emit('create', { name: getName() }, r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';});
-$('join').onclick=()=>socket.emit('join', { code: $('code').value.trim(), name: getName() }, r=>{if(!r.ok)$('st').textContent=r.err;});
-socket.on('start',d=>{slot=d.slot;inGame=true;S=D=null;$('lobby').style.display='none';});
+$('solo').onclick=()=>socket.emit('solo', getPayload());
+$('create').onclick=()=>socket.emit('create', getPayload(), r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';});
+$('join').onclick=()=>socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;});
+
+socket.on('start',d=>{
+  slot=d.slot;inGame=true;S=D=null;
+  $('lobby').style.display='none';$('shop-modal').style.display='none';
+});
+
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
+
+// サーバーからコイン報酬を受け取る処理
+socket.on('reward', data => {
+  if(data.gain){
+    myCoins += data.gain;
+    localStorage.setItem('nm_coins', myCoins);
+    $('disp-coin').textContent = myCoins;
+  }
+});
+
 socket.on('st',s=>{S=s;});
 
 const keys={};
@@ -87,7 +184,7 @@ function sync(dt){
   const P=(S.P||[]).map((t,i)=>{
     const c=D.P?D.P[i]:null;
     if(!t)return null;if(!c)return t;
-    c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;return c;
+    c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;c.skin=t.skin;return c;
   });
   const obs=(S.obs||[]).map(o=>{const c=old[o.id];if(!c)return{...o};c.x+=(o.x-c.x)*k;c.z+=(o.z-c.z)*k;return c;});
   Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names});
@@ -95,7 +192,6 @@ function sync(dt){
 
 function poly(pts,c){ctx.fillStyle=c;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();}
 
-// 樹木の描画を追加（グラフィック強化）
 function tree(X,Y,s){
   const k=s*K*28;
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(X,Y,k*.8,k*.25,0,0,7);ctx.fill();
@@ -107,10 +203,16 @@ function tree(X,Y,s){
 
 function bike(X,Y,s,col,p){
   const k=s*K*22;
+  // スキンに応じたバイクカラーの適用（ゲームバランスには影響なし）
+  let bikeColor = col;
+  if(p.skin === 'gold') bikeColor = '#ffd700';
+  else if(p.skin === 'cyber') bikeColor = '#00ffcc';
+  else if(p.skin === 'dark') bikeColor = '#333333';
+
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(X,Y,k*.9,k*.3,0,0,7);ctx.fill();
   ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
-  ctx.fillStyle=col;ctx.fillRect(X-k*.6,Y-k*3.7,k*1.2,k*1.8);
+  ctx.fillStyle=bikeColor;ctx.fillRect(X-k*.6,Y-k*3.7,k*1.2,k*1.8);
   ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.5,0,7);ctx.fill();
   ctx.fillStyle='#333';ctx.fillRect(X-k,Y-k*2.9,k*2,k*.2);
   if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);}
@@ -172,7 +274,6 @@ function view(){
   if(!D||!D.P||!D.P[slot]) return;
   const me=D.P[slot],isA=D.att===slot,camz=me.z-45,camx=me.x*.6;
   
-  // 背景空・地面グラフィック強化
   const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#2b5c8f');g.addColorStop(1,'#87ceeb');
   ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);
   const gGrass=ctx.createLinearGradient(0,HY,0,H);gGrass.addColorStop(0,'#2d6a2e');gGrass.addColorStop(1,'#1b431c');
@@ -188,7 +289,6 @@ function view(){
   
   const items=[];
 
-  // 道路沿いの木のオブジェクトを追加生成（左右）
   for(let z=Math.floor(camz/80)*80;z<camz+1000;z+=80){
     if(z<camz+5)continue;
     items.push({z, f:()=>tree(X(-ROAD_W-40, S_(z)), Y(S_(z)), S_(z))});
