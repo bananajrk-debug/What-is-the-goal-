@@ -251,10 +251,35 @@ socket.on('reward', data => {
 });
 
 let lastState = '';
+let lastBrakesCount = [0, 0];
+let lastBoostState = [false, false];
+
 socket.on('st',s=>{
   if(D && s.s === 'result' && lastState !== 'result'){
     playCrashSound();
   }
+  
+  // プレイヤーやCPUのアクション発動を検知してSEを鳴らす
+  if(D && s.P){
+    s.P.forEach((p, i) => {
+      if(!p || !D.P[i]) return;
+      // 攻撃側(A)のブレーキ発動検知
+      if(s.att === i){
+        if(p.brakes > lastBrakesCount[i]){
+          playBrakeSound();
+        }
+      } 
+      // 追越側(B)のブースト発動検知
+      else {
+        if(p.boost && !lastBoostState[i]){
+          playBoostSound();
+        }
+      }
+      lastBrakesCount[i] = p.brakes;
+      lastBoostState[i] = p.boost;
+    });
+  }
+
   lastState = s.s;
   S=s;
 });
@@ -272,11 +297,11 @@ addEventListener('keydown',e=>{
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
       socket.emit('act');
-      // 役職（攻撃側Aか、追越側Bか）に応じて専用SEを鳴らす
+      // 自分が攻撃側ならブレーキ音、追越側ならギュイーン音
       if(D && D.att === slot){
-        playBrakeSound(); // A: ブレーキ音
+        playBrakeSound();
       } else {
-        playBoostSound(); // B: ギュイーン音
+        playBoostSound();
       }
     }
     if(e.code==='Enter'&&inGame)socket.emit('again');
@@ -323,19 +348,18 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
-// トゲトゲ爆発エフェクト（円形なし、トゲのみ）
-function drawSpikyExplosion(X, Y, progress){
+// トゲトゲ爆発エフェクト（サイズ固定で一度だけ大きく表示されて消える）
+function drawSpikyExplosion(X, Y){
   ctx.save();
   ctx.translate(X, Y);
-  ctx.scale(progress, progress);
   
   ctx.fillStyle = '#ff3d00';
   ctx.strokeStyle = '#ffeb3b';
   ctx.lineWidth = 3;
   ctx.beginPath();
   const spikes = 10;
-  const outerRadius = 50;
-  const innerRadius = 24;
+  const outerRadius = 60;
+  const innerRadius = 30;
   for (let i = 0; i < spikes * 2; i++) {
     const r = (i % 2 === 0) ? outerRadius : innerRadius;
     const angle = (i * Math.PI) / spikes;
@@ -494,18 +518,18 @@ function view(){
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // ラウンド結果になったとき（車にひかれた、またはプレイヤー同士が衝突したとき）にトゲトゲエフェクトを追加
+  // ラウンド結果発生時（車との衝突・プレイヤー間の激突）に1回だけエフェクトを追加
   if(D.s === 'result' && D.msg && (D.msg.includes('衝突') || D.msg.includes('逮捕') || D.msg.includes('激突') || D.sub.includes('車') || D.sub.includes('攻撃側') || D.sub.includes('パトカー'))){
     if(hitEffects.length === 0){
-      hitEffects.push({ x: W/2, y: H/2 + 20, life: 1.0 });
+      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 }); // 25フレーム分表示して消す
     }
   }
 
   hitEffects.forEach((fx) => {
-    drawSpikyExplosion(fx.x, fx.y, fx.life);
-    fx.life -= 0.05;
+    drawSpikyExplosion(fx.x, fx.y);
+    fx.frames--;
   });
-  hitEffects = hitEffects.filter(fx => fx.life > 0);
+  hitEffects = hitEffects.filter(fx => fx.frames > 0);
 
   if(isA) {
     drawTriangleMarker(me, D.bgGap, D.bgBx, D.bgBoost);
@@ -519,7 +543,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
