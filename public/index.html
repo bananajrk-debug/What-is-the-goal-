@@ -55,9 +55,8 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 let hitEffects = [];
-let lastRoundState = '';
 
-// --- Web Audio API (長めのポップBGM & SE) ---
+// --- Web Audio API (BGM & SE) ---
 let audioCtx = null;
 let bgmInterval = null;
 
@@ -70,93 +69,91 @@ function initAudio(){
   }
 }
 
+// ポップBGM（長めループ）
 function startBGM(){
   initAudio();
   if(bgmInterval) return;
-  
   const melody = [
-    261.63, 329.63, 392.00, 523.25,
-    349.23, 440.00, 523.25, 659.25,
-    293.66, 369.99, 440.00, 587.33,
-    392.00, 493.88, 587.33, 783.99,
-    523.25, 493.88, 440.00, 392.00,
-    349.23, 329.63, 293.66, 261.63,
-    220.00, 261.63, 329.63, 392.00,
-    440.00, 523.25, 659.25, 783.99
+    261.63, 329.63, 392.00, 523.25, 349.23, 440.00, 523.25, 659.25,
+    293.66, 369.99, 440.00, 587.33, 392.00, 493.88, 587.33, 783.99,
+    523.25, 493.88, 440.00, 392.00, 349.23, 329.63, 293.66, 261.63,
+    220.00, 261.63, 329.63, 392.00, 440.00, 523.25, 659.25, 783.99
   ];
   let stepIdx = 0;
-  
   bgmInterval = setInterval(() => {
     if(!audioCtx) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(melody[stepIdx], audioCtx.currentTime);
-    
     gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-    
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.32);
-    
     stepIdx = (stepIdx + 1) % melody.length;
   }, 200);
 }
 
 function stopBGM(){
-  if(bgmInterval){
-    clearInterval(bgmInterval);
-    bgmInterval = null;
-  }
+  if(bgmInterval){ clearInterval(bgmInterval); bgmInterval = null; }
 }
 
-// ブーストSE：「ビューン！」
+// A（攻撃側）のブレーキ音：「キュッ！」
+function playBrakeSound(){
+  initAudio();
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.2);
+}
+
+// B（追越側）のブースト音：「ギュイーン！」
 function playBoostSound(){
   initAudio();
   if(!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.4);
-  
+  osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.35);
   gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
-  
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
-  osc.stop(audioCtx.currentTime + 0.48);
+  osc.stop(audioCtx.currentTime + 0.42);
 }
 
-// 衝突SE：「ガシャン！」
+// 衝突・ひかれたときの音：「ガシャン！」
 function playCrashSound(){
   initAudio();
   if(!audioCtx) return;
   const bufferSize = audioCtx.sampleRate * 0.4;
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
-  for(let i = 0; i < bufferSize; i++){
-    data[i] = Math.random() * 2 - 1;
-  }
+  for(let i = 0; i < bufferSize; i++){ data[i] = Math.random() * 2 - 1; }
   const noise = audioCtx.createBufferSource();
   noise.buffer = buffer;
-  
   const filter = audioCtx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
-  filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.4);
-  
+  filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.35);
   const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-  
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.38);
   noise.connect(filter);
   filter.connect(gain);
   gain.connect(audioCtx.destination);
-  
   noise.start();
 }
 
@@ -239,7 +236,6 @@ $('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $(
 
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
-  lastRoundState = '';
   startBGM();
   $('lobby').style.display='none';$('shop-modal').style.display='none';
 });
@@ -254,17 +250,12 @@ socket.on('reward', data => {
   }
 });
 
+let lastState = '';
 socket.on('st',s=>{
-  // ラウンドが終了（result状態になった瞬間）に確実にSEとエフェクトをトリガー
-  if(s.s === 'result' && lastRoundState !== 'result'){
-    const msg = s.msg || '';
-    // 車との衝突（車・パトカー）またはプレイヤー同士の衝突の判定
-    if(msg.includes('衝突') || msg.includes('逮捕') || msg.includes('激突') || msg.includes('相打ち')){
-      playCrashSound();
-      hitEffects.push({ x: W/2, y: H/2 + 20, life: 1.0 });
-    }
+  if(D && s.s === 'result' && lastState !== 'result'){
+    playCrashSound();
   }
-  lastRoundState = s.s;
+  lastState = s.s;
   S=s;
 });
 
@@ -281,7 +272,12 @@ addEventListener('keydown',e=>{
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
       socket.emit('act');
-      playBoostSound();
+      // 役職（攻撃側Aか、追越側Bか）に応じて専用SEを鳴らす
+      if(D && D.att === slot){
+        playBrakeSound(); // A: ブレーキ音
+      } else {
+        playBoostSound(); // B: ギュイーン音
+      }
     }
     if(e.code==='Enter'&&inGame)socket.emit('again');
     if(e.code==='Escape'&&inGame)returnLobby();
@@ -327,7 +323,7 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
-// 修正されたトゲトゲ爆発エフェクト（円形なし、シャープなトゲのみ）
+// トゲトゲ爆発エフェクト（円形なし、トゲのみ）
 function drawSpikyExplosion(X, Y, progress){
   ctx.save();
   ctx.translate(X, Y);
@@ -337,9 +333,9 @@ function drawSpikyExplosion(X, Y, progress){
   ctx.strokeStyle = '#ffeb3b';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  const spikes = 12;
-  const outerRadius = 55;
-  const innerRadius = 25;
+  const spikes = 10;
+  const outerRadius = 50;
+  const innerRadius = 24;
   for (let i = 0; i < spikes * 2; i++) {
     const r = (i % 2 === 0) ? outerRadius : innerRadius;
     const angle = (i * Math.PI) / spikes;
@@ -351,7 +347,6 @@ function drawSpikyExplosion(X, Y, progress){
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-
   ctx.restore();
 }
 
@@ -366,7 +361,7 @@ function bike(X,Y,s,col,p){
   
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
   
-  // タイヤ（縦長部分を太く）
+  // タイヤ
   ctx.fillStyle='#1a1a1a';
   ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
   ctx.fillStyle='#333';
@@ -384,7 +379,7 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#111';
   ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
 
-  // プレイヤーの足
+  // 足
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
   ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
@@ -392,7 +387,7 @@ function bike(X,Y,s,col,p){
   ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
   ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
 
-  // キャラクター（服・顔）
+  // キャラクター
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.9;
@@ -499,7 +494,13 @@ function view(){
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // トゲトゲ爆発エフェクトの更新と描画
+  // ラウンド結果になったとき（車にひかれた、またはプレイヤー同士が衝突したとき）にトゲトゲエフェクトを追加
+  if(D.s === 'result' && D.msg && (D.msg.includes('衝突') || D.msg.includes('逮捕') || D.msg.includes('激突') || D.sub.includes('車') || D.sub.includes('攻撃側') || D.sub.includes('パトカー'))){
+    if(hitEffects.length === 0){
+      hitEffects.push({ x: W/2, y: H/2 + 20, life: 1.0 });
+    }
+  }
+
   hitEffects.forEach((fx) => {
     drawSpikyExplosion(fx.x, fx.y, fx.life);
     fx.life -= 0.05;
