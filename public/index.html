@@ -211,11 +211,13 @@ function bike(X,Y,s,col,p){
   else if(p.skin === 'dark') bikeColor = '#333333';
 
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
+  
+  // 1. 影とフレームを後ろ側に描画
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(X,Y,k*.9,k*.3,0,0,7);ctx.fill();
   ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
-  
+
+  // 2. キャラクター（服・顔）を描画
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
-    // 元画像の縦横比を完全に計算して自動フィットさせる処理
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.8;
     const baseW = baseH * imgRatio;
@@ -226,7 +228,13 @@ function bike(X,Y,s,col,p){
   }
 
   ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.5,0,7);ctx.fill();
-  ctx.fillStyle='#333';ctx.fillRect(X-k,Y-k*2.9,k*2,k*.2);
+
+  // 3. ハンドルを一番手前（前側）に立体的に描画
+  ctx.fillStyle='#222';
+  ctx.fillRect(X - k * 1.1, Y - k * 2.8, k * 2.2, k * 0.25); // 横棒ハンドル
+  ctx.fillStyle='#555';
+  ctx.fillRect(X - k * 0.12, Y - k * 2.8, k * 0.24, k * 0.8);  // ステム（突き出し部分）
+
   if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);}
 }
 
@@ -369,9 +377,7 @@ function overlay(t,s,c){
   if(isMatchEnd) {
     ctx.fillStyle='#ffd54f';ctx.fillRect(W/2-180,310,160,35);
     ctx.fillStyle='#e57373';ctx.fillRect(W/2+20,310,160,35);
-    ctx.fillStyle='#000';ctx.font='bold 15px sans-serif';
-    ctx.fillText('再戦 [Enter]',W/2-100,333);
-    ctx.fillText('ロビーへ [Esc]',W/2+100,333);
+    ctx.fillStyle='#000';ctx.font='bold 15px sans-serif';ctx.fillText('再戦 [Enter]',W/2-100,333);ctx.fillText('ロビーへ [Esc]',W/2+100,333);
   }
 }
 
@@ -381,7 +387,7 @@ function draw(){
   view();topbar();
   if(D.s==='count')overlay(String(Math.ceil(D.t)),(D.att===slot?'あなたは攻撃側(A)':'あなたは追越側(B)')+(D.rd>=6?'  SUDDEN DEATH':''),'#ffd54f');
   if(D.s==='result'){const w=D.hist?D.hist[D.hist.length-1]:-1;overlay(D.msg,D.sub+(w===slot?'  (あなたの得点)':''),'#7fff7f');}
-  if(D.s==='match')overlay(D.msg,D.sub,'#ffd5^f');
+  if(D.s==='match')overlay(D.msg,D.sub,'#ffd54f');
   if(D.s==='play'&&D.el<1.5){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.fillText('GO!',W/2,300);}
 }
 
