@@ -11,14 +11,14 @@ const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
 const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
 const rnd = (a, b) => a + Math.random() * (b - a);
-const mk = (x, z) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0 });
+const mk = (x, z, skin) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0, skin: skin || 'default' });
 
 function newRound(R) {
   R.att = attOf(R.round);
   const d = 1 - R.att;
   R.P = [];
-  R.P[R.att] = mk(rnd(-30, 30), 60);
-  R.P[d] = mk(rnd(-30, 30), 0);
+  R.P[R.att] = mk(rnd(-30, 30), 60, R.skins ? R.skins[R.att] : 'default');
+  R.P[d] = mk(rnd(-30, 30), 0, R.skins ? R.skins[d] : 'default');
   R.obs = []; R.nid = 1;
   R.inp = [{ l: 0, r: 0 }, { l: 0, r: 0 }];
   R.act = [false, false];
@@ -33,7 +33,13 @@ function resetMatch(R) {
 }
 
 function endRound(R, w, pen, text) {
-  if (w >= 0) R.sc[w]++;
+  if (w >= 0) {
+    R.sc[w]++;
+    // ラウンド勝利時にNMcoin（10NC）を付与するイベントを該当プレイヤーに送信
+    if (R.ids[w]) {
+      io.to(R.ids[w]).emit('reward', { gain: 10 });
+    }
+  }
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   R.hist.push(w);
   R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
@@ -189,7 +195,7 @@ function snap(R, slot) {
     if ((R.state === 'play' || R.state === 'count') && isAttacker && isTargetOpponent && p.boost <= 0) {
       return null;
     }
-    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd) };
+    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), skin: p.skin };
   });
 
   return { 
@@ -213,7 +219,14 @@ io.on('connection', socket => {
   socket.on('solo', d => {
     let code = 'SOLO_' + socket.id;
     const pName = (d && d.name) ? d.name : 'プレイヤー';
-    const R = { code, ids: [socket.id, null], names: [pName, 'CPU'], isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] };
+    const pSkin = (d && d.skin) ? d.skin : 'default';
+    const R = { 
+      code, ids: [socket.id, null], 
+      names: [pName, 'CPU'], 
+      skins: [pSkin, 'default'],
+      idsMap: {},
+      isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    };
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
@@ -224,7 +237,13 @@ io.on('connection', socket => {
     if (typeof d === 'function') { cb = d; d = {}; }
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
     const pName = (d && d.name) ? d.name : 'プレイヤー1';
-    rooms.set(code, { code, ids: [socket.id, null], names: [pName, 'プレイヤー2'], isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] });
+    const pSkin = (d && d.skin) ? d.skin : 'default';
+    rooms.set(code, { 
+      code, ids: [socket.id, null], 
+      names: [pName, 'プレイヤー2'], 
+      skins: [pSkin, 'default'],
+      isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    });
     socket.data = { code, slot: 0 };
     if (typeof cb === 'function') cb({ code });
   });
@@ -232,11 +251,13 @@ io.on('connection', socket => {
   socket.on('join', (d, cb) => {
     const code = (typeof d === 'object') ? d.code : d;
     const pName = (typeof d === 'object' && d.name) ? d.name : 'プレイヤー2';
+    const pSkin = (typeof d === 'object' && d.skin) ? d.skin : 'default';
     const R = rooms.get(String(code));
     if (!R) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームが見つかりません' }); return; }
     if (R.ids[1] || R.isCpu) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームに参加できません' }); return; }
     R.ids[1] = socket.id;
     R.names[1] = pName;
+    R.skins[1] = pSkin;
     socket.data = { code: R.code, slot: 1 };
     resetMatch(R);
     if (typeof cb === 'function') cb({ ok: true });
