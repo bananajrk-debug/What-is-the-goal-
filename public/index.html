@@ -55,7 +55,6 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 
-// 自作イラスト画像の事前読み込み設定
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
@@ -76,7 +75,7 @@ const SKINS = {
   'gold':    { name: 'ゴールド', color: '#ffd700', price: 50 },
   'cyber':   { name: 'サイバー', color: '#00ffcc', price: 100 },
   'dark':    { name: 'ダーク', color: '#333333', price: 80 },
-  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 } // 自作絵スキン
+  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 }
 };
 
 function updateShopUI(){
@@ -216,8 +215,9 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
   
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
-    // 自作イラストスキンの場合、服/体部分にカスタム画像を重ねて描画
-    ctx.drawImage(myArtImg, X - k * 0.7, Y - k * 4.0, k * 1.4, k * 1.4);
+    // 修正: 縦横比を正方形(1:1)に揃え、バイクの胴体サイズにぴったり綺麗に収まるように変更
+    const artSize = k * 1.5;
+    ctx.drawImage(myArtImg, X - artSize / 2, Y - k * 4.1, artSize, artSize);
   } else {
     ctx.fillStyle = bikeColor;
     ctx.fillRect(X - k * 0.6, Y - k * 3.7, k * 1.2, k * 1.8);
@@ -327,7 +327,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
@@ -360,7 +360,7 @@ function topbar(){
 }
 
 function overlay(t,s,c){
-  const isMatchEnd =D && D.s === 'match';
+  const isMatchEnd = D && D.s === 'match';
   ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,190,W,isMatchEnd?170:150);ctx.textAlign='center';
   ctx.fillStyle=c;ctx.font='bold 40px sans-serif';ctx.fillText(t,W/2,250);ctx.fillStyle='#ddd';ctx.font='18px sans-serif';ctx.fillText(s||'',W/2,290);
   
@@ -385,4 +385,4 @@ function draw(){
 
 let lt=performance.now();
 (function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
-</script></html>
+</script></body></html>
