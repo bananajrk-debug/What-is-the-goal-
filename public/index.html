@@ -54,6 +54,102 @@ const socket=io(),cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=720,
 const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#3a6','#58c','#c9a','#999'];
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
+let hitEffects = []; // トゲトゲ爆発エフェクト管理用
+
+// --- Web Audio API (BGM & SE) ---
+let audioCtx = null;
+let bgmInterval = null;
+
+function initAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state === 'suspended'){
+    audioCtx.resume();
+  }
+}
+
+// ポップなBGM（自動ループ自動演奏）
+function startBGM(){
+  initAudio();
+  if(bgmInterval) return;
+  const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 349.23, 392.00, 329.63]; // ドレソ高ドラファソミ
+  let stepIdx = 0;
+  
+  bgmInterval = setInterval(() => {
+    if(!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle'; // ポップで柔らかな音色
+    osc.frequency.setValueAtTime(notes[stepIdx], audioCtx.currentTime);
+    
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.28);
+    
+    stepIdx = (stepIdx + 1) % notes.length;
+  }, 220);
+}
+
+function stopBGM(){
+  if(bgmInterval){
+    clearInterval(bgmInterval);
+    bgmInterval = null;
+  }
+}
+
+// ブーストSE：「ビューン！」
+function playBoostSound(){
+  initAudio();
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.4);
+  
+  gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.48);
+}
+
+// 衝突SE：「ガシャン！」
+function playCrashSound(){
+  initAudio();
+  if(!audioCtx) return;
+  // ノイズと低いオシレーターを組み合わせて激しい金属・衝突音を作る
+  const bufferSize = audioCtx.sampleRate * 0.4;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i = 0; i < bufferSize; i++){
+    data[i] = Math.random() * 2 - 1;
+  }
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.4);
+  
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+  
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  noise.start();
+}
 
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
@@ -124,15 +220,17 @@ function getPayload(){ return { name: getName(), id: nmId, skin: currentSkin }; 
 function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
+  stopBGM();
   $('lobby').style.display='flex';$('st').textContent='';
 }
 
-$('solo').onclick=()=>socket.emit('solo', getPayload());
-$('create').onclick=()=>socket.emit('create', getPayload(), r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';});
-$('join').onclick=()=>socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;});
+$('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
+$('create').onclick=()=> { initAudio(); startBGM(); socket.emit('create', getPayload(), r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';}); };
+$('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;}); };
 
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
+  startBGM();
   $('lobby').style.display='none';$('shop-modal').style.display='none';
 });
 
@@ -146,9 +244,17 @@ socket.on('reward', data => {
   }
 });
 
-socket.on('st',s=>{S=s;});
+socket.on('st',s=>{
+  // 状態が変わった瞬間や結果が出たときに衝突SEやエフェクトを発生させる判定
+  if(D && S.s === 'result' && D.s !== 'result'){
+    playCrashSound();
+  }
+  S=s;
+});
 
 const keys={};
+let lastBoostState = false;
+
 function sendInp(){
   if(!inGame) return;
   const l=+!!(keys.KeyA||keys.ArrowLeft),r=+!!(keys.KeyD||keys.ArrowRight);
@@ -156,9 +262,13 @@ function sendInp(){
 }
 
 addEventListener('keydown',e=>{
+  initAudio();
   if(['ArrowLeft','ArrowRight','ArrowUp','Space'].includes(e.code))e.preventDefault();
   if(!keys[e.code]){
-    if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame)socket.emit('act');
+    if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
+      socket.emit('act');
+      playBoostSound(); // ブースト発動時のビューン音
+    }
     if(e.code==='Enter'&&inGame)socket.emit('again');
     if(e.code==='Escape'&&inGame)returnLobby();
   }
@@ -203,6 +313,41 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
+// ぶつかったときのトゲトゲ爆発エフェクトを描画する関数
+function drawSpikyExplosion(X, Y, progress){
+  ctx.save();
+  ctx.translate(X, Y);
+  ctx.scale(progress, progress);
+  
+  // トゲトゲの星型パスを生成
+  ctx.fillStyle = '#ff3d00';
+  ctx.strokeStyle = '#ffeb3b';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  const spikes = 10;
+  const outerRadius = 45;
+  const innerRadius = 22;
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = (i % 2 === 0) ? outerRadius : innerRadius;
+    const angle = (i * Math.PI) / spikes;
+    const x = Math.cos(angle) * r;
+    const y = Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 内部の衝撃波円
+  ctx.fillStyle = 'rgba(255, 235, 59, 0.8)';
+  ctx.beginPath();
+  ctx.arc(0, 0, 18 * (2 - progress), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function bike(X,Y,s,col,p){
   const k=s*K*22;
   let bikeColor = col;
@@ -212,10 +357,9 @@ function bike(X,Y,s,col,p){
 
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   
-  // 1. 地面の影 ＆ 太く堂々としたタイヤ（縦長の立体表現）
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
   
-  // タイヤ（縦長部分を太く、立体的なツヤとリムを表現）
+  // タイヤ（縦長部分を太く）
   ctx.fillStyle='#1a1a1a';
   ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
   ctx.fillStyle='#333';
@@ -223,26 +367,25 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.1, Y - k * 1.6, k * 0.2, k * 1.4);
 
-  // 2. ハンドル（奥側）
+  // ハンドル（奥側）
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);
 
-  // 3. フレーム（縦軸）
+  // フレーム
   ctx.fillStyle='#111';
   ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
 
-  // 4. プレイヤーの「足」を描画（ペダルを踏むような立体感のある脚）
-  ctx.fillStyle='#222'; // ズボン・足の部分
+  // プレイヤーの足
+  ctx.fillStyle='#222';
   ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
   ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
-  // 靴
   ctx.fillStyle='#111';
   ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
   ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
 
-  // 5. キャラクター（服・顔・ヘルメット）を手前に描画
+  // キャラクター（服・顔）
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.9;
@@ -255,7 +398,6 @@ function bike(X,Y,s,col,p){
     ctx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
   }
 
-  // 頭部・ヘルメット
   ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.3,k*.55,0,7);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(X-k*0.15,Y-k*4.5,k*.2,0,7);ctx.fill();
 
@@ -349,6 +491,21 @@ function view(){
     }
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
+
+  // 衝突結果になったときに画面中央（自機付近）にトゲトゲ爆発エフェクトを発生させる
+  if(D.s === 'result' && D.hist && D.hist.length > 0){
+    const lastResult = D.hist[D.hist.length - 1];
+    if(lastResult !== slot){ // 自分が衝突などで負けた/巻き込まれた瞬間
+      hitEffects.push({ x: W/2, y: H/2 + 30, life: 1.0 });
+    }
+  }
+
+  // エフェクトの描画と更新
+  hitEffects.forEach((fx, idx) => {
+    drawSpikyExplosion(fx.x, fx.y, fx.life);
+    fx.life -= 0.04;
+  });
+  hitEffects = hitEffects.filter(fx => fx.life > 0);
 
   if(isA) {
     drawTriangleMarker(me, D.bgGap, D.bgBx, D.bgBoost);
