@@ -19,8 +19,8 @@ input{width:180px;text-align:center}
 #st{min-height:20px;color:#9fd;font-size:14px}
 #profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
 #shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
-.skin-grid{display:flex;gap:10px}
-.skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center}
+.skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
 .skin-card.selected{border-color:#ffd54f}
 p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
@@ -55,7 +55,10 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 
-// ローカルストレージでNM ID、コイン、所持スキン、装着スキンを管理
+// 自作イラスト画像の事前読み込み設定
+const myArtImg = new Image();
+myArtImg.src = 'my_art.png';
+
 let nmId = localStorage.getItem('nm_id');
 if(!nmId){
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
@@ -70,9 +73,10 @@ $('disp-coin').textContent = myCoins;
 
 const SKINS = {
   'default': { name: 'スタンダード', color: '#c33', price: 0 },
-  'gold':    { name: 'ゴールドバイク', color: '#ffd700', price: 50 },
-  'cyber':   { name: 'サイバーネオン', color: '#00ffcc', price: 100 },
-  'dark':    { name: 'ダークシャドウ', color: '#333333', price: 80 }
+  'gold':    { name: 'ゴールド', color: '#ffd700', price: 50 },
+  'cyber':   { name: 'サイバー', color: '#00ffcc', price: 100 },
+  'dark':    { name: 'ダーク', color: '#333333', price: 80 },
+  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 } // 自作絵スキン
 };
 
 function updateShopUI(){
@@ -135,7 +139,6 @@ socket.on('start',d=>{
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
 
-// サーバーからコイン報酬を受け取る処理
 socket.on('reward', data => {
   if(data.gain){
     myCoins += data.gain;
@@ -203,7 +206,6 @@ function tree(X,Y,s){
 
 function bike(X,Y,s,col,p){
   const k=s*K*22;
-  // スキンに応じたバイクカラーの適用（ゲームバランスには影響なし）
   let bikeColor = col;
   if(p.skin === 'gold') bikeColor = '#ffd700';
   else if(p.skin === 'cyber') bikeColor = '#00ffcc';
@@ -212,7 +214,15 @@ function bike(X,Y,s,col,p){
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(X,Y,k*.9,k*.3,0,0,7);ctx.fill();
   ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
-  ctx.fillStyle=bikeColor;ctx.fillRect(X-k*.6,Y-k*3.7,k*1.2,k*1.8);
+  
+  if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
+    // 自作イラストスキンの場合、服/体部分にカスタム画像を重ねて描画
+    ctx.drawImage(myArtImg, X - k * 0.7, Y - k * 4.0, k * 1.4, k * 1.4);
+  } else {
+    ctx.fillStyle = bikeColor;
+    ctx.fillRect(X - k * 0.6, Y - k * 3.7, k * 1.2, k * 1.8);
+  }
+
   ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.5,0,7);ctx.fill();
   ctx.fillStyle='#333';ctx.fillRect(X-k,Y-k*2.9,k*2,k*.2);
   if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);}
@@ -317,7 +327,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
@@ -350,7 +360,7 @@ function topbar(){
 }
 
 function overlay(t,s,c){
-  const isMatchEnd = D && D.s === 'match';
+  const isMatchEnd =D && D.s === 'match';
   ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,190,W,isMatchEnd?170:150);ctx.textAlign='center';
   ctx.fillStyle=c;ctx.font='bold 40px sans-serif';ctx.fillText(t,W/2,250);ctx.fillStyle='#ddd';ctx.font='18px sans-serif';ctx.fillText(s||'',W/2,290);
   
@@ -375,4 +385,4 @@ function draw(){
 
 let lt=performance.now();
 (function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
-</script></body></html>
+</script></html>
