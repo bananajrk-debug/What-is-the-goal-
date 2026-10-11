@@ -212,22 +212,37 @@ function bike(X,Y,s,col,p){
 
   if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
   
-  // 1. 地面の影と綺麗な丸型タイヤ（ホイール）の描画
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*0.8,k*0.3,0,0,7);ctx.fill();
-  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(X,Y-k*0.4,k*0.45,0,7);ctx.fill();
-  ctx.fillStyle='#333';ctx.beginPath();ctx.arc(X,Y-k*0.4,k*0.25,0,7);ctx.fill();
-
-  // 2. ハンドルを奥側に配置（立体的なバー形状）
-  ctx.fillStyle='#222';
-  ctx.fillRect(X - k * 1.1, Y - k * 3.0, k * 2.2, k * 0.28);
-  ctx.fillStyle='#555';
-  ctx.fillRect(X - k * 0.12, Y - k * 3.0, k * 0.24, k * 0.9);
-
-  // 3. フレーム（支柱）
+  // 1. 地面の影 ＆ 太く堂々としたタイヤ（縦長の立体表現）
+  ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
+  
+  // タイヤ（縦長部分を太く、立体的なツヤとリムを表現）
   ctx.fillStyle='#1a1a1a';
-  ctx.fillRect(X - k * 0.15, Y - k * 2.2, k * 0.3, k * 1.8);
+  ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
+  ctx.fillStyle='#333';
+  ctx.fillRect(X - k * 0.3, Y - k * 1.7, k * 0.6, k * 1.6);
+  ctx.fillStyle='#555';
+  ctx.fillRect(X - k * 0.1, Y - k * 1.6, k * 0.2, k * 1.4);
 
-  // 4. クオリティアップしたプレイヤー（服・顔・立体感）
+  // 2. ハンドル（奥側）
+  ctx.fillStyle='#222';
+  ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
+  ctx.fillStyle='#555';
+  ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);
+
+  // 3. フレーム（縦軸）
+  ctx.fillStyle='#111';
+  ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
+
+  // 4. プレイヤーの「足」を描画（ペダルを踏むような立体感のある脚）
+  ctx.fillStyle='#222'; // ズボン・足の部分
+  ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
+  ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
+  // 靴
+  ctx.fillStyle='#111';
+  ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
+  ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
+
+  // 5. キャラクター（服・顔・ヘルメット）を手前に描画
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.9;
@@ -235,22 +250,17 @@ function bike(X,Y,s,col,p){
     ctx.drawImage(myArtImg, X - baseW / 2, Y - k * 4.0, baseW, baseH);
   } else {
     ctx.fillStyle = bikeColor;
-    ctx.fillRect(X - k * 0.6, Y - k * 3.7, k * 1.2, k * 1.8);
-    // 服の立体ハイライト
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(X - k * 0.5, Y - k * 3.6, k * 0.25, k * 1.6);
+    ctx.fillRect(X - k * 0.65, Y - k * 3.8, k * 1.3, k * 1.9);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
   }
 
-  // 頭部・顔のクオリティアップ（ヘルメットや立体感の追加）
-  ctx.fillStyle='#ffcc99';
-  ctx.beginPath();ctx.arc(X,Y-k*4.2,k*.55,0,7);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.35)';
-  ctx.beginPath();ctx.arc(X-k*0.15,Y-k*4.4,k*.2,0,7);ctx.fill();
+  // 頭部・ヘルメット
+  ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.3,k*.55,0,7);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(X-k*0.15,Y-k*4.5,k*.2,0,7);ctx.fill();
 
-  if(p.brk){
-    ctx.fillStyle='#f22';ctx.fillRect(X-k*.45,Y-k*1.5,k*.9,k*.35);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillRect(X-k*.35,Y-k*1.45,k*.7,k*.12);
-  }
+  if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.5,Y-k*1.6,k*1.0,k*.4);
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillRect(X-k*.4,Y-k*1.5,k*.8,k*.15);}
 }
 
 function car(X,Y,s,o){
