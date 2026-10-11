@@ -54,9 +54,9 @@ const socket=io(),cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=720,
 const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#3a6','#58c','#c9a','#999'];
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
-let hitEffects = []; // トゲトゲ爆発エフェクト管理用
+let hitEffects = [];
 
-// --- Web Audio API (BGM & SE) ---
+// --- Web Audio API (長めのポップBGM & SE) ---
 let audioCtx = null;
 let bgmInterval = null;
 
@@ -69,30 +69,40 @@ function initAudio(){
   }
 }
 
-// ポップなBGM（自動ループ自動演奏）
+// 長めのメロディ・コード進行を持つポップBGM（全32音のループ）
 function startBGM(){
   initAudio();
   if(bgmInterval) return;
-  const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 349.23, 392.00, 329.63]; // ドレソ高ドラファソミ
+  
+  const melody = [
+    261.63, 329.63, 392.00, 523.25,  // Cmaj
+    349.23, 440.00, 523.25, 659.25,  // Fmaj
+    293.66, 369.99, 440.00, 587.33,  // Dmin
+    392.00, 493.88, 587.33, 783.99,  // Gmaj
+    523.25, 493.88, 440.00, 392.00,  // 下り
+    349.23, 329.63, 293.66, 261.63,  // 下り
+    220.00, 261.63, 329.63, 392.00,  // A
+    440.00, 523.25, 659.25, 783.99   // 高揚
+  ];
   let stepIdx = 0;
   
   bgmInterval = setInterval(() => {
     if(!audioCtx) return;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = 'triangle'; // ポップで柔らかな音色
-    osc.frequency.setValueAtTime(notes[stepIdx], audioCtx.currentTime);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(melody[stepIdx], audioCtx.currentTime);
     
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
     
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.28);
+    osc.stop(audioCtx.currentTime + 0.32);
     
-    stepIdx = (stepIdx + 1) % notes.length;
-  }, 220);
+    stepIdx = (stepIdx + 1) % melody.length;
+  }, 200); // テンポとループの長さ(32音×200ms = 約6.4秒周期)を調整
 }
 
 function stopBGM(){
@@ -125,7 +135,6 @@ function playBoostSound(){
 function playCrashSound(){
   initAudio();
   if(!audioCtx) return;
-  // ノイズと低いオシレーターを組み合わせて激しい金属・衝突音を作る
   const bufferSize = audioCtx.sampleRate * 0.4;
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -245,7 +254,6 @@ socket.on('reward', data => {
 });
 
 socket.on('st',s=>{
-  // 状態が変わった瞬間や結果が出たときに衝突SEやエフェクトを発生させる判定
   if(D && S.s === 'result' && D.s !== 'result'){
     playCrashSound();
   }
@@ -253,8 +261,6 @@ socket.on('st',s=>{
 });
 
 const keys={};
-let lastBoostState = false;
-
 function sendInp(){
   if(!inGame) return;
   const l=+!!(keys.KeyA||keys.ArrowLeft),r=+!!(keys.KeyD||keys.ArrowRight);
@@ -267,7 +273,7 @@ addEventListener('keydown',e=>{
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
       socket.emit('act');
-      playBoostSound(); // ブースト発動時のビューン音
+      playBoostSound();
     }
     if(e.code==='Enter'&&inGame)socket.emit('again');
     if(e.code==='Escape'&&inGame)returnLobby();
@@ -313,13 +319,11 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
-// ぶつかったときのトゲトゲ爆発エフェクトを描画する関数
 function drawSpikyExplosion(X, Y, progress){
   ctx.save();
   ctx.translate(X, Y);
   ctx.scale(progress, progress);
   
-  // トゲトゲの星型パスを生成
   ctx.fillStyle = '#ff3d00';
   ctx.strokeStyle = '#ffeb3b';
   ctx.lineWidth = 3;
@@ -339,7 +343,6 @@ function drawSpikyExplosion(X, Y, progress){
   ctx.fill();
   ctx.stroke();
 
-  // 内部の衝撃波円
   ctx.fillStyle = 'rgba(255, 235, 59, 0.8)';
   ctx.beginPath();
   ctx.arc(0, 0, 18 * (2 - progress), 0, Math.PI * 2);
@@ -492,15 +495,13 @@ function view(){
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // 衝突結果になったときに画面中央（自機付近）にトゲトゲ爆発エフェクトを発生させる
   if(D.s === 'result' && D.hist && D.hist.length > 0){
     const lastResult = D.hist[D.hist.length - 1];
-    if(lastResult !== slot){ // 自分が衝突などで負けた/巻き込まれた瞬間
+    if(lastResult !== slot){
       hitEffects.push({ x: W/2, y: H/2 + 30, life: 1.0 });
     }
   }
 
-  // エフェクトの描画と更新
   hitEffects.forEach((fx, idx) => {
     drawSpikyExplosion(fx.x, fx.y, fx.life);
     fx.life -= 0.04;
