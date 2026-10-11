@@ -215,9 +215,11 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#111';ctx.fillRect(X-k*.15,Y-k*2.2,k*.3,k*2.2);
   
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
-    // 修正: 縦横比を正方形(1:1)に揃え、バイクの胴体サイズにぴったり綺麗に収まるように変更
-    const artSize = k * 1.5;
-    ctx.drawImage(myArtImg, X - artSize / 2, Y - k * 4.1, artSize, artSize);
+    // 元画像の縦横比を完全に計算して自動フィットさせる処理
+    const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
+    const baseH = k * 1.8;
+    const baseW = baseH * imgRatio;
+    ctx.drawImage(myArtImg, X - baseW / 2, Y - k * 3.9, baseW, baseH);
   } else {
     ctx.fillStyle = bikeColor;
     ctx.fillRect(X - k * 0.6, Y - k * 3.7, k * 1.2, k * 1.8);
@@ -379,7 +381,7 @@ function draw(){
   view();topbar();
   if(D.s==='count')overlay(String(Math.ceil(D.t)),(D.att===slot?'あなたは攻撃側(A)':'あなたは追越側(B)')+(D.rd>=6?'  SUDDEN DEATH':''),'#ffd54f');
   if(D.s==='result'){const w=D.hist?D.hist[D.hist.length-1]:-1;overlay(D.msg,D.sub+(w===slot?'  (あなたの得点)':''),'#7fff7f');}
-  if(D.s==='match')overlay(D.msg,D.sub,'#ffd54f');
+  if(D.s==='match')overlay(D.msg,D.sub,'#ffd5^f');
   if(D.s==='play'&&D.el<1.5){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.fillText('GO!',W/2,300);}
 }
 
