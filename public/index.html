@@ -1,589 +1,682 @@
 <!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>なにが目的なん？ ONLINE</title>
-<style>
-html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}
-#wrap{position:relative;max-width:100%}
-canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid #333}
-#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
-h1{margin:0 0 2px;font-size:34px}
-button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
-button{background:#ffd54f;font-weight:bold;cursor:pointer}
-button.solo{background:#81c784}
-button.shop-btn{background:#ba68c8;color:#fff}
-input{width:180px;text-align:center}
-#pname{width:180px;font-weight:bold}
-#code{width:130px;letter-spacing:3px}
-#st{min-height:20px;color:#9fd;font-size:14px}
-#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
-#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
-.skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
-.skin-card.selected{border-color:#ffd54f}
-p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
-</style></head><body>
-<div id="wrap"><canvas id="c" width="720" height="540"></canvas>
-<div id="lobby">
-  <h1>なにが目的なん？</h1>
-  <div id="profile-box">
-    <span id="disp-id">ID: ---</span>
-    <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>セノビックブラザーズ (Senobic Brothers)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #121215;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      width: 1200px;
+      height: 600px;
+      border: 2px solid #4a4a5e;
+      border-radius: 10px;
+      background-color: #08080a;
+      overflow: hidden;
+      box-shadow: 0 16px 45px rgba(0,0,0,0.8);
+    }
+    canvas {
+      display: block;
+      width: 1200px;
+      height: 600px;
+    }
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, #161622 0%, #08080a 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .btn {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 6px;
+      margin-top: 8px;
+      box-shadow: 0 4px 12px rgba(52,152,219,0.3);
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(52,152,219,0.5); }
+    .btn-ready { background: linear-gradient(135deg, #2ecc71, #27ae60); box-shadow: 0 4px 12px rgba(46,204,113,0.3); }
+    .btn-ready:hover { box-shadow: 0 6px 16px rgba(46,204,113,0.5); }
+    .btn-cancel { background: linear-gradient(135deg, #e74c3c, #c0392b); box-shadow: 0 4px 12px rgba(231,76,60,0.3); }
+    .btn-cancel:hover { box-shadow: 0 6px 16px rgba(231,76,60,0.5); }
+    .btn-cpu { background: linear-gradient(135deg, #9b59b6, #8e44ad); box-shadow: 0 4px 12px rgba(155,89,182,0.3); }
+    .btn-cpu:hover { box-shadow: 0 6px 16px rgba(155,89,182,0.5); }
+    .btn-leave { background: linear-gradient(135deg, #7f8c8d, #34495e); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .btn-leave:hover { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
+    .btn-stage {
+      background: #2a2a38;
+      font-size: 11px;
+      padding: 5px 10px;
+      margin-top: 0;
+      border: 1px solid #555;
+    }
+    .btn-stage.active { background: #f39c12; border-color: #f1c40f; box-shadow: 0 0 10px rgba(241,196,15,0.4); }
+
+    input[type="text"], input[type="number"] {
+      width: 180px;
+      padding: 6px 10px;
+      font-size: 15px;
+      text-align: center;
+      border-radius: 6px;
+      border: 2px solid #3498db;
+      background: #16161a;
+      color: #fff;
+      outline: none;
+    }
+
+    #lobby-ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      pointer-events: none;
+    }
+    .interactive { pointer-events: auto; }
+    .lobby-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .lobby-title { font-size: 22px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .badge {
+      background: #1e1e28;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #3498db;
+      border: 1px solid #3498db;
+      box-shadow: 0 2px 8px rgba(52,152,219,0.2);
+    }
+    .lobby-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    #stamp-bar {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      pointer-events: auto;
+    }
+    .stamp-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2c3e50;
+      border: 2px solid #3498db;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .stamp-btn:hover { transform: scale(1.15); }
+
+    #countdown-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 100px;
+      font-weight: 900;
+      color: #f1c40f;
+      text-shadow: 0 0 30px rgba(241, 196, 15, 0.9), 0 0 10px #000;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    #select-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 10, 14, 0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 15px;
+    }
+    .char-list-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      max-width: 920px;
+      margin: 15px 0;
+    }
+    .char-card {
+      width: 165px;
+      height: 220px;
+      border: 2px solid #3a3a4e;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, #181824, #12121b);
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .char-card:hover, .char-card.active {
+      border-color: #3498db;
+      transform: translateY(-4px);
+      box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+    .char-preview-box {
+      width: 100%;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #08080c;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #282836;
+      position: relative;
+    }
+    .char-stats {
+      font-size: 11px;
+      width: 100%;
+      color: #bbb;
+      line-height: 1.3;
+    }
+    .ability-box {
+      font-size: 10px;
+      color: #f1c40f;
+      font-weight: bold;
+      background: rgba(241, 196, 15, 0.15);
+      padding: 3px 6px;
+      border-radius: 3px;
+      margin-top: 3px;
+    }
+
+    #controls-guide {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="1200" height="600"></canvas>
+
+    <div id="countdown-overlay" class="hidden">3</div>
+
+    <!-- 1. タイトル画面 -->
+    <div id="screen-title" class="overlay" style="position: relative;">
+      <h1 style="font-size: 40px; margin-bottom: 6px; text-shadow: 0 4px 12px rgba(0,0,0,0.8); background: linear-gradient(to right, #3498db, #2ecc71); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">セノビックブラザーズ</h1>
+      <p style="color: #999; font-size: 14px; margin-bottom: 22px; letter-spacing: 2px;">REAL 2D FIGHTING BATTLE</p>
+      
+      <div style="margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <label style="font-size: 12px; color: #aaa;">プレイヤー名:</label>
+        <input type="text" id="player-name-input" value="Player 1" maxlength="10">
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button class="btn" onclick="createOnlineRoom()">部屋を作る</button>
+        <button class="btn btn-cpu" onclick="openCpuSetup()">1人でCPU対戦</button>
+      </div>
+
+      <div style="margin-top: 18px; display: flex; flex-direction: column; align-items: center;">
+        <p style="font-size: 13px; color: #aaa;">4桁の部屋コードで参加 (最大4人):</p>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <input type="number" id="room-code-input" placeholder="1234" maxlength="4" oninput="if(this.value.length>4)this.value=this.value.slice(0,4)">
+          <button class="btn" onclick="joinOnlineRoom()" style="margin-top: 0; padding: 6px 14px;">入室</button>
+        </div>
+        <p id="error-msg" style="color: #e74c3c; font-size: 12px; margin-top: 6px;"></p>
+      </div>
+
+      <div style="position: absolute; bottom: 15px; right: 20px; font-size: 13px; color: #718096; font-weight: bold; letter-spacing: 1px;">Ver 2.2.0</div>
+    </div>
+
+    <!-- 2. CPU対戦設定画面 -->
+    <div id="screen-cpu-setup" class="overlay hidden">
+      <h2 style="font-size: 24px; margin-bottom: 12px; text-shadow: 0 2px 6px rgba(0,0,0,0.6);">CPU対戦 設定</h2>
+      
+      <div style="margin-bottom: 14px; text-align: center;">
+        <label style="font-size: 13px; color: #aaa; display: block; margin-bottom: 4px;">キャラクター:</label>
+        <div id="cpu-char-label" style="font-size: 16px; font-weight: bold; color: #3498db; margin-bottom: 6px;">フツオ (ファイター)</div>
+        <button class="btn" onclick="openCharSelect()" style="margin-top:0; font-size: 13px; background: #3a3a4e;">変更する</button>
+      </div>
+
+      <div style="margin-bottom: 18px; text-align: center;">
+        <label style="font-size: 13px; color: #aaa; display: block; margin-bottom: 6px;">ステージ:</label>
+        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; max-width: 420px;">
+          <button class="btn btn-stage active" id="btn-cpu-stage-1" onclick="selectCpuStage(1)">平原</button>
+          <button class="btn btn-stage" id="btn-cpu-stage-2" onclick="selectCpuStage(2)">浮島</button>
+          <button class="btn btn-stage" id="btn-cpu-stage-3" onclick="selectCpuStage(3)">スリル</button>
+          <button class="btn btn-stage" id="btn-cpu-stage-4" onclick="selectCpuStage(4)">神殿</button>
+          <button class="btn btn-stage" id="btn-cpu-stage-5" onclick="selectCpuStage(5)">宇宙</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-cpu" onclick="confirmStartCpuGame()">対戦スタート！</button>
+        <button class="btn" onclick="goToTitle()" style="background: #555;">戻る</button>
+      </div>
+    </div>
+
+    <!-- 3. オンラインロビー画面 -->
+    <div id="screen-lobby" class="overlay hidden" style="background: transparent;">
+      <div id="lobby-ui">
+        <div class="lobby-top">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn btn-leave interactive" onclick="leaveLobby()" style="font-size: 12px; padding: 6px 12px; margin-top: 0; width: fit-content;">← 退出 (タイトルへ)</button>
+            <div class="lobby-title">
+              LOBBY (MAX 4 PLAYERS)
+              <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;" class="interactive">
+                <button class="btn btn-stage active" id="btn-stage-1" onclick="selectStage(1)">平原</button>
+                <button class="btn btn-stage" id="btn-stage-2" onclick="selectStage(2)">浮島</button>
+                <button class="btn btn-stage" id="btn-stage-3" onclick="selectStage(3)">スリル</button>
+                <button class="btn btn-stage" id="btn-stage-4" onclick="selectStage(4)">神殿</button>
+                <button class="btn btn-stage" id="btn-stage-5" onclick="selectStage(5)">宇宙</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <div id="room-code-badge" class="badge">ROOM CODE: ----</div>
+            <div id="stamp-bar">
+              <button class="stamp-btn" onclick="sendStamp('👍')">👍</button>
+              <button class="stamp-btn" onclick="sendStamp('👎')">👎</button>
+              <button class="stamp-btn" onclick="sendStamp('❤️')">❤️</button>
+              <button class="stamp-btn" onclick="sendStamp('💢')">💢</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lobby-bottom">
+          <div class="interactive" style="display: flex; gap: 8px; align-items: flex-end;">
+            <div>
+              <label style="font-size: 11px; color: #aaa; display: block; margin-bottom: 2px;">名前変更:</label>
+              <input type="text" id="lobby-name-input" value="Player 1" maxlength="10" onchange="changeLobbyName()">
+            </div>
+            <button class="btn" onclick="openCharSelect()" style="margin-top:0; font-size: 13px; padding: 6px 12px; background: #3a3a4e;">キャラ変更</button>
+          </div>
+
+          <div class="interactive">
+            <button id="ready-btn" class="btn btn-ready" onclick="toggleReady()">対戦準備完了</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. キャラクター選択モーダル -->
+    <div id="select-modal" class="hidden">
+      <h2 style="font-size: 22px; margin-bottom: 12px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">リアルキャラクターを選択</h2>
+      <div class="char-list-grid" id="char-list"></div>
+      <button class="btn" onclick="closeCharSelect()" style="padding: 10px 28px; margin-top: 15px;">決定</button>
+    </div>
+
+    <!-- 5. 勝敗画面 -->
+    <div id="screen-gameover" class="overlay hidden">
+      <h2 id="winner-text" style="font-size: 34px; color: #f1c40f; margin-bottom: 15px; text-shadow: 0 0 15px rgba(241,196,15,0.6);">PLAYER 1 WIN!</h2>
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-ready" onclick="requestRematch()">もう一度 (Enter)</button>
+        <button class="btn" onclick="returnFromGameover()" style="background: #555;">タイトルへ</button>
+      </div>
+    </div>
   </div>
-  <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
-  <button id="solo" class="solo">ソロ（CPU対戦）</button>
-  <button id="create">ルーム作成</button>
-  <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
-  <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
-  <div id="st"></div>
-</div>
 
-<div id="shop-modal">
-  <h2>🚲 スキンショップ</h2>
-  <p>NMcoinを使って見た目を変更しよう（※ゲーム性能は変わりません）</p>
-  <div class="skin-grid" id="skin-list"></div>
-  <p id="shop-st" style="color:#ffb74d"></p>
-  <button id="close-shop">ロビーへ戻る</button>
-</div>
-</div>
-<p>左右：A / D または ← / →  アクション(急ブレーキ・ブースト)：W / ↑ / Space  再戦：Enter  ロビーへ戻る：Esc</p>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket=io(),cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=720,H=540;
-const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#3a6','#58c','#c9a','#999'];
-const HY=170,GY=540,K=1.9,ROAD_W=112.5;
-let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
-let hitEffects = [];
+  <div id="controls-guide">
+    操作: [A/D] 移動 ｜ [W] ジャンプ ｜ <span style="color: #f1c40f;">[K] パンチ</span> ｜ <span style="color: #e74c3c;">[O] キック</span> ｜ <span style="color: #f39c12;">[Shift] 必殺技</span>
+  </div>
 
-// --- Web Audio API (BGM & SE) ---
-let audioCtx = null;
-let bgmInterval = null;
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-function initAudio(){
-  if(!audioCtx){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if(audioCtx.state === 'suspended'){
-    audioCtx.resume();
-  }
-}
+    const screenTitle = document.getElementById('screen-title');
+    const screenCpuSetup = document.getElementById('screen-cpu-setup');
+    const screenLobby = document.getElementById('screen-lobby');
+    const screenGameover = document.getElementById('screen-gameover');
+    const selectModal = document.getElementById('select-modal');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const charListContainer = document.getElementById('char-list');
+    const cpuCharLabel = document.getElementById('cpu-char-label');
+    const winnerText = document.getElementById('winner-text');
+    const readyBtn = document.getElementById('ready-btn');
+    const roomCodeBadge = document.getElementById('room-code-badge');
+    const roomCodeInput = document.getElementById('room-code-input');
+    const playerNameInput = document.getElementById('player-name-input');
+    const lobbyNameInput = document.getElementById('lobby-name-input');
+    const errorMsg = document.getElementById('error-msg');
 
-// ポップBGM（長めループ）
-function startBGM(){
-  initAudio();
-  if(bgmInterval) return;
-  const melody = [
-    261.63, 329.63, 392.00, 523.25, 349.23, 440.00, 523.25, 659.25,
-    293.66, 369.99, 440.00, 587.33, 392.00, 493.88, 587.33, 783.99,
-    523.25, 493.88, 440.00, 392.00, 349.23, 329.63, 293.66, 261.63,
-    220.00, 261.63, 329.63, 392.00, 440.00, 523.25, 659.25, 783.99
-  ];
-  let stepIdx = 0;
-  bgmInterval = setInterval(() => {
-    if(!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(melody[stepIdx], audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.32);
-    stepIdx = (stepIdx + 1) % melody.length;
-  }, 200);
-}
+    let myPlayerNum = null;
+    let currentCode = null;
 
-function stopBGM(){
-  if(bgmInterval){ clearInterval(bgmInterval); bgmInterval = null; }
-}
-
-// A（攻撃側）のブレーキ音：「キュッ！」
-function playBrakeSound(){
-  initAudio();
-  if(!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
-  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.2);
-}
-
-// B（追越側）のブースト音：「ギュイーン！」
-function playBoostSound(){
-  initAudio();
-  if(!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(250, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.35);
-  gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.42);
-}
-
-// 衝突・ひかれたときの音：「ガシャン！」
-function playCrashSound(){
-  initAudio();
-  if(!audioCtx) return;
-  const bufferSize = audioCtx.sampleRate * 0.4;
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for(let i = 0; i < bufferSize; i++){ data[i] = Math.random() * 2 - 1; }
-  const noise = audioCtx.createBufferSource();
-  noise.buffer = buffer;
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
-  filter.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.35);
-  const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.38);
-  noise.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-  noise.start();
-}
-
-const myArtImg = new Image();
-myArtImg.src = 'my_art.png';
-
-let nmId = localStorage.getItem('nm_id');
-if(!nmId){
-  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
-  localStorage.setItem('nm_id', nmId);
-}
-let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
-let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
-let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
-
-$('disp-id').textContent = 'ID: ' + nmId;
-$('disp-coin').textContent = myCoins;
-
-const SKINS = {
-  'default': { name: 'スタンダード', color: '#c33', price: 0 },
-  'gold':    { name: 'ゴールド', color: '#ffd700', price: 50 },
-  'cyber':   { name: 'サイバー', color: '#00ffcc', price: 100 },
-  'dark':    { name: 'ダーク', color: '#333333', price: 80 },
-  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 }
-};
-
-function updateShopUI(){
-  $('disp-coin').textContent = myCoins;
-  const list = $('skin-list');
-  list.innerHTML = '';
-  for(const [key, skin] of Object.entries(SKINS)){
-    const owned = ownedSkins.includes(key);
-    const selected = currentSkin === key;
-    const div = document.createElement('div');
-    div.className = 'skin-card' + (selected ? ' selected' : '');
-    div.innerHTML = `<div style="width:30px;height:15px;background:${skin.color};margin:0 auto 6px;border-radius:3px"></div>` +
-                    `<b>${skin.name}</b><br>` +
-                    `<small>${owned ? (selected ? '装着中' : '所持') : skin.price + ' NC'}</small>`;
-    div.onclick = () => {
-      if(owned){
-        currentSkin = key;
-        localStorage.setItem('nm_current_skin', currentSkin);
-        updateShopUI();
-        $('shop-st').textContent = skin.name + 'を装着しました！';
-      } else {
-        if(myCoins >= skin.price){
-          myCoins -= skin.price;
-          localStorage.setItem('nm_coins', myCoins);
-          ownedSkins.push(key);
-          localStorage.setItem('nm_owned_skins', JSON.stringify(ownedSkins));
-          currentSkin = key;
-          localStorage.setItem('nm_current_skin', currentSkin);
-          updateShopUI();
-          $('shop-st').textContent = skin.name + 'を購入しました！';
-        } else {
-          $('shop-st').textContent = 'コインが足りません！';
-        }
-      }
+    let characters = {
+      futsuo:     { name: 'フツオ (ファイター)',   hp: 100, atk: 12, speed: 7.0, jumpPower: 17, width: 50, height: 90,  type: 'futsuo',     ability: '万能格闘家' },
+      debugon:    { name: 'デブゴン (ヘビー)',     hp: 140, atk: 16, speed: 5.0, jumpPower: 13, width: 75, height: 95,  type: 'debugon',    ability: '不屈のアーマー' },
+      chibikoro:  { name: 'チビコロ (ダイバー)',   hp: 110, atk: 13, speed: 6.0, jumpPower: 14, width: 65, height: 60,  type: 'chibikoro',  ability: '急降下アタック' },
+      ninja:      { name: 'ニンジャ (シノビ)',     hp: 85,  atk: 11, speed: 7.0, jumpPower: 17, width: 40, height: 90,  type: 'ninja',      ability: '手裏剣(CT:0.6秒)' },
+      wizard:     { name: 'ウィザード (メイジ)',   hp: 85,  atk: 13, speed: 7.0, jumpPower: 18, width: 45, height: 95,  type: 'wizard',     ability: '魔法弾(CT:0.6秒)' }
     };
-    list.appendChild(div);
-  }
-}
 
-$('open-shop').onclick = () => { updateShopUI();$('shop-modal').style.display = 'flex'; };
-$('close-shop').onclick = () => {$('shop-modal').style.display = 'none'; };
+    let stages = {
+      1: { name: '平原', platforms: [{ x: 220, y: 410, width: 200, height: 18 }, { x: 780, y: 410, width: 200, height: 18 }, { x: 500, y: 280, width: 200, height: 18 }] },
+      2: { name: '浮島', platforms: [{ x: 180, y: 400, width: 220, height: 20 }, { x: 800, y: 400, width: 220, height: 20 }, { x: 490, y: 270, width: 220, height: 20 }] },
+      3: { name: 'スリル', platforms: [{ x: 350, y: 390, width: 500, height: 22 }] },
+      4: { name: '神殿', platforms: [{ x: 200, y: 390, width: 220, height: 20, type: 'gold' }, { x: 780, y: 390, width: 220, height: 20, type: 'gold' }, { x: 480, y: 260, width: 240, height: 22, type: 'gold' }] },
+      5: { name: '宇宙', platforms: [{ x: 150, y: 420, width: 250, height: 16, type: 'neon' }, { x: 800, y: 420, width: 250, height: 16, type: 'neon' }, { x: 460, y: 290, width: 280, height: 16, type: 'neon' }] }
+    };
 
-function getName(){ const val=$('pname').value.trim(); return val||'プレイヤー'; }
-function getPayload(){ return { name: getName(), id: nmId, skin: currentSkin }; }
+    let characterKeys = Object.keys(characters);
+    let selectedStage = 1;
+    let cpuSelectedStage = 1;
+    let cpuSelectedCharKey = 'futsuo';
+    let selectedIndex = 0;
+    let currentGameState = 'TITLE';
+    let playersData = {};
+    let itemsData = [];
+    let projectilesData = [];
+    let activeStamps = {};
+    let isReady = false;
+    let isCpuModeGame = false;
+    let visualEffects = [];
 
-function returnLobby(){
-  socket.emit('leave');
-  inGame=false;S=D=null;
-  stopBGM();
-  $('lobby').style.display='flex';$('st').textContent='';
-}
+    let lastAttackTime = 0;
+    let audioCtx = null;
+    let bgmTimer = null;
 
-$('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
-$('create').onclick=()=> { initAudio(); startBGM(); socket.emit('create', getPayload(), r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';}); };
-$('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;}); };
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
 
-socket.on('start',d=>{
-  slot=d.slot;inGame=true;S=D=null;
-  startBGM();
-  $('lobby').style.display='none';$('shop-modal').style.display='none';
-});
+    function playSE(type) {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
 
-socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
-
-socket.on('reward', data => {
-  if(data.gain){
-    myCoins += data.gain;
-    localStorage.setItem('nm_coins', myCoins);
-    $('disp-coin').textContent = myCoins;
-  }
-});
-
-let lastState = '';
-let lastBrakesCount = [0, 0];
-let lastBoostState = [false, false];
-
-socket.on('st',s=>{
-  if(D && s.s === 'result' && lastState !== 'result'){
-    playCrashSound();
-  }
-  
-  if(D && s.P){
-    s.P.forEach((p, i) => {
-      if(!p || !D.P[i]) return;
-      if(s.att === i){
-        if(p.brakes > lastBrakesCount[i]){
-          playBrakeSound();
+        if (type === 'punch') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'ult') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+          osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'item') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'senobic') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.1);
+          osc.frequency.setValueAtTime(659.25, now + 0.2);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now); osc.stop(now + 0.4);
+        } else if (type === 'ko') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now); osc.stop(now + 0.4);
         }
-      } else {
-        if(p.boost && !lastBoostState[i]){
-          playBoostSound();
-        }
-      }
-      lastBrakesCount[i] = p.brakes;
-      lastBoostState[i] = p.boost;
+      } catch (e) {}
+    }
+
+    function startBGM() {
+      if (bgmTimer) return;
+      const bassSeq = [110, 110, 130.81, 110, 146.83, 130.81, 123.47, 110];
+      const melodySeq = [220, 261.63, 293.66, 329.63, 392.00, 329.63, 293.66, 261.63];
+      let step = 0;
+
+      bgmTimer = setInterval(() => {
+        if (currentGameState !== 'PLAYING') return;
+        try {
+          initAudio();
+          const now = audioCtx.currentTime;
+
+          const bassOsc = audioCtx.createOscillator();
+          const bassGain = audioCtx.createGain();
+          bassOsc.type = 'sawtooth';
+          bassOsc.frequency.setValueAtTime(bassSeq[step % bassSeq.length], now);
+          bassOsc.connect(bassGain);
+          bassGain.connect(audioCtx.destination);
+          bassGain.gain.setValueAtTime(0.06, now);
+          bassGain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+          bassOsc.start(now);
+          bassOsc.stop(now + 0.12);
+
+          if (step % 2 === 0) {
+            const melOsc = audioCtx.createOscillator();
+            const melGain = audioCtx.createGain();
+            melOsc.type = 'square';
+            melOsc.frequency.setValueAtTime(melodySeq[(step / 2) % melodySeq.length], now);
+            melOsc.connect(melGain);
+            melGain.connect(audioCtx.destination);
+            melGain.gain.setValueAtTime(0.04, now);
+            melGain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+            melOsc.start(now);
+            melOsc.stop(now + 0.18);
+          }
+
+          step++;
+        } catch(e) {}
+      }, 160);
+    }
+
+    function stopBGM() {
+      if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+    }
+
+    const keys = { left: false, right: false, jump: false, jumpPrev: false, attack: false, attackType: null, ult: false };
+
+    renderCharCards();
+
+    socket.on('roomCreated', (data) => {
+      currentCode = data.code;
+      myPlayerNum = data.playerNum;
+      if (data.characters) characters = data.characters;
+      if (data.stages) stages = data.stages;
+      characterKeys = Object.keys(characters);
+      roomCodeBadge.textContent = `ROOM CODE: ${currentCode}`;
+      if (!isCpuModeGame) goToLobby();
+      renderCharCards();
     });
-  }
 
-  lastState = s.s;
-  S=s;
-});
+    socket.on('roomJoined', (data) => {
+      currentCode = data.code;
+      myPlayerNum = data.playerNum;
+      if (data.characters) characters = data.characters;
+      if (data.stages) stages = data.stages;
+      characterKeys = Object.keys(characters);
+      roomCodeBadge.textContent = `ROOM CODE: ${currentCode}`;
+      goToLobby();
+      renderCharCards();
+    });
 
-const keys={};
-function sendInp(){
-  if(!inGame) return;
-  const l=+!!(keys.KeyA||keys.ArrowLeft),r=+!!(keys.KeyD||keys.ArrowRight);
-  if(l!==last.l||r!==last.r){last={l,r};socket.emit('inp',{l,r});}
-}
+    socket.on('joinError', (msg) => { errorMsg.textContent = msg; });
 
-addEventListener('keydown',e=>{
-  initAudio();
-  if(['ArrowLeft','ArrowRight','ArrowUp','Space'].includes(e.code))e.preventDefault();
-  if(!keys[e.code]){
-    if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
-      socket.emit('act');
-      if(D && D.att === slot){
-        playBrakeSound();
-      } else {
-        playBoostSound();
+    socket.on('stageUpdated', (data) => {
+      selectedStage = data.selectedStage;
+      updateStageButtonsUI();
+    });
+
+    socket.on('countdownUpdate', (data) => {
+      countdownOverlay.classList.remove('hidden');
+      countdownOverlay.textContent = data.count;
+    });
+
+    socket.on('countdownCancel', () => { countdownOverlay.classList.add('hidden'); });
+
+    socket.on('stampTriggered', (data) => {
+      activeStamps[data.socketId] = { stamp: data.stamp, timer: 120 };
+    });
+
+    socket.on('ultTriggered', (data) => {
+      playSE('ult');
+      visualEffects.push({ type: 'ULT_TEXT', playerId: data.playerId, timer: 60 });
+    });
+
+    socket.on('koEffect', (data) => {
+      playSE('ko');
+      visualEffects.push({ type: 'KO_FLASH', x: data.x, y: data.y, timer: 180 });
+      visualEffects.push({ type: 'KO_TEXT', x: data.x, y: data.y, timer: 180 });
+    });
+
+    socket.on('itemCollected', (data) => {
+      if (data.type === 'senobic') playSE('senobic');
+      else playSE('item');
+      visualEffects.push({ type: 'ITEM_GET', playerId: data.playerId, itemType: data.type, timer: 40 });
+    });
+
+    socket.on('gameState', (data) => {
+      if (currentGameState !== 'TITLE' && currentGameState !== 'CPU_SETUP') {
+        currentGameState = data.state;
       }
-    }
-    if(e.code==='Enter'&&inGame)socket.emit('again');
-    if(e.code==='Escape'&&inGame)returnLobby();
-  }
-  keys[e.code]=true;sendInp();
-});
-addEventListener('keyup',e=>{keys[e.code]=false;sendInp();});
+      playersData = data.players;
+      if (data.selectedStage) {
+        selectedStage = data.selectedStage;
+        updateStageButtonsUI();
+      }
+      if (data.code) roomCodeBadge.textContent = `ROOM CODE: ${data.code}`;
+      updateUI();
+    });
 
-cv.addEventListener('click',e=>{
-  if(!inGame||!D||D.s!=='match')return;
-  const rect=cv.getBoundingClientRect();
-  const x=(e.clientX-rect.left)*(W/rect.width);
-  const y=(e.clientY-rect.top)*(H/rect.height);
-  if(y>=310&&y<=345){
-    if(x>=W/2-180&&x<=W/2-20)socket.emit('again');
-    if(x>=W/2+20&&x<=W/2+180)returnLobby();
-  }
-});
+    socket.on('characterUpdated', (data) => {
+      playersData = data.players;
+      updateLobbyUI();
+    });
 
-function sync(dt){
-  if(!S)return;
-  if(!D||S.s==='count'||S.rd!==D.rd){D=JSON.parse(JSON.stringify(S));return;}
-  const k=Math.min(1,dt*18),old={};
-  if(D.obs) D.obs.forEach(o=>old[o.id]=o);
-  
-  const P=(S.P||[]).map((t,i)=>{
-    const c=D.P?D.P[i]:null;
-    if(!t)return null;if(!c)return t;
-    c.x+=(t.x-c.x)*k;c.z+=(t.z-c.z)*k;c.v=t.v;c.brk=t.brk;c.brakes=t.brakes;c.boost=t.boost;c.cd=t.cd;c.skin=t.skin;return c;
-  });
-  const obs=(S.obs||[]).map(o=>{const c=old[o.id];if(!c)return{...o};c.x+=(o.x-c.x)*k;c.z+=(o.z-c.z)*k;return c;});
-  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names});
-}
+    socket.on('gameStart', (data) => {
+      currentGameState = 'PLAYING';
+      isCpuModeGame = !!data.isCpuMode;
+      countdownOverlay.classList.add('hidden');
+      playersData = data.players;
+      itemsData = [];
+      projectilesData = [];
+      visualEffects = [];
+      if (data.selectedStage) selectedStage = data.selectedStage;
+      startBGM();
+      updateUI();
+    });
 
-function poly(pts,c){ctx.fillStyle=c;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();}
+    socket.on('updateState', (data) => {
+      if (currentGameState === 'PLAYING') {
+        playersData = data.players;
+        itemsData = data.items || [];
+        projectilesData = data.projectiles || [];
+        renderGame();
+      }
+    });
 
-function tree(X,Y,s){
-  const k=s*K*28;
-  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(X,Y,k*.8,k*.25,0,0,7);ctx.fill();
-  ctx.fillStyle='#5c3a21';ctx.fillRect(X-k*.15,Y-k*2.5,k*.3,k*2.5);
-  ctx.fillStyle='#1e5e22';ctx.beginPath();ctx.arc(X,Y-k*3.2,k*1.2,0,7);ctx.fill();
-  ctx.fillStyle='#2e7d32';ctx.beginPath();ctx.arc(X-k*.2,Y-k*3.4,k*.9,0,7);ctx.fill();
-  ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
-}
+    socket.on('gameOver', (data) => {
+      currentGameState = 'FINISHED';
+      isCpuModeGame = !!data.isCpuMode;
+      stopBGM();
+      winnerText.textContent = `${data.winnerName} VICTORY! (GAME OVER)`;
+      updateUI();
+    });
 
-function drawSpikyExplosion(X, Y){
-  ctx.save();
-  ctx.translate(X, Y);
-  ctx.fillStyle = '#ff3d00';
-  ctx.strokeStyle = '#ffeb3b';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  const spikes = 10;
-  const outerRadius = 60;
-  const innerRadius = 30;
-  for (let i = 0; i < spikes * 2; i++) {
-    const r = (i % 2 === 0) ? outerRadius : innerRadius;
-    const angle = (i * Math.PI) / spikes;
-    const x = Math.cos(angle) * r;
-    const y = Math.sin(angle) * r;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
+    socket.on('playerLeft', () => {
+      stopBGM();
+      alert('対戦相手が切断されました。タイトルに戻ります。');
+      goToTitle();
+    });
 
-function bike(X,Y,s,col,p){
-  const k=s*K*22;
-  let bikeColor = col;
-  if(p.skin === 'gold') bikeColor = '#ffd700';
-  else if(p.skin === 'cyber') bikeColor = '#00ffcc';
-  else if(p.skin === 'dark') bikeColor = '#333333';
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      initAudio();
 
-  if(p.boost){ctx.fillStyle='rgba(255,230,80,.45)';ctx.beginPath();ctx.arc(X,Y-k*2.5,k*2.5,0,7);ctx.fill();}
-  
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
-  
-  ctx.fillStyle='#1a1a1a';
-  ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
-  ctx.fillStyle='#333';
-  ctx.fillRect(X - k * 0.3, Y - k * 1.7, k * 0.6, k * 1.6);
-  ctx.fillStyle='#555';
-  ctx.fillRect(X - k * 0.1, Y - k * 1.6, k * 0.2, k * 1.4);
+      if (e.key === '1') sendStamp('👍');
+      if (e.key === '2') sendStamp('👎');
+      if (e.key === '3') sendStamp('❤️');
+      if (e.key === '4') sendStamp('💢');
 
-  ctx.fillStyle='#222';
-  ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
-  ctx.fillStyle='#555';
-  ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);
+      if (currentGameState === 'PLAYING') {
+        const now = Date.now();
+        if (e.key === 'a' || e.key === 'A') keys.left = true;
+        if (e.key === 'd' || e.key === 'D') keys.right = true;
+        if (e.key === 'w' || e.key === 'W') keys.jump = true;
+        if (e.key === 'Shift') keys.ult = true;
 
-  ctx.fillStyle='#111';
-  ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
+        if (e.key === 'k' || e.key === 'K' || e.key === 'o' || e.key === 'O') {
+          if (now - lastAttackTime >= 200) {
+            lastAttackTime = now;
+            keys.attack = true;
+            keys.attackType = (e.key === 'k' || e.key === 'K') ? 'punch' : 'kick';
+            playSE('punch');
+          }
+        }
 
-  ctx.fillStyle='#222';
-  ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
-  ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
-  ctx.fillStyle='#111';
-  ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
-  ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
+        sendInputs();
+        keys.jumpPrev = keys.jump;
+      } else if (currentGameState === 'FINISHED' && e.key === 'Enter') {
+        requestRematch();
+      }
+    });
 
-  if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
-    const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
-    const baseH = k * 1.9;
-    const baseW = baseH * imgRatio;
-    ctx.drawImage(myArtImg, X - baseW / 2, Y - k * 4.0, baseW, baseH);
-  } else {
-    ctx.fillStyle = bikeColor;
-    ctx.fillRect(X - k * 0.65, Y - k * 3.8, k * 1.3, k * 1.9);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
-  }
-
-  ctx.fillStyle='#ffd7b0';ctx.beginPath();ctx.arc(X,Y-k*4.3,k*.55,0,7);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(X-k*0.15,Y-k*4.5,k*.2,0,7);ctx.fill();
-
-  if(p.brk){ctx.fillStyle='#f22';ctx.fillRect(X-k*.5,Y-k*1.6,k*1.0,k*.4);
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillRect(X-k*.4,Y-k*1.5,k*.8,k*.15);}
-}
-
-function car(X,Y,s,o){
-  const k=s*K*22,cop=o.k==='cop',f=Math.floor(Date.now()/150)%2;
-  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(X-k*1.5,Y-k*.2,k*3,k*.4);
-  ctx.fillStyle=cop?'#f4f4f4':CAR[o.c%5];ctx.fillRect(X-k*1.5,Y-k*2.2,k*3,k*2);
-  ctx.fillStyle='#223';ctx.fillRect(X-k*1.1,Y-k*3.2,k*2.2,k*1.1);
-  if(cop){ctx.fillStyle='#111';ctx.fillRect(X-k*1.5,Y-k*1.3,k*3,k*.4);
-    ctx.fillStyle=f?'#f22':'#25f';ctx.fillRect(X-k*.9,Y-k*3.5,k*.9,k*.3);
-    ctx.fillStyle=f?'#25f':'#f22';ctx.fillRect(X,Y-k*3.5,k*.9,k*.3);
-    ctx.fillStyle='#f33';ctx.fillRect(X-k*1.4,Y-k*1.9,k*.5,k*.3);ctx.fillRect(X+k*.9,Y-k*1.9,k*.5,k*.3);}
-  else{ctx.fillStyle='#ff8';ctx.fillRect(X-k*1.3,Y-k*1.1,k*.6,k*.4);ctx.fillRect(X+k*.7,Y-k*1.1,k*.6,k*.4);}
-}
-
-function drawTriangleMarker(me, gap, bx, isBoost) {
-  if (gap === undefined || gap === null || gap > 260 || !me) return;
-
-  const prox = Math.max(0, 1 - gap / 250);
-  const camx = me.x * 0.6;
-  const sBottom = 1;
-  
-  const roadLeftX = W/2 + (-ROAD_W - camx) * sBottom * K;
-  const roadRightX = W/2 + (ROAD_W - camx) * sBottom * K;
-
-  const normX = (bx + ROAD_W) / (ROAD_W * 2);
-  const targetX = Math.max(roadLeftX + 15, Math.min(roadRightX - 15, roadLeftX + normX * (roadRightX - roadLeftX)));
-  
-  const size = 12 + prox * 20; 
-  const baseY = H - 38;
-
-  const barLeft = Math.max(0, roadLeftX);
-  const barRight = Math.min(W, roadRightX);
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(barLeft, H - 45, barRight - barLeft, 45);
-  ctx.strokeStyle = '#444';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(barLeft, H - 45);
-  ctx.lineTo(barRight, H - 45);
-  ctx.stroke();
-
-  ctx.fillStyle = isBoost ? '#ffeb3b' : '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(targetX - size, baseY);
-  ctx.lineTo(targetX + size, baseY);
-  ctx.lineTo(targetX, baseY + size * 1.2);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-function view(){
-  if(!D||!D.P||!D.P[slot]) return;
-  const me=D.P[slot],isA=D.att===slot,camz=me.z-45,camx=me.x*.6;
-  
-  const g=ctx.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#2b5c8f');g.addColorStop(1,'#87ceeb');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,HY);
-  const gGrass=ctx.createLinearGradient(0,HY,0,H);gGrass.addColorStop(0,'#2d6a2e');gGrass.addColorStop(1,'#1b431c');
-  ctx.fillStyle=gGrass;ctx.fillRect(0,HY,W,H-HY);
-
-  const S_=z=>140/(140+z-camz),Y=s=>HY+(GY-HY)*s,X=(x,s)=>W/2+(x-camx)*s*K;
-  const q=(x1,x2,z1,z2,c)=>{const a=S_(z1),b=S_(z2);poly([[X(x1,a),Y(a)],[X(x2,a),Y(a)],[X(x2,b),Y(b)],[X(x1,b),Y(b)]],c);};
-  
-  q(-ROAD_W,ROAD_W,camz+1,camz+2500,'#4a4d52');
-  for(let z=Math.floor(camz/40)*40;z<camz+1000;z+=40){
-    if(z+40<camz+1)continue;const zz=Math.max(z,camz+1),c=((z/40)&1)?'#d32f2f':'#ffffff';
-    q(-ROAD_W-12,-ROAD_W,zz,z+40,c);q(ROAD_W,ROAD_W+12,zz,z+40,c);q(-2,2,zz,z+20,'#fbc02d');}
-  
-  const items=[];
-
-  for(let z=Math.floor(camz/80)*80;z<camz+1000;z+=80){
-    if(z<camz+5)continue;
-    items.push({z, f:()=>tree(X(-ROAD_W-40, S_(z)), Y(S_(z)), S_(z))});
-    items.push({z, f:()=>tree(X(ROAD_W+40, S_(z)), Y(S_(z)), S_(z))});
-  }
-
-  if(D.obs) D.obs.forEach(o=>items.push({z:o.z,f:()=>car(X(o.x,S_(o.z)),Y(S_(o.z)),S_(o.z),o)}));
-  
-  if(D.P) D.P.forEach((p,i)=>{
-    if(p) {
-      if(isA && i !== slot && !p.boost) return;
-      items.push({z:p.z,f:()=>bike(X(p.x,S_(p.z)),Y(S_(p.z)),S_(p.z),COL[i],p)});
-    }
-  });
-  items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
-
-  if(D.s === 'result' && D.msg && (D.msg.includes('衝突') || D.msg.includes('逮捕') || D.msg.includes('激突') || D.sub.includes('車') || D.sub.includes('攻撃側') || D.sub.includes('パトカー'))){
-    if(hitEffects.length === 0){
-      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 });
-    }
-  }
-
-  hitEffects.forEach((fx) => {
-    drawSpikyExplosion(fx.x, fx.y);
-    fx.frames--;
-  });
-  hitEffects = hitEffects.filter(fx => fx.frames > 0);
-
-  if(isA) {
-    drawTriangleMarker(me, D.bgGap, D.bgBx, D.bgBoost);
-  }
-
-  const cop=D.obs?D.obs.find(o=>o.k==='cop'&&o.z<camz+1&&camz-o.z<400):null;
-  if(cop&&D.s==='play'){const f=Math.floor(Date.now()/150)%2;
-    ctx.strokeStyle=f?'rgba(255,40,40,.8)':'rgba(40,80,255,.8)';ctx.lineWidth=14;ctx.strokeRect(7,67,W-14,H-74);
-    ctx.fillStyle='#fff';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
-    ctx.fillText('🚨 パトカー接近！('+(cop.x<me.x?'左':'右')+'寄り) 進路を空けろ',W/2,125);}
-
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
-  ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
-  
-  const actReady = D.el >= 3;
-  if(!actReady){
-    const rem = Math.max(0, 3 - D.el).toFixed(1);
-    ctx.fillStyle='#ffab40';ctx.font='bold 13px sans-serif';ctx.textAlign='right';
-    ctx.fillText('アクション解禁まで '+rem+'秒',W-10,85);
-  }else{
-    if(isA){for(let n=0;n<3;n++){ctx.fillStyle=n<me.brakes?'#f44':'#444';ctx.beginPath();ctx.arc(W-20-n*26,80,9,0,7);ctx.fill();}
-      ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText('急ブレーキ',W-90,85);}
-    else{ctx.fillStyle='#333';ctx.fillRect(W-150,73,140,14);ctx.fillStyle=me.cd<=0?'#7f7':'#fc4';
-      ctx.fillRect(W-150,73,140*(me.cd<=0?1:1-me.cd/3.5),14);ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText('立ち漕ぎブースト',W-156,85);}
-  }
-}
-
-function topbar(){
-  if(!D) return;
-  ctx.fillStyle='#0b0e14';ctx.fillRect(0,0,W,62);
-  const o=1-slot;
-  const names = D.names || ['プレイヤー1', 'プレイヤー2'];
-  [[slot,20,'left',names[slot]||'あなた'],[o,W-20,'right',names[o]||'相手']].forEach(([i,x,al,lb])=>{
-    ctx.textAlign=al;ctx.fillStyle=COL[i];ctx.font='bold 18px sans-serif';ctx.fillText(lb+'  '+(D.sc?D.sc[i]:0),x,24);
-    ctx.fillStyle='#ccc';ctx.font='12px sans-serif';ctx.fillText(D.att===i?'攻撃 (A)':'追越 (B)',x,42);
-    for(let n=0;n<4;n++){ctx.fillStyle=n<(D.sc?D.sc[i]:0)?COL[i]:'#333';ctx.beginPath();ctx.arc(al==='left'?x+110+n*18:x-110-n*18,18,6,0,7);ctx.fill();}});
-  ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';
-  ctx.fillText(D.rd>=6?'SUDDEN DEATH':'ROUND '+(D.rd+1)+(D.rd<3?' (前半)':' (後半)'),W/2,20);
-  const hist = D.hist || [];
-  const n=Math.max(6,hist.length);
-  for(let k=0;k<n;k++){const x=W/2-(n-1)*9+k*18,h=hist[k];ctx.strokeStyle='#888';
-    ctx.fillStyle=k<hist.length?(h<0?'#777':COL[h]):'#0b0e14';ctx.beginPath();ctx.arc(x,42,6,0,7);ctx.fill();ctx.stroke();}
-}
-
-function overlay(t,s,c){
-  const isMatchEnd = D && D.s === 'match';
-  ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,190,W,isMatchEnd?170:150);ctx.textAlign='center';
-  ctx.fillStyle=c;ctx.font='bold 40px sans-serif';ctx.fillText(t,W/2,250);ctx.fillStyle='#ddd';ctx.font='18px sans-serif';ctx.fillText(s||'',W/2,290);
-  
-  if(isMatchEnd) {
-    ctx.fillStyle='#ffd54f';ctx.fillRect(W/2-180,310,160,35);
-    ctx.fillStyle='#e57373';ctx.fillRect(W/2+20,310,160,35);
-    ctx.fillStyle='#000';ctx.font='bold 15px sans-serif';ctx.fillText('再戦 [Enter]',W/2-100,333);ctx.fillText('ロビーへ [Esc]',W/2+100,333);
-  }
-}
-
-function draw(){
-  ctx.fillStyle='#10131a';ctx.fillRect(0,0,W,H);
-  if(!inGame||!D)return;
-  view();topbar();
-  if(D.s==='count')overlay(String(Math.ceil(D.t)),(D.att===slot?'あなたは攻撃側(A)':'あなたは追越側(B)')+(D.rd>=6?'  SUDDEN DEATH':''),'#ffd54f');
-  if(D.s==='result'){const w=D.hist?D.hist[D.hist.length-1]:-1;overlay(D.msg,D.sub+(w===slot?'  (あなたの得点)':''),'#7fff7f');}
-  if(D.s==='match')overlay(D.msg,D.sub,'#ffd54f');
-  if(D.s==='play'&&D.el<1.5){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='bold 36px sans-serif';ctx.fillText('GO!',W/2,300);}
-}
-
-let lt=performance.now();
-(function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
-</script></body></html>
+    window.addEventListener('keyup', (e) => {
+      if (currentGameState === 'PLAYING') {
+        if (e.key === 'a' || e.key === 'A') keys.left = false;
+        if (e.key === 'd' || e.key === 'D') keys.right = false;
+        if (e.key === 'w' || e.key === 'W') { keys.jump = false; keys.jumpPrev = false; }
