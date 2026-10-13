@@ -13,20 +13,20 @@ button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
 button.shop-btn{background:#ba68c8;color:#fff}
-button.id-btn{background:#4fc3f7;color:#000}
+button.id-btn{background:#4fc3f7;color:#000;font-weight:bold;cursor:pointer}
 input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
 #st{min-height:20px;color:#9fd;font-size:14px}
 #profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
-#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:40}
 .skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
 .skin-card.selected{border-color:#ffd54f}
 
-/* ID設定モーダル用のスタイル */
-#id-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:30}
-.id-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #334;display:flex;flex-direction:column;align-items:center;gap:12px;width:300px}
+/* ID設定モーダル（最前面に確実に表示させる） */
+#id-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50}
+.id-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .id-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556}
 p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
@@ -37,7 +37,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
-    <button id="open-id-modal" class="id-btn" style="padding:2px 8px;font-size:11px;">ID変更・確認</button>
+    <button id="open-id-modal" class="id-btn">ID変更・確認</button>
     <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
   </div>
   <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
@@ -48,17 +48,18 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div id="st"></div>
 </div>
 
-<!-- 初回または変更時のNM ID入力・発行選択モーダル -->
+<!-- NM ID入力・発行モーダル -->
 <div id="id-modal">
   <div class="id-box">
     <h2>NM ID 認証</h2>
     <p id="id-modal-desc">自分のNM IDコードを入力するか、新しく発行してください。</p>
-    <div id="input-section" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center;">
+    <div style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center;">
       <input id="input-nm-id" placeholder="例: NM-123456" maxlength="12">
-      <button id="submit-id" style="width:100%;background:#4fc3f7;">このIDで始める</button>
+      <button id="submit-id" style="width:100%;background:#4fc3f7;color:#000;font-weight:bold;cursor:pointer;">このIDで始める</button>
     </div>
-    <div style="border-top:1px solid #334;width:100%;margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center;">
-      <button id="generate-id" style="width:100%;background:#81c784;">新しくIDを発行する</button>
+    <div style="border-top:1px solid #444;width:100%;margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+      <button id="generate-id" style="width:100%;background:#81c784;color:#000;font-weight:bold;cursor:pointer;">新しくIDを発行する</button>
+      <button id="close-id-modal" style="width:100%;background:#555;color:#fff;cursor:pointer;display:none;">キャンセル</button>
     </div>
     <p id="id-err" style="color:#ff5252;font-size:12px;min-height:16px;margin:0;"></p>
   </div>
@@ -81,7 +82,6 @@ const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 let hitEffects = [];
 
-// --- Web Audio API (BGM & SE) ---
 let audioCtx = null;
 let bgmInterval = null;
 
@@ -187,17 +187,26 @@ let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
 let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
 
-// 初回起動時（IDが保存されていない場合）はモーダルを表示して入力を促す
-function checkUserIdState(){
-  if(!nmId){
-    $('id-modal').style.display = 'flex';$('id-modal-desc').textContent = '初回プレイです。既存のIDを入力するか、新しく発行してください。';
-  } else {
+function updateUI(){
+  if(nmId){
     $('disp-id').textContent = 'ID: ' + nmId;
-    $('disp-coin').textContent = myCoins;
+    $('close-id-modal').style.display = 'block'; // すでにIDがある場合はキャンセル可能に
+  } else {
+    $('disp-id').textContent = 'ID: 未登録';
+    $('close-id-modal').style.display = 'none';
   }
+  $('disp-coin').textContent = myCoins;
 }
 
-// ID手動設定ボタンの処理
+// 起動時の初期状態チェック
+if(!nmId){
+  $('id-modal').style.display = 'flex';$('id-modal-desc').textContent = '初回プレイです。既存のIDを入力するか、新しく発行してください。';
+} else {
+  $('id-modal').style.display = 'none';
+  updateUI();
+}
+
+// ID手動設定ボタン
 $('submit-id').onclick = () => {
   const val = $('input-nm-id').value.trim();
   if(!val.startsWith('NM-') || val.length < 6){
@@ -206,16 +215,15 @@ $('submit-id').onclick = () => {
   }
   nmId = val;
   localStorage.setItem('nm_id', nmId);
-  $('disp-id').textContent = 'ID: ' + nmId;
+  updateUI();
   $('id-modal').style.display = 'none';
   $('id-err').textContent = '';$('input-nm-id').value = '';
 };
 
-// 新規ID発行ボタンの処理
+// 新規ID発行ボタン
 $('generate-id').onclick = () => {
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
   localStorage.setItem('nm_id', nmId);
-  // 新規なのでコインや所持スキンも初期化（必要に応じて保持も可）
   localStorage.setItem('nm_coins', '0');
   localStorage.setItem('nm_owned_skins', JSON.stringify(['default']));
   localStorage.setItem('nm_current_skin', 'default');
@@ -223,19 +231,20 @@ $('generate-id').onclick = () => {
   ownedSkins = ['default'];
   currentSkin = 'default';
 
-  $('disp-id').textContent = 'ID: ' + nmId;
-  $('disp-coin').textContent = myCoins;
+  updateUI();
   $('id-modal').style.display = 'none';$('id-err').textContent = '';
   alert('新しいNM IDを発行しました！\n引き継ぎ用にコード【 ' + nmId + ' 】をメモしておいてください。');
 };
 
 $('open-id-modal').onclick = () => {
   $('input-nm-id').value = nmId \vert{}\vert{} '';$('id-modal-desc').textContent = '現在のID確認・変更または引き継ぎ用コードの入力';
+  $('close-id-modal').style.display = nmId ? 'block' : 'none';
   $('id-modal').style.display = 'flex';
 };
 
-// 起動時にIDチェック実行
-checkUserIdState();
+$('close-id-modal').onclick = () => {
+  if(nmId) $('id-modal').style.display = 'none';
+};
 
 const SKINS = {
   'default': { name: 'スタンダード', color: '#c33', price: 0 },
