@@ -13,6 +13,7 @@ button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
 button.shop-btn{background:#ba68c8;color:#fff}
+button.id-btn{background:#4fc3f7;color:#000}
 input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
@@ -22,13 +23,21 @@ input{width:180px;text-align:center}
 .skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
 .skin-card.selected{border-color:#ffd54f}
+
+/* ID設定モーダル用のスタイル */
+#id-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:30}
+.id-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #334;display:flex;flex-direction:column;align-items:center;gap:12px;width:300px}
+.id-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556}
 p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
+
+<!-- ロビー画面 -->
 <div id="lobby">
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
+    <button id="open-id-modal" class="id-btn" style="padding:2px 8px;font-size:11px;">ID変更・確認</button>
     <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
   </div>
   <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
@@ -37,6 +46,22 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
   <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
   <div id="st"></div>
+</div>
+
+<!-- 初回または変更時のNM ID入力・発行選択モーダル -->
+<div id="id-modal">
+  <div class="id-box">
+    <h2>NM ID 認証</h2>
+    <p id="id-modal-desc">自分のNM IDコードを入力するか、新しく発行してください。</p>
+    <div id="input-section" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center;">
+      <input id="input-nm-id" placeholder="例: NM-123456" maxlength="12">
+      <button id="submit-id" style="width:100%;background:#4fc3f7;">このIDで始める</button>
+    </div>
+    <div style="border-top:1px solid #334;width:100%;margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+      <button id="generate-id" style="width:100%;background:#81c784;">新しくIDを発行する</button>
+    </div>
+    <p id="id-err" style="color:#ff5252;font-size:12px;min-height:16px;margin:0;"></p>
+  </div>
 </div>
 
 <div id="shop-modal">
@@ -69,7 +94,6 @@ function initAudio(){
   }
 }
 
-// ポップBGM（長めループ）
 function startBGM(){
   initAudio();
   if(bgmInterval) return;
@@ -100,7 +124,6 @@ function stopBGM(){
   if(bgmInterval){ clearInterval(bgmInterval); bgmInterval = null; }
 }
 
-// A（攻撃側）のブレーキ音：「キュッ！」
 function playBrakeSound(){
   initAudio();
   if(!audioCtx) return;
@@ -117,7 +140,6 @@ function playBrakeSound(){
   osc.stop(audioCtx.currentTime + 0.2);
 }
 
-// B（追越側）のブースト音：「ギュイーン！」
 function playBoostSound(){
   initAudio();
   if(!audioCtx) return;
@@ -134,7 +156,6 @@ function playBoostSound(){
   osc.stop(audioCtx.currentTime + 0.42);
 }
 
-// 衝突・ひかれたときの音：「ガシャン！」
 function playCrashSound(){
   initAudio();
   if(!audioCtx) return;
@@ -160,17 +181,61 @@ function playCrashSound(){
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
+// --- NM ID & ユーザー管理システム ---
 let nmId = localStorage.getItem('nm_id');
-if(!nmId){
-  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
-  localStorage.setItem('nm_id', nmId);
-}
 let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
 let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
 
-$('disp-id').textContent = 'ID: ' + nmId;
-$('disp-coin').textContent = myCoins;
+// 初回起動時（IDが保存されていない場合）はモーダルを表示して入力を促す
+function checkUserIdState(){
+  if(!nmId){
+    $('id-modal').style.display = 'flex';$('id-modal-desc').textContent = '初回プレイです。既存のIDを入力するか、新しく発行してください。';
+  } else {
+    $('disp-id').textContent = 'ID: ' + nmId;
+    $('disp-coin').textContent = myCoins;
+  }
+}
+
+// ID手動設定ボタンの処理
+$('submit-id').onclick = () => {
+  const val = $('input-nm-id').value.trim();
+  if(!val.startsWith('NM-') || val.length < 6){
+    $('id-err').textContent = '正しい形式（例: NM-123456）で入力してください';
+    return;
+  }
+  nmId = val;
+  localStorage.setItem('nm_id', nmId);
+  $('disp-id').textContent = 'ID: ' + nmId;
+  $('id-modal').style.display = 'none';
+  $('id-err').textContent = '';$('input-nm-id').value = '';
+};
+
+// 新規ID発行ボタンの処理
+$('generate-id').onclick = () => {
+  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
+  localStorage.setItem('nm_id', nmId);
+  // 新規なのでコインや所持スキンも初期化（必要に応じて保持も可）
+  localStorage.setItem('nm_coins', '0');
+  localStorage.setItem('nm_owned_skins', JSON.stringify(['default']));
+  localStorage.setItem('nm_current_skin', 'default');
+  myCoins = 0;
+  ownedSkins = ['default'];
+  currentSkin = 'default';
+
+  $('disp-id').textContent = 'ID: ' + nmId;
+  $('disp-coin').textContent = myCoins;
+  $('id-modal').style.display = 'none';$('id-err').textContent = '';
+  alert('新しいNM IDを発行しました！\n引き継ぎ用にコード【 ' + nmId + ' 】をメモしておいてください。');
+};
+
+$('open-id-modal').onclick = () => {
+  $('input-nm-id').value = nmId \vert{}\vert{} '';$('id-modal-desc').textContent = '現在のID確認・変更または引き継ぎ用コードの入力';
+  $('id-modal').style.display = 'flex';
+};
+
+// 起動時にIDチェック実行
+checkUserIdState();
 
 const SKINS = {
   'default': { name: 'スタンダード', color: '#c33', price: 0 },
@@ -258,28 +323,18 @@ socket.on('st',s=>{
   if(D && s.s === 'result' && lastState !== 'result'){
     playCrashSound();
   }
-  
-  // プレイヤーやCPUのアクション発動を検知してSEを鳴らす
   if(D && s.P){
     s.P.forEach((p, i) => {
       if(!p || !D.P[i]) return;
-      // 攻撃側(A)のブレーキ発動検知
       if(s.att === i){
-        if(p.brakes > lastBrakesCount[i]){
-          playBrakeSound();
-        }
-      } 
-      // 追越側(B)のブースト発動検知
-      else {
-        if(p.boost && !lastBoostState[i]){
-          playBoostSound();
-        }
+        if(p.brakes > lastBrakesCount[i]) playBrakeSound();
+      } else {
+        if(p.boost && !lastBoostState[i]) playBoostSound();
       }
       lastBrakesCount[i] = p.brakes;
       lastBoostState[i] = p.boost;
     });
   }
-
   lastState = s.s;
   S=s;
 });
@@ -297,12 +352,8 @@ addEventListener('keydown',e=>{
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
       socket.emit('act');
-      // 自分が攻撃側ならブレーキ音、追越側ならギュイーン音
-      if(D && D.att === slot){
-        playBrakeSound();
-      } else {
-        playBoostSound();
-      }
+      if(D && D.att === slot) playBrakeSound();
+      else playBoostSound();
     }
     if(e.code==='Enter'&&inGame)socket.emit('again');
     if(e.code==='Escape'&&inGame)returnLobby();
@@ -348,11 +399,9 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
-// トゲトゲ爆発エフェクト（サイズ固定で一度だけ大きく表示されて消える）
 function drawSpikyExplosion(X, Y){
   ctx.save();
   ctx.translate(X, Y);
-  
   ctx.fillStyle = '#ff3d00';
   ctx.strokeStyle = '#ffeb3b';
   ctx.lineWidth = 3;
@@ -385,7 +434,6 @@ function bike(X,Y,s,col,p){
   
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
   
-  // タイヤ
   ctx.fillStyle='#1a1a1a';
   ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
   ctx.fillStyle='#333';
@@ -393,17 +441,14 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.1, Y - k * 1.6, k * 0.2, k * 1.4);
 
-  // ハンドル（奥側）
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);
 
-  // フレーム
   ctx.fillStyle='#111';
   ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
 
-  // 足
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
   ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
@@ -411,7 +456,6 @@ function bike(X,Y,s,col,p){
   ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
   ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
 
-  // キャラクター
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.9;
@@ -518,10 +562,9 @@ function view(){
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // ラウンド結果発生時（車との衝突・プレイヤー間の激突）に1回だけエフェクトを追加
   if(D.s === 'result' && D.msg && (D.msg.includes('衝突') || D.msg.includes('逮捕') || D.msg.includes('激突') || D.sub.includes('車') || D.sub.includes('攻撃側') || D.sub.includes('パトカー'))){
     if(hitEffects.length === 0){
-      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 }); // 25フレーム分表示して消す
+      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 });
     }
   }
 
@@ -543,7 +586,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
