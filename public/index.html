@@ -38,7 +38,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
     <button id="open-id-modal" class="id-btn">ID変更・確認</button>
-    <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
+    <span>NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
   </div>
   <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
   <button id="solo" class="solo">ソロ（CPU対戦）</button>
@@ -190,7 +190,7 @@ let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
 function updateUI(){
   if(nmId){
     $('disp-id').textContent = 'ID: ' + nmId;
-    $('close-id-modal').style.display = 'block'; // すでにIDがある場合はキャンセル可能に
+    $('close-id-modal').style.display = 'block'; 
   } else {
     $('disp-id').textContent = 'ID: 未登録';
     $('close-id-modal').style.display = 'none';
@@ -220,7 +220,7 @@ $('submit-id').onclick = () => {
   $('id-err').textContent = '';$('input-nm-id').value = '';
 };
 
-// 新規ID発行ボタン
+// 新規ID発行ボタン（発行したら自動でモーダルを閉じてロビーへ移動）
 $('generate-id').onclick = () => {
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
   localStorage.setItem('nm_id', nmId);
