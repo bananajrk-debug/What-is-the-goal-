@@ -227,7 +227,7 @@ function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
   stopBGM();
-  ('lobby').style.display='flex';('st').textContent='';
+  $('lobby').style.display='flex';$('st').textContent='';
 }
 
 $('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
@@ -237,7 +237,7 @@ $('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $(
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
   startBGM();
-  ('lobby').style.display='none';('shop-modal').style.display='none';
+  $('lobby').style.display='none';$('shop-modal').style.display='none';
 });
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
@@ -259,18 +259,14 @@ socket.on('st',s=>{
     playCrashSound();
   }
   
-  // プレイヤーやCPUのアクション発動を検知してSEを鳴らす
   if(D && s.P){
     s.P.forEach((p, i) => {
       if(!p || !D.P[i]) return;
-      // 攻撃側(A)のブレーキ発動検知
       if(s.att === i){
         if(p.brakes > lastBrakesCount[i]){
           playBrakeSound();
         }
-      } 
-      // 追越側(B)のブースト発動検知
-      else {
+      } else {
         if(p.boost && !lastBoostState[i]){
           playBoostSound();
         }
@@ -297,7 +293,6 @@ addEventListener('keydown',e=>{
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
       socket.emit('act');
-      // 自分が攻撃側ならブレーキ音、追越側ならギュイーン音
       if(D && D.att === slot){
         playBrakeSound();
       } else {
@@ -348,11 +343,9 @@ function tree(X,Y,s){
   ctx.fillStyle='#4caf50';ctx.beginPath();ctx.arc(X-k*.3,Y-k*3.7,k*.5,0,7);ctx.fill();
 }
 
-// トゲトゲ爆発エフェクト（サイズ固定で一度だけ大きく表示されて消える）
 function drawSpikyExplosion(X, Y){
   ctx.save();
   ctx.translate(X, Y);
-  
   ctx.fillStyle = '#ff3d00';
   ctx.strokeStyle = '#ffeb3b';
   ctx.lineWidth = 3;
@@ -385,7 +378,6 @@ function bike(X,Y,s,col,p){
   
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,Y,k*1.2,k*0.4,0,0,7);ctx.fill();
   
-  // タイヤ
   ctx.fillStyle='#1a1a1a';
   ctx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
   ctx.fillStyle='#333';
@@ -393,17 +385,14 @@ function bike(X,Y,s,col,p){
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.1, Y - k * 1.6, k * 0.2, k * 1.4);
 
-  // ハンドル（奥側）
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
   ctx.fillStyle='#555';
   ctx.fillRect(X - k * 0.12, Y - k * 3.1, k * 0.24, k * 0.9);
 
-  // フレーム
   ctx.fillStyle='#111';
   ctx.fillRect(X-k*.2,Y-k*2.4,k*.4,k*2.4);
 
-  // 足
   ctx.fillStyle='#222';
   ctx.fillRect(X - k * 0.7, Y - k * 1.8, k * 0.4, k * 1.1);
   ctx.fillRect(X + k * 0.3, Y - k * 1.8, k * 0.4, k * 1.1);
@@ -411,7 +400,6 @@ function bike(X,Y,s,col,p){
   ctx.fillRect(X - k * 0.85, Y - k * 0.9, k * 0.5, k * 0.35);
   ctx.fillRect(X + k * 0.35, Y - k * 0.9, k * 0.5, k * 0.35);
 
-  // キャラクター
   if(p.skin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
     const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
     const baseH = k * 1.9;
@@ -518,10 +506,9 @@ function view(){
   });
   items.filter(i=>i.z-camz>1).sort((a,b)=>b.z-a.z).forEach(i=>i.f());
 
-  // ラウンド結果発生時（車との衝突・プレイヤー間の激突）に1回だけエフェクトを追加
   if(D.s === 'result' && D.msg && (D.msg.includes('衝突') || D.msg.includes('逮捕') || D.msg.includes('激突') || D.sub.includes('車') || D.sub.includes('攻撃側') || D.sub.includes('パトカー'))){
     if(hitEffects.length === 0){
-      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 }); // 25フレーム分表示して消す
+      hitEffects.push({ x: W/2, y: H/2 + 20, frames: 25 });
     }
   }
 
@@ -543,7 +530,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
@@ -600,4 +587,3 @@ function draw(){
 let lt=performance.now();
 (function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
 </script></body></html>
-
