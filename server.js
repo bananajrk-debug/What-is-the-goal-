@@ -1,891 +1,301 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
-const fs = require('fs');
 
 const app = express();
+app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
-});
+const io = new Server(server);
 
-const PORT = process.env.PORT || 3000;
-const GAME_VERSION = "v2.2.0";
+const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
+const rooms = new Map();
+const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const mk = (x, z, skin) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0, skin: skin || 'default' });
 
-app.use(express.static(__dirname));
+function newRound(R) {
+  R.att = attOf(R.round);
+  const d = 1 - R.att;
+  R.P = [];
+  R.P[R.att] = mk(rnd(-30, 30), 60, R.skins ? R.skins[R.att] : 'default');
+  R.P[d] = mk(rnd(-30, 30), 0, R.skins ? R.skins[d] : 'default');
+  R.obs = []; R.nid = 1;
+  R.inp = [{ l: 0, r: 0 }, { l: 0, r: 0 }];
+  R.act = [false, false];
+  R.state = 'count'; R.timer = 3; R.el = 0;
+  R.nextCar = rnd(2, 3.5);
+  R.patrolAt = Math.random() < 0.7 ? rnd(5, 12) : 1e9;
+  R.msg = ''; R.sub = '';
+}
 
-app.get('/', (req, res) => {
-  const filePath = path.join(__dirname, 'index.html');
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('index.html が見つかりません。');
+function resetMatch(R) {
+  R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R);
+}
+
+function endRound(R, w, pen, text) {
+  if (w >= 0) {
+    R.sc[w]++;
+    // ラウンド勝利時にNMcoin（10NC）を付与するイベントを該当プレイヤーに送信
+    if (R.ids[w]) {
+      io.to(R.ids[w]).emit('reward', { gain: 10 });
+    }
   }
-});
-
-const CHARACTERS = {
-  futsuo:     { name: 'フツオ (ファイター)',   hp: 100, atk: 12, speed: 7.0, jumpPower: 17, width: 50, height: 90,  type: 'futsuo',     ability: '万能格闘家',  cd: 12 },
-  debugon:    { name: 'デブゴン (ヘビー)',     hp: 140, atk: 16, speed: 5.0, jumpPower: 13, width: 75, height: 95,  type: 'debugon',    ability: '不屈のアーマー', cd: 14 },
-  chibikoro:  { name: 'チビコロ (ダイバー)',   hp: 110, atk: 13, speed: 6.0, jumpPower: 14, width: 65, height: 60,  type: 'chibikoro',  ability: '急降下アタック', cd: 12 },
-  ninja:      { name: 'ニンジャ (シノビ)',     hp: 85,  atk: 11, speed: 7.0, jumpPower: 17, width: 40, height: 90,  type: 'ninja',      ability: '手裏剣(CT:0.6秒)', cd: 36 },
-  wizard:     { name: 'ウィザード (メイジ)',   hp: 85,  atk: 13, speed: 7.0, jumpPower: 18, width: 45, height: 95,  type: 'wizard',     ability: '魔法弾(CT:0.6秒)', cd: 36 }
-};
-
-const STAGES = {
-  1: { name: '平原 (PLAIN)', platforms: [{ x: 220, y: 410, width: 200, height: 18 }, { x: 780, y: 410, width: 200, height: 18 }, { x: 500, y: 280, width: 200, height: 18 }] },
-  2: { name: '浮島 (ISLANDS)', platforms: [{ x: 180, y: 400, width: 220, height: 20 }, { x: 800, y: 400, width: 220, height: 20 }, { x: 490, y: 270, width: 220, height: 20 }] },
-  3: { name: 'スリル (DOOM)', platforms: [{ x: 350, y: 390, width: 500, height: 22 }] },
-  4: { name: '神殿 (TEMPLE)', platforms: [{ x: 220, y: 410, width: 200, height: 18 }, { x: 780, y: 410, width: 200, height: 18 }, { x: 500, y: 280, width: 200, height: 18 }] },
-  5: { name: '宇宙 (SPACE)', platforms: [{ x: 150, y: 420, width: 250, height: 16 }, { x: 800, y: 420, width: 250, height: 16 }, { x: 460, y: 290, width: 280, height: 16 }] }
-};
-
-let rooms = {};
-
-function generateRoomCode() {
-  let code;
-  do {
-    code = Math.floor(1000 + Math.random() * 9000).toString();
-  } while (rooms[code]);
-  return code;
+  if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
+  R.hist.push(w);
+  R.msg = w >= 0 ? 'POINT GET!' : 'DRAW';
+  const name = R.names ? R.names[w] : ('プレイヤー' + (w + 1));
+  R.sub = (w >= 0 ? name + '  ' : '') + text;
+  R.state = 'result'; R.timer = 2.5;
 }
 
-function createRoom(code) {
-  return {
-    code: code,
-    players: {},
-    items: [],
-    projectiles: [],
-    spawnedItemCount: 0,
-    gameState: 'LOBBY',
-    isCpuMode: false,
-    selectedStage: 1,
-    countdownTimer: null,
-    countdownVal: 0
-  };
+function afterResult(R) {
+  const w = R.hist[R.hist.length - 1];
+  if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
+    R.state = 'match';
+    const wName = R.names ? R.names[w] : ('プレイヤー' + (w + 1));
+    R.msg = 'MATCH WINNER: ' + wName;
+    R.sub = R.round >= 6 ? 'サドンデス決着' : '';
+    return;
+  }
+  R.round++; newRound(R);
 }
 
-io.on('connection', (socket) => {
+function updateCpuInp(R) {
+  if (!R.isCpu || R.state !== 'play') return;
+  const cpuSlot = 1;
+  const cpuP = R.P[cpuSlot];
+  const playerP = R.P[0];
+  if (!cpuP) return;
 
-  socket.on('createRoom', (data) => {
-    const code = generateRoomCode();
-    rooms[code] = createRoom(code);
-    const room = rooms[code];
-    room.players[socket.id] = createPlayerData(socket.id, 1, data.playerName || 'Player 1');
+  let targetX = cpuP.x;
 
-    socket.join(code);
-    socket.emit('roomCreated', { code: code, playerNum: 1, characters: CHARACTERS, stages: STAGES, version: GAME_VERSION });
-    io.to(code).emit('gameState', { state: room.gameState, players: room.players, isCpuMode: false, code: code, selectedStage: room.selectedStage });
-  });
-
-  socket.on('joinRoom', (data) => {
-    const code = data.code;
-    const room = rooms[code];
-
-    if (!room) {
-      socket.emit('joinError', '部屋が見つかりません。');
-      return;
+  const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 260);
+  if (aheadCars.length > 0) {
+    aheadCars.sort((a, b) => a.z - b.z);
+    const danger = aheadCars[0];
+    if (Math.abs(danger.x - cpuP.x) < 32) {
+      targetX = danger.x > 0 ? danger.x - 55 : danger.x + 55;
+      targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
     }
-
-    if (Object.keys(room.players).length >= 4 || room.isCpuMode) {
-      socket.emit('joinError', '部屋が満員です (最大4人)。');
-      return;
-    }
-
-    const assignedNum = Object.keys(room.players).length + 1;
-    room.players[socket.id] = createPlayerData(socket.id, assignedNum, data.playerName || `Player ${assignedNum}`);
-
-    socket.join(code);
-    socket.emit('roomJoined', { code: code, playerNum: assignedNum, characters: CHARACTERS, stages: STAGES, version: GAME_VERSION });
-    io.to(code).emit('gameState', { state: room.gameState, players: room.players, isCpuMode: false, code: code, selectedStage: room.selectedStage });
-  });
-
-  socket.on('startCpuMode', (data) => {
-    const code = generateRoomCode();
-    rooms[code] = createRoom(code);
-    const room = rooms[code];
-    room.isCpuMode = true;
-    room.selectedStage = data.stageId || 1;
-
-    room.players[socket.id] = createPlayerData(socket.id, 1, data.playerName || 'Player 1');
-    room.players[socket.id].characterKey = data.characterKey || 'futsuo';
-
-    const cpuKeys = Object.keys(CHARACTERS);
-    const randomCpuChar = cpuKeys[Math.floor(Math.random() * cpuKeys.length)];
-
-    room.players['cpu_player'] = createPlayerData('cpu_player', 2, 'CPU');
-    room.players['cpu_player'].characterKey = randomCpuChar;
-    room.players['cpu_player'].isCpu = true;
-    room.players['cpu_player'].ready = true;
-
-    room.players[socket.id].ready = true;
-    socket.join(code);
-    socket.emit('roomCreated', { code: code, playerNum: 1, characters: CHARACTERS, stages: STAGES, version: GAME_VERSION });
-    startMatch(room);
-  });
-
-  socket.on('selectStage', (data) => {
-    const room = getRoomBySocket(socket);
-    if (room && room.players[socket.id] && room.players[socket.id].playerNum === 1) {
-      room.selectedStage = data.stageId;
-      io.to(room.code).emit('stageUpdated', { selectedStage: room.selectedStage });
-    }
-  });
-
-  socket.on('updateName', (data) => {
-    const room = getRoomBySocket(socket);
-    if (room && room.players[socket.id]) {
-      room.players[socket.id].name = data.name || `Player ${room.players[socket.id].playerNum}`;
-      io.to(room.code).emit('characterUpdated', { players: room.players });
-    }
-  });
-
-  socket.on('selectCharacter', (data) => {
-    const room = getRoomBySocket(socket);
-    if (room && room.players[socket.id]) {
-      room.players[socket.id].characterKey = data.characterKey;
-      io.to(room.code).emit('characterUpdated', { players: room.players });
-    }
-  });
-
-  socket.on('sendStamp', (data) => {
-    const room = getRoomBySocket(socket);
-    if (room && room.players[socket.id]) {
-      const p = room.players[socket.id];
-      p.stamp = data.stamp;
-      io.to(room.code).emit('stampTriggered', { socketId: socket.id, stamp: data.stamp });
-      setTimeout(() => { if (p.stamp === data.stamp) p.stamp = null; }, 2000);
-    }
-  });
-
-  socket.on('toggleReady', () => {
-    const room = getRoomBySocket(socket);
-    if (room && !room.isCpuMode) {
-      const p = room.players[socket.id];
-      if (p) {
-        p.ready = !p.ready;
-        io.to(room.code).emit('characterUpdated', { players: room.players });
-
-        const playerList = Object.values(room.players);
-        const activePlayers = playerList.slice(0, 2);
-        const allReady = activePlayers.length === 2 && activePlayers.every(player => player.ready);
-
-        if (allReady) {
-          room.countdownVal = 3;
-          io.to(room.code).emit('countdownUpdate', { count: room.countdownVal });
-
-          room.countdownTimer = setInterval(() => {
-            room.countdownVal--;
-            if (room.countdownVal > 0) {
-              io.to(room.code).emit('countdownUpdate', { count: room.countdownVal });
-            } else {
-              clearInterval(room.countdownTimer);
-              startMatch(room);
-            }
-          }, 1000);
-        } else {
-          if (room.countdownTimer) {
-            clearInterval(room.countdownTimer);
-            room.countdownTimer = null;
-            io.to(room.code).emit('countdownCancel');
-          }
-        }
-      }
-    }
-  });
-
-  socket.on('playerInput', (input) => {
-    const room = getRoomBySocket(socket);
-    if (!room || room.gameState !== 'PLAYING') return;
-
-    const p = room.players[socket.id];
-    if (!p || p.stunFrames > 0 || p.isKilled) return;
-
-    const char = CHARACTERS[p.characterKey];
-    let speedMult = p.buffSpeedTimer > 0 ? 1.4 : 1.0;
-
-    if (input.left) {
-      p.vx = -char.speed * speedMult;
-      p.facing = 'left';
-    } else if (input.right) {
-      p.vx = char.speed * speedMult;
-      p.facing = 'right';
+  } else if (playerP) {
+    const isAtt = R.att === cpuSlot;
+    if (isAtt) {
+      const sway = Math.sin(R.el * 3) * 45;
+      targetX = playerP.x + sway;
+      targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
     } else {
-      p.vx = 0;
-    }
-
-    if (input.jump && !input.jumpPrev) {
-      if (p.isGrounded) {
-        p.vy = -char.jumpPower;
-        p.isGrounded = false;
-        p.jumpCount = 1;
-      } else if (char.type === 'ninja' && p.jumpCount < 2) {
-        p.vy = -char.jumpPower * 0.9;
-        p.jumpCount = 2;
-      }
-    }
-
-    // 必殺技発動処理 (ULT)
-    if (input.ult && p.ultGauge >= 100) {
-      p.ultGauge = 0; // ゲージ消費
-      if (char.type === 'futsuo') {
-        p.ultFutsuoTimer = 360; // フツオ：6秒間パンチ/キックのダメージ&範囲2倍
-      } else if (char.type === 'ninja') {
-        p.ninjaUltShurikenCount = 3; // 忍者：巨大手裏剣3発分の権利
-      } else if (char.type === 'debugon') {
-        // デブゴン：横方向に衝撃波（波動攻撃）
-        const isRight = p.facing === 'right';
-        room.projectiles.push({
-          id: Date.now() + Math.random(),
-          ownerId: p.id,
-          type: 'hadou',
-          x: isRight ? p.x + char.width : p.x - 180,
-          y: p.y - 10,
-          vx: isRight ? 14 : -14,
-          width: 180,
-          height: char.height + 20,
-          damage: Math.round(char.atk * 2.2)
-        });
-      } else if (char.type === 'chibikoro') {
-        // チビコロ：即時急降下爆発
-        p.vy = 30;
-        p.ultChibikoroActive = true;
-      } else if (char.type === 'wizard') {
-        // ウィザード：巨大メガボール
-        const isRight = p.facing === 'right';
-        room.projectiles.push({
-          id: Date.now() + Math.random(),
-          ownerId: p.id,
-          type: 'wizard_ult',
-          x: isRight ? p.x + char.width : p.x - 90,
-          y: p.y,
-          vx: isRight ? 10 : -10,
-          width: 90,
-          height: 90,
-          damage: Math.round(char.atk * 2.5)
-        });
-      }
-      io.to(room.code).emit('ultTriggered', { playerId: p.id, type: char.type });
-    }
-
-    if (input.attack && !p.attacking && p.attackCooldown <= 0) {
-      p.attacking = true;
-      p.attackType = input.attackType;
-      p.attackCooldown = char.cd || 12;
-
-      const isPunch = input.attackType === 'punch';
-      let atkMult = p.buffAtkTimer > 0 ? 1.5 : 1.0;
-      let rangeMult = 1.0;
-
-      // フツオの必殺技中（ダメージ2倍・範囲2倍）
-      if (p.ultFutsuoTimer > 0) {
-        atkMult *= 2.0;
-        rangeMult = 2.0;
-      }
-
-      let dmg = Math.round((isPunch ? char.atk : Math.round(char.atk * 1.25)) * atkMult);
-
-      if (p.senobicTimer > 0) {
-        if (p.oneHitKill) {
-          dmg = 9999;
-          p.oneHitKill = false;
-        } else {
-          dmg = Math.round(dmg * 1.8);
-        }
-      }
-
-      if (char.type === 'ninja') {
-        const isRight = p.facing === 'right';
-        const isUltShuriken = p.ninjaUltShurikenCount > 0;
-        if (isUltShuriken) p.ninjaUltShurikenCount--;
-
-        const projSpeed = 16;
-        const startX = isRight ? p.x + (char.width * (p.senobicTimer > 0 ? 2 : 1)) : p.x - (isUltShuriken ? 70 : 30);
-        const startY = p.y + (char.height * (p.senobicTimer > 0 ? 2 : 1)) * 0.3;
-
-        room.projectiles.push({
-          id: Date.now() + Math.random(),
-          ownerId: p.id,
-          type: isUltShuriken ? 'ninja_ult' : 'ninja',
-          x: startX,
-          y: startY,
-          vx: isRight ? projSpeed : -projSpeed,
-          width: isUltShuriken ? 70 : 26,
-          height: isUltShuriken ? 70 : 22,
-          damage: isUltShuriken ? Math.round(dmg * 2.0) : dmg
-        });
-      } else if (char.type === 'wizard') {
-        const isRight = p.facing === 'right';
-        const startX = isRight ? p.x + (char.width * (p.senobicTimer > 0 ? 2 : 1)) : p.x - 30;
-        const startY = p.y + (char.height * (p.senobicTimer > 0 ? 2 : 1)) * 0.4;
-        const projSpeed = 12;
-
-        room.projectiles.push({
-          id: Date.now() + Math.random(),
-          ownerId: p.id,
-          type: 'wizard',
-          x: startX,
-          y: startY,
-          vx: isRight ? projSpeed : -projSpeed,
-          width: 26,
-          height: 22,
-          damage: dmg
-        });
+      const zGap = playerP.z - cpuP.z;
+      if (zGap < 50) {
+        const side = playerP.x > 0 ? -50 : 50;
+        targetX = playerP.x + side;
       } else {
-        let reach = (isPunch ? 55 : 85) * rangeMult;
-
-        const isGiant = p.senobicTimer > 0;
-        let attackHeight = (isPunch ? char.height * 0.4 : char.height * 0.3) * (isGiant ? 2.2 : 1) * rangeMult;
-        let attackYOffset = isGiant ? (char.height * 2 - attackHeight - 10) : (isPunch ? char.height * 0.2 : char.height * 0.4);
-
-        if (char.type === 'chibikoro' && !p.isGrounded) {
-          p.vy = 22;
-          dmg = p.oneHitKill ? 9999 : Math.round(18 * atkMult);
-          if (p.oneHitKill) p.oneHitKill = false;
-          reach = 100 * rangeMult;
-        }
-
-        p.attackBox = {
-          x: p.facing === 'right' ? p.x + (char.width * (isGiant ? 2 : 1)) : p.x - (reach * (isGiant ? 1.5 : 1)),
-          y: p.y + attackYOffset,
-          width: reach * (isGiant ? 1.5 : 1),
-          height: attackHeight,
-          damage: dmg,
-          type: input.attackType
-        };
-
-        setTimeout(() => { p.attackBox = null; }, 140);
+        targetX = playerP.x;
       }
-
-      setTimeout(() => { p.attacking = false; }, 200);
+      targetX = Math.max(-HW + 14, Math.min(HW - 14, targetX));
     }
-  });
+  }
 
-  socket.on('requestRematch', () => {
-    const room = getRoomBySocket(socket);
-    if (room && room.gameState === 'FINISHED') {
-      if (room.isCpuMode) {
-        startMatch(room);
-      } else {
-        room.gameState = 'LOBBY';
-        room.items = [];
-        room.projectiles = [];
-        room.spawnedItemCount = 0;
-        Object.values(room.players).forEach(p => { p.ready = false; });
-        io.to(room.code).emit('gameState', { state: 'LOBBY', players: room.players, isCpuMode: false, code: room.code, selectedStage: room.selectedStage });
+  const dx = targetX - cpuP.x;
+  R.inp[cpuSlot] = { l: dx < -4, r: dx > 4 };
+
+  if (R.el >= 3) {
+    const isAtt = R.att === cpuSlot;
+    if (isAtt) {
+      if (playerP && Math.abs(playerP.x - cpuP.x) < 30 && (cpuP.z - playerP.z) < 40 && cpuP.brakes > 0 && cpuP.brk <= 0) {
+        if (Math.random() < 0.35) R.act[cpuSlot] = true;
       }
-    }
-  });
-
-  socket.on('disconnect', () => {
-    const room = getRoomBySocket(socket);
-    if (room) {
-      if (room.countdownTimer) clearInterval(room.countdownTimer);
-      delete room.players[socket.id];
-      if (Object.keys(room.players).filter(id => id !== 'cpu_player').length === 0) {
-        delete rooms[room.code];
-      } else {
-        room.gameState = 'LOBBY';
-        if (room.isCpuMode) {
-          delete room.players['cpu_player'];
-          room.isCpuMode = false;
-        }
-        const remainingPlayer = Object.values(room.players)[0];
-        if (remainingPlayer) remainingPlayer.ready = false;
-        io.to(room.code).emit('playerLeft');
-      }
-    }
-  });
-});
-
-function startMatch(room) {
-  room.gameState = 'PLAYING';
-  room.items = [];
-  room.projectiles = [];
-  room.spawnedItemCount = 0;
-
-  Object.values(room.players).forEach(pl => {
-    const char = CHARACTERS[pl.characterKey];
-    pl.hp = char.hp;
-    pl.maxHp = char.hp;
-    pl.lives = 3;
-    pl.x = pl.playerNum === 1 ? 250 : 1200 - 250 - char.width;
-    pl.y = 520 - char.height;
-    pl.vx = 0;
-    pl.vy = 0;
-    pl.facing = pl.playerNum === 1 ? 'right' : 'left';
-    pl.jumpCount = 0;
-    pl.stamp = null;
-    pl.isKilled = false;
-    pl.killTimer = 0;
-    pl.buffAtkTimer = 0;
-    pl.buffSpeedTimer = 0;
-    pl.senobicTimer = 0;
-    pl.oneHitKill = false;
-    pl.attackCooldown = 0;
-    pl.ultGauge = 0;
-    pl.ultFutsuoTimer = 0;
-    pl.ninjaUltShurikenCount = 0;
-    pl.ultChibikoroActive = false;
-  });
-  io.to(room.code).emit('gameStart', { players: room.players, selectedStage: room.selectedStage, isCpuMode: room.isCpuMode });
-}
-
-function createPlayerData(socketId, playerNum, name) {
-  return {
-    id: socketId,
-    playerNum: playerNum,
-    name: name,
-    characterKey: 'futsuo',
-    ready: false,
-    isCpu: false,
-    x: playerNum === 1 ? 250 : 850,
-    y: 400,
-    vx: 0,
-    vy: 0,
-    facing: playerNum === 1 ? 'right' : 'left',
-    hp: 100,
-    maxHp: 100,
-    lives: 3,
-    isGrounded: false,
-    attacking: false,
-    attackCooldown: 0,
-    attackType: null,
-    attackBox: null,
-    stunFrames: 0,
-    invincibleFrames: 0,
-    jumpCount: 0,
-    stamp: null,
-    isKilled: false,
-    killTimer: 0,
-    buffAtkTimer: 0,
-    buffSpeedTimer: 0,
-    senobicTimer: 0,
-    oneHitKill: false,
-    ultGauge: 0,
-    ultFutsuoTimer: 0,
-    ninjaUltShurikenCount: 0,
-    ultChibikoroActive: false
-  };
-}
-
-function getRoomBySocket(socket) {
-  for (let code in rooms) {
-    if (rooms[code].players[socket.id]) return rooms[code];
-  }
-  return null;
-}
-
-function respawnPlayer(p) {
-  const char = CHARACTERS[p.characterKey];
-  p.hp = p.maxHp;
-  p.x = p.playerNum === 1 ? 250 : 1200 - 250 - char.width;
-  p.y = 100;
-  p.vx = 0;
-  p.vy = 0;
-  p.isKilled = false;
-  p.killTimer = 0;
-  p.invincibleFrames = 120;
-}
-
-function updateCpuAI(cpu, target) {
-  if (!cpu || !target || cpu.stunFrames > 0 || cpu.isKilled) return;
-
-  const cpuChar = CHARACTERS[cpu.characterKey];
-  const distance = (target.x + CHARACTERS[target.characterKey].width / 2) - (cpu.x + cpuChar.width / 2);
-
-  cpu.facing = distance > 0 ? 'right' : 'left';
-  let speedMult = cpu.buffSpeedTimer > 0 ? 1.4 : 1.0;
-
-  if (Math.abs(distance) > 75) {
-    cpu.vx = distance > 0 ? cpuChar.speed * 0.55 * speedMult : -cpuChar.speed * 0.55 * speedMult;
-  } else {
-    cpu.vx = 0;
-  }
-
-  if (Math.random() < 0.008 && cpu.isGrounded) {
-    cpu.vy = -cpuChar.jumpPower;
-    cpu.isGrounded = false;
-  }
-
-  // CPUの必殺技自動発動
-  if (cpu.ultGauge >= 100 && Math.random() < 0.02) {
-    cpu.ultGauge = 0;
-    if (cpuChar.type === 'futsuo') cpu.ultFutsuoTimer = 360;
-    else if (cpuChar.type === 'ninja') cpu.ninjaUltShurikenCount = 3;
-    else if (cpuChar.type === 'debugon') {
-      const isRight = cpu.facing === 'right';
-      getRoomBySocket({ id: cpu.id })?.projectiles.push({
-        id: Date.now() + Math.random(),
-        ownerId: cpu.id,
-        type: 'hadou',
-        x: isRight ? cpu.x + cpuChar.width : cpu.x - 180,
-        y: cpu.y - 10,
-        vx: isRight ? 14 : -14,
-        width: 180,
-        height: cpuChar.height + 20,
-        damage: Math.round(cpuChar.atk * 2.2)
-      });
-    }
-  }
-
-  if (Math.abs(distance) <= 300 && !cpu.attacking && cpu.attackCooldown <= 0 && Math.random() < 0.038) {
-    cpu.attacking = true;
-    cpu.attackCooldown = cpuChar.cd || 12;
-    const isPunch = Math.random() < 0.7;
-    cpu.attackType = isPunch ? 'punch' : 'kick';
-
-    let atkMult = cpu.buffAtkTimer > 0 ? 1.5 : (cpu.senobicTimer > 0 ? 1.8 : 1.0);
-    if (cpu.ultFutsuoTimer > 0) atkMult *= 2.0;
-    let dmg = Math.round((isPunch ? cpuChar.atk : Math.round(cpuChar.atk * 1.25)) * atkMult);
-
-    if (cpu.senobicTimer > 0 && cpu.oneHitKill) {
-      dmg = 9999;
-      cpu.oneHitKill = false;
-    }
-
-    if (cpuChar.type === 'ninja') {
-      const isRight = cpu.facing === 'right';
-      const isUltShuriken = cpu.ninjaUltShurikenCount > 0;
-      if (isUltShuriken) cpu.ninjaUltShurikenCount--;
-
-      getRoomBySocket({ id: cpu.id })?.projectiles.push({
-        id: Date.now() + Math.random(),
-        ownerId: cpu.id,
-        type: isUltShuriken ? 'ninja_ult' : 'ninja',
-        x: isRight ? cpu.x + cpuChar.width : cpu.x - (isUltShuriken ? 70 : 30),
-        y: cpu.y + cpuChar.height * 0.35,
-        vx: isRight ? 16 : -16,
-        width: isUltShuriken ? 70 : 26,
-        height: isUltShuriken ? 70 : 22,
-        damage: isUltShuriken ? Math.round(dmg * 2.0) : dmg
-      });
-    } else if (cpuChar.type === 'wizard') {
-      const isRight = cpu.facing === 'right';
-      getRoomBySocket({ id: cpu.id })?.projectiles.push({
-        id: Date.now() + Math.random(),
-        ownerId: cpu.id,
-        type: 'wizard',
-        x: isRight ? cpu.x + cpuChar.width : cpu.x - 30,
-        y: cpu.y + cpuChar.height * 0.35,
-        vx: isRight ? 12 : -12,
-        width: 26,
-        height: 22,
-        damage: dmg
-      });
     } else {
-      let reach = (isPunch ? 55 : 85) * (cpu.ultFutsuoTimer > 0 ? 2 : 1);
-      const attackHeight = isPunch ? cpuChar.height * 0.4 : cpuChar.height * 0.3;
-      const attackYOffset = isPunch ? cpuChar.height * 0.2 : cpuChar.height * 0.4;
-
-      cpu.attackBox = {
-        x: cpu.facing === 'right' ? cpu.x + cpuChar.width : cpu.x - reach,
-        y: cpu.y + attackYOffset,
-        width: reach,
-        height: attackHeight,
-        damage: dmg,
-        type: cpu.attackType
-      };
-
-      setTimeout(() => { cpu.attackBox = null; }, 120);
+      if (cpuP.cd <= 0 && cpuP.boost <= 0) {
+        R.act[cpuSlot] = true;
+      }
     }
-
-    setTimeout(() => { cpu.attacking = false; }, 200);
   }
 }
 
-function spawnRandomItem(room) {
-  if (room.items.length >= 1) return;
-  if (room.spawnedItemCount >= 4) return;
+function step(R, dt) {
+  if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
+  if (R.state === 'result') { R.timer -= dt; if (R.timer <= 0) afterResult(R); return; }
+  if (R.state !== 'play') return;
+  R.el += dt;
 
-  const playerIds = Object.keys(room.players).filter(id => id !== 'cpu_player' || room.isCpuMode);
-  let p1 = room.players[playerIds[0]];
-  let p2 = room.players[playerIds[1]];
+  if (R.isCpu) updateCpuInp(R);
 
-  let p1Lives = p1 ? p1.lives : 3;
-  let p2Lives = p2 ? p2.lives : 3;
+  const att = R.att, d = 1 - att, A = R.P[att], B = R.P[d];
+  if (!A || !B) return;
 
-  let senobicChance = 0.05;
-  if (p1Lives === 1 && p2Lives === 1) senobicChance = 0.30;
-  else if ((p1Lives === 2 && p2Lives === 1) || (p1Lives === 1 && p2Lives === 2)) senobicChance = 0.20;
-  else if (p1Lives === 1 || p2Lives === 1) senobicChance = 0.10;
-
-  const rand = Math.random();
-  let type = 'heal';
-  if (rand < senobicChance) {
-    type = 'senobic';
-  } else {
-    const subRand = Math.random();
-    if (subRand < 0.4) type = 'heal';
-    else if (subRand < 0.75) type = 'atk';
-    else type = 'speed';
+  for (const i of [0, 1]) {
+    const p = R.P[i], inp = R.inp[i] || {};
+    const dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
+    p.x = Math.max(-HW + 14, Math.min(HW - 14, p.x + dir * (i === att ? 285 : 230) * dt));
   }
 
-  room.items.push({
-    id: Date.now() + Math.random(),
-    type: type,
-    x: 150 + Math.random() * 900,
-    y: -40,
-    vy: 2.5,
-    width: 55,
-    height: 55,
-    isGrounded: false
+  if (R.el >= 3) {
+    if (R.act[att] && A.brakes > 0 && A.brk <= 0) { A.brakes--; A.brk = 0.8; }
+    if (R.act[d] && B.cd <= 0 && B.boost <= 0) { B.boost = 1; B.cd = 3.5; }
+  }
+  R.act = [false, false];
+
+  if (A.brk > 0) { A.v = Math.max(0, A.v - 800 * dt); A.brk -= dt; } else A.v = Math.min(BASE, A.v + 120 * dt);
+  if (B.boost > 0) { B.v = Math.min(220, B.v + 600 * dt); B.boost -= dt; } else B.v = Math.max(BASE, B.v - 300 * dt);
+  B.cd = Math.max(0, B.cd - dt);
+  A.z += A.v * dt; B.z += B.v * dt;
+
+  const front = Math.max(A.z, B.z), back = Math.min(A.z, B.z);
+  R.nextCar -= dt;
+  if (R.nextCar <= 0) {
+    R.nextCar = rnd(2, 3.8);
+    R.obs.push({ id: R.nid++, k: 'car', x: rnd(-HW + 20, HW - 20), z: front + rnd(360, 420), vz: -90, c: Math.floor(rnd(0, 5)) });
+  }
+  if (R.el >= R.patrolAt) {
+    R.patrolAt = 1e9;
+    R.obs.push({ id: R.nid++, k: 'cop', x: rnd(-HW + 25, HW - 25), z: back - 260, vz: 175, c: 0 });
+  }
+  for (const o of R.obs) o.z += o.vz * dt;
+  R.obs = R.obs.filter(o => (o.k === 'car' ? o.z > back - 100 : o.z < front + 220));
+
+  const lost = [null, null];
+  for (const o of R.obs) for (const i of [0, 1]) {
+    const p = R.P[i], dx = Math.abs(o.x - p.x);
+    if (o.k === 'car' && dx < 24 && Math.abs(o.z - p.z) < 14) lost[i] = lost[i] || 'car';
+    if (o.k === 'cop') {
+      const gap = p.z - o.z;
+      const cutIn = dx < 28 && gap > -16 && gap < 30;
+      const blocked = i === att && p.brk > 0 && dx < 30 && gap > 0 && gap < 70;
+      if (cutIn || blocked) lost[i] = 'cop';
+    }
+  }
+  if (lost[0] && lost[1]) return endRound(R, -1, -1, '相打ち！');
+  for (const i of [0, 1]) if (lost[i]) {
+    const name = R.names ? R.names[i] : ('プレイヤー' + (i + 1));
+    return lost[i] === 'cop'
+      ? endRound(R, 1 - i, i, name + ' パトカー違反で逮捕！(-1pt)')
+      : endRound(R, 1 - i, -1, name + ' 車と衝突！');
+  }
+
+  const gap = A.z - B.z, dx = Math.abs(A.x - B.x);
+  if (dx < 22 && gap < 18 && gap > -12) {
+    return endRound(R, att, -1, '攻撃側に激突！');
+  }
+
+  if (B.z > A.z + 12) return endRound(R, d, -1, '追い抜き成功！');
+  if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)');
+}
+
+const r1 = n => Math.round(n * 10) / 10;
+function snap(R, slot) {
+  const att = R.att, d = 1 - att;
+  const bgGap = (R.P && R.P[att] && R.P[d]) ? Math.max(0, R.P[att].z - R.P[d].z) : 999;
+  const bgBx = (R.P && R.P[d]) ? R.P[d].x : 0;
+  const bgBoost = (R.P && R.P[d]) ? R.P[d].boost > 0 : false;
+
+  const P = (R.P || []).map((p, i) => {
+    if (!p) return null;
+    const isAttacker = slot === att;
+    const isTargetOpponent = i !== slot;
+    if ((R.state === 'play' || R.state === 'count') && isAttacker && isTargetOpponent && p.boost <= 0) {
+      return null;
+    }
+    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), skin: p.skin };
   });
-  room.spawnedItemCount++;
+
+  return { 
+    s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
+    bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names,
+    P, obs: (R.obs || []).map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) 
+  };
 }
 
 setInterval(() => {
-  const STAGE_WIDTH = 1200;
-  const GROUND_Y = 520;
-  const GRAVITY = 0.8;
-
-  for (let code in rooms) {
-    const room = rooms[code];
-    if (room.gameState !== 'PLAYING') continue;
-
-    const playerIds = Object.keys(room.players);
-    if (playerIds.length < 2) continue;
-
-    const p1 = room.players[playerIds[0]];
-    const p2 = room.players[playerIds[1]];
-    const playersArr = [p1, p2];
-
-    if (Math.random() < 0.0015) spawnRandomItem(room);
-
-    if (room.isCpuMode && p2 && p2.isCpu && p1) {
-      updateCpuAI(p2, p1);
+  for (const R of rooms.values()) {
+    if (!R.isCpu && !R.ids[1]) continue;
+    step(R, TICK);
+    for (const i of [0, 1]) {
+      if (R.ids[i]) io.to(R.ids[i]).emit('st', snap(R, i));
     }
-
-    for (let i = room.projectiles.length - 1; i >= 0; i--) {
-      const proj = room.projectiles[i];
-      proj.x += proj.vx;
-
-      if (proj.x < -120 || proj.x > STAGE_WIDTH + 120) {
-        room.projectiles.splice(i, 1);
-        continue;
-      }
-
-      const target = playersArr.find(p => p && p.id !== proj.ownerId && !p.isKilled);
-      if (target && target.invincibleFrames === 0) {
-        const targetChar = CHARACTERS[target.characterKey];
-        const defScale = target.senobicTimer > 0 ? 2 : 1;
-        const db = { x: target.x, y: target.y, width: targetChar.width * defScale, height: targetChar.height * defScale };
-
-        if (
-          proj.x < db.x + db.width &&
-          proj.x + proj.width > db.x &&
-          proj.y < db.y + db.height &&
-          proj.y + proj.height > db.y
-        ) {
-          target.hp -= proj.damage;
-
-          // 攻撃ヒット者への必殺技ゲージ加算 (ダメージに応じた量)
-          const attacker = playersArr.find(p => p && p.id === proj.ownerId);
-          if (attacker) attacker.ultGauge = Math.min(100, attacker.ultGauge + Math.round(proj.damage * 1.5));
-
-          const isArmored = (targetChar.type === 'debugon' && target.attacking) || target.senobicTimer > 0;
-
-          if (target.hp <= 0) {
-            target.hp = 0;
-            target.lives--;
-            target.isKilled = true;
-            target.killTimer = 0;
-            target.vx = proj.vx > 0 ? 24 : -24;
-            target.vy = -20;
-            io.to(code).emit('koEffect', { victimId: target.id, x: target.x, y: target.y });
-          } else if (!isArmored) {
-            target.stunFrames = 10;
-            target.vy = -5;
-            target.vx = proj.vx > 0 ? 12 : -12;
-          }
-
-          target.invincibleFrames = 24;
-          if (proj.type !== 'hadou') room.projectiles.splice(i, 1); // 波動は貫通
-        }
-      }
-    }
-
-    for (let i = room.items.length - 1; i >= 0; i--) {
-      const item = room.items[i];
-      if (!item.isGrounded) {
-        item.y += item.vy;
-        if (item.y + item.height >= GROUND_Y) {
-          item.y = GROUND_Y - item.height;
-          item.isGrounded = true;
-        }
-      }
-
-      playersArr.forEach(p => {
-        if (!p || p.isKilled) return;
-        const char = CHARACTERS[p.characterKey];
-        const scale = p.senobicTimer > 0 ? 2 : 1;
-        const curW = char.width * scale;
-        const curH = char.height * scale;
-
-        if (
-          p.x < item.x + item.width &&
-          p.x + curW > item.x &&
-          p.y < item.y + item.height &&
-          p.y + curH > item.y
-        ) {
-          if (item.type === 'senobic') {
-            p.hp = p.maxHp;
-            p.senobicTimer = 480;
-            p.oneHitKill = true;
-          } else if (item.type === 'heal') {
-            p.hp = Math.min(p.maxHp, p.hp + 30);
-          } else if (item.type === 'atk') {
-            p.buffAtkTimer = 360;
-          } else if (item.type === 'speed') {
-            p.buffSpeedTimer = 360;
-          }
-
-          io.to(code).emit('itemCollected', { playerId: p.id, type: item.type });
-          room.items.splice(i, 1);
-        }
-      });
-    }
-
-    const currentPlatforms = STAGES[room.selectedStage].platforms;
-
-    playersArr.forEach(p => {
-      if (!p) return;
-
-      if (p.attackCooldown > 0) p.attackCooldown--;
-      if (p.buffAtkTimer > 0) p.buffAtkTimer--;
-      if (p.buffSpeedTimer > 0) p.buffSpeedTimer--;
-      if (p.senobicTimer > 0) p.senobicTimer--;
-      if (p.senobicTimer <= 0) p.oneHitKill = false;
-      if (p.ultFutsuoTimer > 0) p.ultFutsuoTimer--;
-
-      if (p.isKilled) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.killTimer++;
-
-        if (p.killTimer > 90) {
-          if (p.lives > 0) {
-            respawnPlayer(p);
-          } else {
-            const winner = playersArr.find(pl => pl && pl.id !== p.id);
-            room.gameState = 'FINISHED';
-            io.to(code).emit('gameOver', { winnerName: winner.name, winnerNum: winner.playerNum, isCpuMode: room.isCpuMode });
-          }
-        }
-        return;
-      }
-
-      const char = CHARACTERS[p.characterKey];
-
-      if (p.stunFrames > 0) {
-        p.stunFrames--;
-        p.vx = 0;
-      }
-
-      if (p.invincibleFrames > 0) {
-        p.invincibleFrames--;
-      }
-
-      const prevY = p.y;
-      p.vy += GRAVITY;
-      p.x += p.vx;
-      p.y += p.vy;
-
-      p.isGrounded = false;
-      const curH = char.height * (p.senobicTimer > 0 ? 2 : 1);
-
-      if (p.y + curH >= GROUND_Y) {
-        p.y = GROUND_Y - curH;
-        p.vy = 0;
-        p.isGrounded = true;
-        p.jumpCount = 0;
-
-        // チビコロの必殺技着地衝撃波
-        if (p.ultChibikoroActive) {
-          p.ultChibikoroActive = false;
-          const defender = playersArr.find(pl => pl && pl.id !== p.id);
-          if (defender && defender.invincibleFrames === 0) {
-            defender.hp -= Math.round(char.atk * 2.2);
-            defender.stunFrames = 20;
-            defender.vy = -12;
-            p.ultGauge = Math.min(100, p.ultGauge + 30);
-            io.to(code).emit('koEffect', { victimId: defender.id, x: defender.x, y: defender.y });
-          }
-        }
-      }
-
-      if (p.vy >= 0) {
-        currentPlatforms.forEach(plat => {
-          const curW = char.width * (p.senobicTimer > 0 ? 2 : 1);
-          if (
-            p.x + curW > plat.x &&
-            p.x < plat.x + plat.width &&
-            prevY + curH <= plat.y &&
-            p.y + curH >= plat.y
-          ) {
-            p.y = plat.y - curH;
-            p.vy = 0;
-            p.isGrounded = true;
-            p.jumpCount = 0;
-          }
-        });
-      }
-
-      if (p.x < 0) p.x = 0;
-      if (p.x + (char.width * (p.senobicTimer > 0 ? 2 : 1)) > STAGE_WIDTH) {
-        p.x = STAGE_WIDTH - (char.width * (p.senobicTimer > 0 ? 2 : 1));
-      }
-    });
-
-    playersArr.forEach((attacker) => {
-      if (!attacker || attacker.isKilled) return;
-      const defender = playersArr.find(p => p && p.id !== attacker.id);
-      if (!defender || defender.isKilled) return;
-
-      const defenderChar = CHARACTERS[defender.characterKey];
-      const defScale = defender.senobicTimer > 0 ? 2 : 1;
-
-      if (attacker.attackBox && defender.invincibleFrames === 0) {
-        const ab = attacker.attackBox;
-        const db = { x: defender.x, y: defender.y, width: defenderChar.width * defScale, height: defenderChar.height * defScale };
-
-        if (
-          ab.x < db.x + db.width &&
-          ab.x + ab.width > db.x &&
-          ab.y < db.y + db.height &&
-          ab.y + ab.height > db.y
-        ) {
-          defender.hp -= ab.damage;
-
-          // ダメージを与えたので必殺技ゲージが溜まる
-          attacker.ultGauge = Math.min(100, attacker.ultGauge + Math.round(ab.damage * 1.8));
-
-          const isArmored = (defenderChar.type === 'debugon' && defender.attacking) || defender.senobicTimer > 0;
-
-          if (defender.hp <= 0) {
-            defender.hp = 0;
-            defender.lives--;
-            defender.isKilled = true;
-            defender.killTimer = 0;
-            defender.vx = attacker.facing === 'right' ? 24 : -24;
-            defender.vy = -20;
-            io.to(code).emit('koEffect', { victimId: defender.id, x: defender.x, y: defender.y });
-          } else if (!isArmored) {
-            defender.stunFrames = 10;
-            defender.vy = -5;
-            defender.vx = attacker.facing === 'right' ? 12 : -12;
-          }
-
-          defender.invincibleFrames = 24;
-          attacker.attackBox = null;
-        }
-      }
-    });
-
-    io.to(code).emit('updateState', { players: room.players, items: room.items, projectiles: room.projectiles });
   }
-}, 1000 / 60);
+}, TICK * 1000);
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} (${GAME_VERSION})`);
+io.on('connection', socket => {
+  socket.on('solo', d => {
+    let code = 'SOLO_' + socket.id;
+    const pName = (d && d.name) ? d.name : 'プレイヤー';
+    const pSkin = (d && d.skin) ? d.skin : 'default';
+    const R = { 
+      code, ids: [socket.id, null], 
+      names: [pName, 'CPU'], 
+      skins: [pSkin, 'default'],
+      idsMap: {},
+      isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    };
+    rooms.set(code, R);
+    socket.data = { code, slot: 0 };
+    resetMatch(R);
+    socket.emit('start', { slot: 0 });
+  });
+
+  socket.on('create', (d, cb) => {
+    if (typeof d === 'function') { cb = d; d = {}; }
+    let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
+    const pName = (d && d.name) ? d.name : 'プレイヤー1';
+    const pSkin = (d && d.skin) ? d.skin : 'default';
+    rooms.set(code, { 
+      code, ids: [socket.id, null], 
+      names: [pName, 'プレイヤー2'], 
+      skins: [pSkin, 'default'],
+      isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    });
+    socket.data = { code, slot: 0 };
+    if (typeof cb === 'function') cb({ code });
+  });
+
+  socket.on('join', (d, cb) => {
+    const code = (typeof d === 'object') ? d.code : d;
+    const pName = (typeof d === 'object' && d.name) ? d.name : 'プレイヤー2';
+    const pSkin = (typeof d === 'object' && d.skin) ? d.skin : 'default';
+    const R = rooms.get(String(code));
+    if (!R) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームが見つかりません' }); return; }
+    if (R.ids[1] || R.isCpu) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームに参加できません' }); return; }
+    R.ids[1] = socket.id;
+    R.names[1] = pName;
+    R.skins[1] = pSkin;
+    socket.data = { code: R.code, slot: 1 };
+    resetMatch(R);
+    if (typeof cb === 'function') cb({ ok: true });
+    for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
+  });
+
+  socket.on('inp', d => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (R && socket.data) R.inp[socket.data.slot] = { l: !!(d && d.l), r: !!(d && d.r) };
+  });
+
+  socket.on('act', () => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (R && socket.data) R.act[socket.data.slot] = true;
+  });
+
+  socket.on('again', () => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (R && R.state === 'match') resetMatch(R);
+  });
+
+  socket.on('leave', () => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (!R) return;
+    const other = R.ids[1 - socket.data.slot];
+    if (other) io.to(other).emit('left');
+    rooms.delete(R.code);
+  });
+
+  socket.on('disconnect', () => {
+    const R = rooms.get(socket.data && socket.data.code);
+    if (!R) return;
+    const other = R.ids[1 - socket.data.slot];
+    if (other) io.to(other).emit('left');
+    rooms.delete(R.code);
+  });
 });
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log('listening on ' + PORT));
+
