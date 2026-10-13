@@ -24,10 +24,10 @@ input{width:180px;text-align:center}
 .skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
 .skin-card.selected{border-color:#ffd54f}
 
-/* ID設定モーダル（最前面に確実に表示させる） */
+/* ID設定モーダル */
 #id-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50}
 .id-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
-.id-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556}
+.id-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px}
 p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
@@ -48,7 +48,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div id="st"></div>
 </div>
 
-<!-- NM ID入力・発行モーダル -->
+<!-- NM ID認証・発行モーダル -->
 <div id="id-modal">
   <div class="id-box">
     <h2>NM ID 認証</h2>
@@ -181,7 +181,7 @@ function playCrashSound(){
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
-// --- NM ID & ユーザー管理システム ---
+// --- NM ID & ユーザー管理 ---
 let nmId = localStorage.getItem('nm_id');
 let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
@@ -198,29 +198,31 @@ function updateUI(){
   $('disp-coin').textContent = myCoins;
 }
 
-// 起動時の初期状態チェック
-if(!nmId){
-  $('id-modal').style.display = 'flex';$('id-modal-desc').textContent = '初回プレイです。既存のIDを入力するか、新しく発行してください。';
-} else {
-  $('id-modal').style.display = 'none';
-  updateUI();
-}
+// 画面読み込み時にIDが未設定なら認証画面を表示
+window.addEventListener('DOMContentLoaded', () => {
+  if(!nmId){
+    $('id-modal').style.display = 'flex';$('id-modal-desc').textContent = '初回プレイです。既存のIDを入力するか、新しく発行してください。';
+  } else {
+    $('id-modal').style.display = 'none';
+    updateUI();
+  }
+});
 
-// ID手動設定ボタン
+// 手動入力で決定
 $('submit-id').onclick = () => {
   const val = $('input-nm-id').value.trim();
-  if(!val.startsWith('NM-') || val.length < 6){
-    $('id-err').textContent = '正しい形式（例: NM-123456）で入力してください';
+  if(!val || val.length < 3){
+    $('id-err').textContent = 'IDを正しく入力してください';
     return;
   }
-  nmId = val;
+  nmId = val.startsWith('NM-') ? val : 'NM-' + val;
   localStorage.setItem('nm_id', nmId);
   updateUI();
   $('id-modal').style.display = 'none';
   $('id-err').textContent = '';$('input-nm-id').value = '';
 };
 
-// 新規ID発行ボタン（発行したら自動でモーダルを閉じてロビーへ移動）
+// ランダムに新しくIDを発行してロビー画面へ移行
 $('generate-id').onclick = () => {
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
   localStorage.setItem('nm_id', nmId);
@@ -233,7 +235,6 @@ $('generate-id').onclick = () => {
 
   updateUI();
   $('id-modal').style.display = 'none';$('id-err').textContent = '';
-  alert('新しいNM IDを発行しました！\n引き継ぎ用にコード【 ' + nmId + ' 】をメモしておいてください。');
 };
 
 $('open-id-modal').onclick = () => {
