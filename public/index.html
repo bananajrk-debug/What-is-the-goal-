@@ -17,7 +17,7 @@ input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
 #st{min-height:20px;color:#9fd;font-size:14px}
-#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
+#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:8px 12px;border-radius:6px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
 #shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
 .skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
@@ -27,10 +27,15 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
 <div id="lobby">
   <h1>なにが目的なん？</h1>
+  
+  <!-- ユーザーID入力・発行エリア -->
   <div id="profile-box">
-    <span id="disp-id">ID: ---</span>
-    <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
+    <span>ID:</span>
+    <input id="nm-id-input" maxlength="15" placeholder="NM-123456" style="width:110px;padding:4px 6px;font-size:13px;background:#161922;color:#fff;border:1px solid #556;border-radius:4px;">
+    <button id="gen-id-btn" style="font-size:11px;padding:4px 8px;background:#4fc3f7;color:#000;">自動発行</button>
+    <span>| NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
   </div>
+
   <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
   <button id="solo" class="solo">ソロ（CPU対戦）</button>
   <button id="create">ルーム作成</button>
@@ -69,7 +74,6 @@ function initAudio(){
   }
 }
 
-// ポップBGM（長めループ）
 function startBGM(){
   initAudio();
   if(bgmInterval) return;
@@ -100,7 +104,6 @@ function stopBGM(){
   if(bgmInterval){ clearInterval(bgmInterval); bgmInterval = null; }
 }
 
-// A（攻撃側）のブレーキ音：「キュッ！」
 function playBrakeSound(){
   initAudio();
   if(!audioCtx) return;
@@ -117,7 +120,6 @@ function playBrakeSound(){
   osc.stop(audioCtx.currentTime + 0.2);
 }
 
-// B（追越側）のブースト音：「ギュイーン！」
 function playBoostSound(){
   initAudio();
   if(!audioCtx) return;
@@ -134,7 +136,6 @@ function playBoostSound(){
   osc.stop(audioCtx.currentTime + 0.42);
 }
 
-// 衝突・ひかれたときの音：「ガシャン！」
 function playCrashSound(){
   initAudio();
   if(!audioCtx) return;
@@ -160,6 +161,7 @@ function playCrashSound(){
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
+// --- ユーザーID・コイン・スキン管理 ---
 let nmId = localStorage.getItem('nm_id');
 if(!nmId){
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
@@ -169,8 +171,25 @@ let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
 let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
 
-$('disp-id').textContent = 'ID: ' + nmId;
+// 入力欄に現在のIDを反映
+$('nm-id-input').value = nmId;
 $('disp-coin').textContent = myCoins;
+
+// ID入力欄を変更したとき
+$('nm-id-input').oninput = (e) => {
+  const val = e.target.value.trim();
+  if(val){
+    nmId = val;
+    localStorage.setItem('nm_id', nmId);
+  }
+};
+
+// 「自動発行」ボタンを押したとき
+$('gen-id-btn').onclick = () => {
+  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
+  localStorage.setItem('nm_id', nmId);
+  $('nm-id-input').value = nmId;
+};
 
 const SKINS = {
   'default': { name: 'スタンダード', color: '#c33', price: 0 },
@@ -221,7 +240,7 @@ $('open-shop').onclick = () => { updateShopUI();$('shop-modal').style.display = 
 $('close-shop').onclick = () => {$('shop-modal').style.display = 'none'; };
 
 function getName(){ const val=$('pname').value.trim(); return val||'プレイヤー'; }
-function getPayload(){ return { name: getName(), id: nmId, skin: currentSkin }; }
+function getPayload(){ return { name: getName(), id: nmId || 'NM-000000', skin: currentSkin }; }
 
 function returnLobby(){
   socket.emit('leave');
