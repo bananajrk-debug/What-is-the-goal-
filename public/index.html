@@ -13,11 +13,12 @@ canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid
 .auth-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
 
-/* フォートナイト/ブロスタ風 メインロビー画面 */
-#lobby{position:absolute;inset:0;background:radial-gradient(circle at center, #1e2638 0%, #0a0c14 100%);display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:16px;box-sizing:border-box;z-index:10}
-h1{margin:0;font-size:28px;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:1px}
+/* メインロビー画面 */
+#lobby{position:absolute;inset:0;background:radial-gradient(circle at center, #1e2638 0%, #0a0c14 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;gap:10px;z-index:10}
+h1{margin:0;font-size:30px;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:1px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
+button.solo{background:#81c784}
 
 /* 🛒ショップボタン（最上部中央） */
 button.shop-btn{background:transparent;border:0;font-size:36px;cursor:pointer;padding:0;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
@@ -29,27 +30,27 @@ input{width:180px;text-align:center}
 #st{min-height:20px;color:#9fd;font-size:13px;text-shadow:0 1px 4px #000}
 #profile-box{font-size:12px;color:#bbb;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;display:flex;gap:10px;align-items:center;border:1px solid rgba(255,255,255,0.1)}
 
-/* キャラクター立ち絵プレビューエリア（ブロスタ風構図） */
-#character-preview-box{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:auto 0;}
-#skin-preview-canvas{width:140px;height:140px;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.7));}
-.skin-selector{display:flex;align-items:center;gap:12px;margin-top:4px;}
-.skin-arrow-btn{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:16px;padding:4px 10px;border-radius:50%;}
+/* キャラクター立ち絵プレビューエリア */
+#character-preview-box{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:4px 0;}
+#skin-preview-canvas{width:130px;height:130px;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.7));}
+.skin-selector{display:flex;align-items:center;gap:12px;margin-top:2px;}
+.skin-arrow-btn{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:14px;padding:3px 8px;border-radius:50%;}
 .skin-arrow-btn:hover{background:rgba(255,255,255,0.3);}
-#current-skin-name{font-weight:bold;font-size:15px;color:#ffd54f;text-shadow:0 2px 4px rgba(0,0,0,0.8);}
+#current-skin-name{font-weight:bold;font-size:14px;color:#ffd54f;text-shadow:0 2px 4px rgba(0,0,0,0.8);}
 
-/* ロビー下部・対戦設定＆準備OKエリア */
-.lobby-bottom-bar{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:480px;background:rgba(0,0,0,0.4);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);}
+/* ロビー下部・対戦設定＆準備OKエリアのコンテナボックス */
+.lobby-box{display:flex;flex-direction:column;align-items:center;gap:10px;background:rgba(0,0,0,0.4);padding:14px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);}
 .room-controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
 
-/* 準備OKボタン（ダイナミックデザイン） */
-#ready-btn{width:220px;height:48px;font-size:20px;letter-spacing:1px;background:#81c784;color:#000;border-radius:24px;box-shadow:0 4px 12px rgba(129,199,132,0.4);transition:all 0.2s;}
+/* 準備OKボタン */
+#ready-btn{width:200px;height:42px;font-size:18px;letter-spacing:1px;background:#81c784;color:#000;border-radius:21px;box-shadow:0 4px 12px rgba(129,199,132,0.4);transition:all 0.2s;}
 #ready-btn.is-ready{background:#ff5252;color:#fff;box-shadow:0 4px 12px rgba(255,82,82,0.4);}
 
 /* ハンバーガーメニューボタン（左上） */
 #menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
-/* ロビーへ移動するボタン（右上・案3） */
-#back-lobby-btn{position:absolute;top:12px;right:12px;z-index:30;background:#2b3245;color:#fff;font-size:18px;padding:6px 10px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
+/* タイトル認証画面へ戻るボタン（右上） */
+#back-auth-btn{position:absolute;top:12px;right:12px;z-index:30;background:#2b3245;color:#fff;font-size:18px;padding:6px 10px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
 /* ハンバーガーサイドメニュー */
 #side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
@@ -68,8 +69,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
-<!-- 右上のロビーへ直接移動するボタン（案3） -->
-<button id="back-lobby-btn" title="ロビーへ移動">🏠</button>
+<!-- 右上のタイトル認証画面へ戻る（ID切替等）ボタン -->
+<button id="back-auth-btn" title="タイトル（ID認証）へ戻る">🏠</button>
 
 <!-- サイドメニュー（フレンド機能・ショートカット） -->
 <div id="side-menu">
@@ -109,20 +110,18 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   </div>
 </div>
 
-<!-- フォートナイト/ブロスタ風 メインロビー画面 -->
+<!-- メインロビー画面 -->
 <div id="lobby">
-  <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:4px;">
-    <button id="open-shop" class="shop-btn" title="スキンショップ">🛒</button>
-    <h1>なにが目的なん？</h1>
-    <div id="profile-box">
-      <span id="disp-id">ID: ---</span>
-      <span>| NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
-    </div>
+  <button id="open-shop" class="shop-btn" title="スキンショップ">🛒</button>
+  <h1>なにが目的なん？</h1>
+  <div id="profile-box">
+    <span id="disp-id">ID: ---</span>
+    <span>| NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
   </div>
 
-  <!-- 中央キャラクタープレビュー＆スキン変更（ブロスタ風構図） -->
+  <!-- キャラクタープレビュー＆スキン変更 -->
   <div id="character-preview-box">
-    <canvas id="skin-preview-canvas" width="200" height="200"></canvas>
+    <canvas id="skin-preview-canvas" width="160" height="130"></canvas>
     <div class="skin-selector">
       <button class="skin-arrow-btn" id="prev-skin-btn">◀</button>
       <span id="current-skin-name">スタンダード</span>
@@ -130,8 +129,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
     </div>
   </div>
 
-  <!-- 下部操作エリア＆準備OKボタン -->
-  <div class="lobby-bottom-bar">
+  <!-- 対戦設定＆準備OKエリア -->
+  <div class="lobby-box">
     <div class="room-controls">
       <input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー">
       <button id="solo" class="solo">ソロ(CPU)</button>
@@ -139,11 +138,9 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
       <input id="code" maxlength="6" placeholder="部屋コード" inputmode="numeric">
       <button id="join">参加</button>
     </div>
-
-    <!-- 準備OKボタン -->
     <button id="ready-btn">準備 OK !</button>
-    <div id="st"></div>
   </div>
+  <div id="st"></div>
 </div>
 
 <div id="shop-modal">
@@ -285,25 +282,24 @@ if(nmId){
   $('login-id-input').value = nmId;
 }
 
-// キャラクター立ち絵プレビュー描画（ロビー画面用）
+// キャラクター立ち絵プレビュー描画
 const prevCanvas = $('skin-preview-canvas');
 const pCtx = prevCanvas.getContext('2d');
 
 function renderSkinPreview(){
-  pCtx.clearRect(0,0,200,200);
+  pCtx.clearRect(0,0,160,130);
   const skin = SKINS[currentSkin] || SKINS['default'];
   $('current-skin-name').textContent = skin.name;
 
   // 影
   pCtx.fillStyle='rgba(0,0,0,0.3)';
   pCtx.beginPath();
-  pCtx.ellipse(100, 175, 50, 12, 0, 0, Math.PI*2);
+  pCtx.ellipse(80, 115, 40, 10, 0, 0, Math.PI*2);
   pCtx.fill();
 
-  // 自転車本体プレビュー
   let col = skin.color;
-  const k = 3.5;
-  const X = 100, Y = 160;
+  const k = 2.8;
+  const X = 80, Y = 105;
 
   pCtx.fillStyle='#1a1a1a'; pCtx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
   pCtx.fillStyle='#222'; pCtx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
@@ -321,7 +317,6 @@ function renderSkinPreview(){
     pCtx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
   }
 
-  // 頭部
   pCtx.fillStyle='#ffd7b0';
   pCtx.beginPath();
   pCtx.arc(X, Y - k * 4.5, k * 0.65, 0, Math.PI*2);
@@ -368,7 +363,7 @@ function enterLobby(){
   $('disp-id').textContent = 'ID: ' + nmId;
   $('disp-coin').textContent = myCoins;
   $('auth-screen').style.display = 'none';$('lobby').style.display = 'flex';
-  $('menu-btn').style.display = 'block';$('back-lobby-btn').style.display = 'block';
+  $('menu-btn').style.display = 'block';$('back-auth-btn').style.display = 'block';
   renderSkinPreview();
   updateFriendUI();
 }
@@ -408,10 +403,11 @@ $('btn-login').onclick = () => {
   enterLobby();
 };
 
-// 右上のボタンでいつでもロビー画面へスムーズにアクセス
-$('back-lobby-btn').onclick = () => {
-  enterLobby();
-  $('side-menu').style.display = 'none';
+// 右上のボタンでタイトル（認証画面）に戻る
+$('back-auth-btn').onclick = () => {$('lobby').style.display = 'none';
+  $('menu-btn').style.display = 'none';$('back-auth-btn').style.display = 'none';
+  $('side-menu').style.display = 'none';$('login-id-input').value = nmId;
+  $('auth-screen').style.display = 'flex';
 };
 
 // ハンバーガーメニュー開閉
@@ -512,7 +508,7 @@ function returnLobby(){
   $('ready-btn').textContent = '準備 OK !';
   $('ready-btn').classList.remove('is-ready');
   $('lobby').style.display='flex';$('menu-btn').style.display='block';
-  $('back-lobby-btn').style.display='block';$('st').textContent='';
+  $('back-auth-btn').style.display='block';$('st').textContent='';
   renderSkinPreview();
 }
 
@@ -534,7 +530,7 @@ socket.on('start',d=>{
   startBGM();
   $('lobby').style.display='none';
   $('shop-modal').style.display='none';$('side-menu').style.display='none';
-  $('menu-btn').style.display='none';$('back-lobby-btn').style.display='none';
+  $('menu-btn').style.display='none';$('back-auth-btn').style.display='none';
 });
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
