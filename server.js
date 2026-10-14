@@ -6,7 +6,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// 静的ファイルの公開
 app.use(express.static('.'));
+
+// ルートアクセス時に確実にindex.htmlを返す
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 
 const rooms = {};
 const playerRooms = {}; // socket.id -> roomCode
@@ -74,7 +80,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('solo', (payload) => {
-    // ソロ対戦の開始処理（必要に応じて記述）
+    // ソロ対戦の開始処理
   });
 
   socket.on('leave', () => {
@@ -96,6 +102,8 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+// Renderなどの動的ポートに対応
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
