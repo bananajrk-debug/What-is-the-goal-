@@ -7,36 +7,121 @@ html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}
 #wrap{position:relative;max-width:100%}
 canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid #333}
-#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
-h1{margin:0 0 2px;font-size:34px}
+
+/* 認証・タイトル選択画面 */
+#auth-screen{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+.auth-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
+.auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
+
+/* メインロビー画面 */
+#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:10}
+h1{margin:0 0 2px;font-size:32px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
-button.shop-btn{background:#ba68c8;color:#fff}
+
+/* 🛒ショップボタン（最上部に配置） */
+button.shop-btn{background:transparent;border:0;font-size:42px;cursor:pointer;padding:0;line-height:1;margin-bottom:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
+button.shop-btn:hover{transform:scale(1.1);}
+
 input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
 #st{min-height:20px;color:#9fd;font-size:14px}
-#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:12px;align-items:center}
-#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
+#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+
+/* ハンバーガーメニューボタン（左上） */
+#menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
+
+/* タイトルへ戻るホームボタン（右上・案3） */
+#back-auth-btn{position:absolute;top:12px;right:12px;z-index:30;background:#2b3245;color:#fff;font-size:18px;padding:6px 10px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
+
+/* ハンバーガーサイドメニュー */
+#side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
+#side-menu h3{margin:0 0 8px;font-size:18px;border-bottom:1px solid #445;padding-bottom:6px;color:#ffd54f}
+.friend-list{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto}
+.friend-item{background:#222738;padding:8px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.friend-item button{padding:4px 8px;font-size:12px}
+
+/* ルーム待機ロビー画面 */
+#room-wait-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:35}
+.wait-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #ffd54f;display:flex;flex-direction:column;align-items:center;gap:12px;width:300px;text-align:center}
+
+#shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:30}
 .skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .skin-card{background:#222738;padding:10px 16px;border-radius:8px;border:2px solid #444;cursor:pointer;text-align:center;width:110px}
 .skin-card.selected{border-color:#ffd54f}
 p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 </style></head><body>
 <div id="wrap"><canvas id="c" width="720" height="540"></canvas>
+
+<!-- ハンバーガーボタン -->
+<button id="menu-btn">☰</button>
+<!-- 右上のタイトルへ戻るボタン（案3） -->
+<button id="back-auth-btn" title="タイトルへ戻る">🏠</button>
+
+<!-- サイドメニュー（フレンド機能・ショートカット） -->
+<div id="side-menu">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3>メニュー / フレンド</h3>
+    <button id="close-menu-btn" style="background:transparent;color:#aaa;font-size:18px;padding:0 4px;">✕</button>
+  </div>
+  
+  <div>
+    <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#889;">フレンド追加 (NM IDを入力)</p>
+    <div style="display:flex;gap:6px;">
+      <input id="add-friend-id" placeholder="NM-123456" style="width:140px;font-size:13px;padding:6px;background:#10131a;color:#fff;border:1px solid #445;border-radius:4px;">
+      <button id="btn-add-friend" style="font-size:12px;padding:6px 10px;background:#81c784;color:#000;">追加</button>
+    </div>
+  </div>
+
+  <div>
+    <p style="text-align:left;margin:10px 0 6px;font-size:12px;color:#889;">フレンド一覧・ワンタップ参加</p>
+    <div class="friend-list" id="friend-list-container">
+      <!-- フレンド項目 -->
+    </div>
+  </div>
+</div>
+
+<!-- ログイン / ニューゲーム選択画面 -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <h1>なにが目的なん？</h1>
+    <p style="color:#bbb;margin:0 0 10px;">プレイヤー認証</p>
+    <button id="btn-new-game" style="background:#81c784;color:#000;width:100%;padding:12px;font-size:16px;">ニューゲーム（ID自動発行）</button>
+    <div style="border-top:1px solid #444;width:100%;margin:6px 0;padding-top:12px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+      <p style="margin:0;font-size:12px;color:#889;">すでにIDをお持ちの方</p>
+      <input id="login-id-input" placeholder="例: NM-123456" maxlength="15">
+      <button id="btn-login" style="background:#4fc3f7;color:#000;width:100%;padding:10px;">ログイン</button>
+    </div>
+    <p id="auth-err" style="color:#ff5252;font-size:12px;min-height:16px;margin:0;"></p>
+  </div>
+</div>
+
+<!-- メインロビー画面 -->
 <div id="lobby">
+  <button id="open-shop" class="shop-btn" title="スキンショップ">🛒</button>
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
-    <span>NMcoin: <b id="disp-coin" style="color:#ffd54f">0</b> NC</span>
+    <span>NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
   </div>
   <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
   <button id="solo" class="solo">ソロ（CPU対戦）</button>
   <button id="create">ルーム作成</button>
   <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
-  <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
   <div id="st"></div>
+</div>
+
+<!-- ルーム作成時の待機ロビー画面 -->
+<div id="room-wait-modal">
+  <div class="wait-box">
+    <h2>🏠 ルーム待機中</h2>
+    <p style="font-size:14px;color:#aaa;margin:0;">部屋コード</p>
+    <h1 id="wait-room-code" style="font-size:42px;letter-spacing:4px;color:#ffd54f;margin:4px 0;">------</h1>
+    <p style="font-size:13px;color:#81c784;">相手の参加を待っています…</p>
+    <button id="btn-cancel-room" style="background:#e57373;color:#fff;margin-top:10px;width:100%;">ルームを解散して戻る</button>
+  </div>
 </div>
 
 <div id="shop-modal">
@@ -69,7 +154,6 @@ function initAudio(){
   }
 }
 
-// ポップBGM（長めループ）
 function startBGM(){
   initAudio();
   if(bgmInterval) return;
@@ -100,7 +184,6 @@ function stopBGM(){
   if(bgmInterval){ clearInterval(bgmInterval); bgmInterval = null; }
 }
 
-// A（攻撃側）のブレーキ音：「キュッ！」
 function playBrakeSound(){
   initAudio();
   if(!audioCtx) return;
@@ -117,7 +200,6 @@ function playBrakeSound(){
   osc.stop(audioCtx.currentTime + 0.2);
 }
 
-// B（追越側）のブースト音：「ギュイーン！」
 function playBoostSound(){
   initAudio();
   if(!audioCtx) return;
@@ -134,7 +216,6 @@ function playBoostSound(){
   osc.stop(audioCtx.currentTime + 0.42);
 }
 
-// 衝突・ひかれたときの音：「ガシャン！」
 function playCrashSound(){
   initAudio();
   if(!audioCtx) return;
@@ -160,17 +241,111 @@ function playCrashSound(){
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
-let nmId = localStorage.getItem('nm_id');
-if(!nmId){
-  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
-  localStorage.setItem('nm_id', nmId);
-}
+// --- ユーザーID・ログイン・フレンド管理 ---
+let nmId = localStorage.getItem('nm_id') || '';
 let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
 let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
+let friendList = JSON.parse(localStorage.getItem('nm_friends') || '[]');
 
-$('disp-id').textContent = 'ID: ' + nmId;
-$('disp-coin').textContent = myCoins;
+if(nmId){
+  $('login-id-input').value = nmId;
+}
+
+function updateFriendUI(){
+  const container = $('friend-list-container');
+  container.innerHTML = '';
+  if(friendList.length === 0){
+    container.innerHTML = '<p style="font-size:12px;color:#667;margin:4px 0;">フレンドがいません</p>';
+    return;
+  }
+  friendList.forEach((fid) => {
+    const item = document.createElement('div');
+    item.className = 'friend-item';
+    item.innerHTML = `<span><b>${fid}</b></span><button style="background:#ffd54f;color:#000;">参加</button>`;
+    item.querySelector('button').onclick = () => {
+      initAudio(); startBGM();
+      socket.emit('join_friend', { targetId: fid, ...getPayload() }, r => {
+        if(!r.ok) alert(r.err || 'フレンドは現在ルームを作成していません');
+      });
+    };
+    container.appendChild(item);
+  });
+}
+
+function enterLobby(){
+  $('disp-id').textContent = 'ID: ' + nmId;
+  $('disp-coin').textContent = myCoins;
+  $('auth-screen').style.display = 'none';$('lobby').style.display = 'flex';
+  $('menu-btn').style.display = 'block';$('back-auth-btn').style.display = 'block';
+  updateFriendUI();
+}
+
+// ニューゲーム
+$('btn-new-game').onclick = () => {
+  initAudio();
+  nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
+  localStorage.setItem('nm_id', nmId);
+  localStorage.setItem('nm_coins', '0');
+  localStorage.setItem('nm_owned_skins', JSON.stringify(['default']));
+  localStorage.setItem('nm_current_skin', 'default');
+  myCoins = 0;
+  ownedSkins = ['default'];
+  currentSkin = 'default';
+
+  alert('新しいIDを発行しました！\nあなたのID: ' + nmId);
+  enterLobby();
+};
+
+// ログイン
+$('btn-login').onclick = () => {
+  initAudio();
+  const val = $('login-id-input').value.trim();
+  if(!val || val.length < 3){
+    $('auth-err').textContent = '有効なIDを入力してください';
+    return;
+  }
+  nmId = val.startsWith('NM-') ? val : 'NM-' + val;
+  localStorage.setItem('nm_id', nmId);
+  
+  myCoins = parseInt(localStorage.getItem('nm_coins_' + nmId) || localStorage.getItem('nm_coins') || '0', 10);
+  ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins_' + nmId) || localStorage.getItem('nm_owned_skins') || '["default"]');
+  currentSkin = localStorage.getItem('nm_current_skin_' + nmId) || localStorage.getItem('nm_current_skin') || 'default';
+
+  $('auth-err').textContent = '';
+  enterLobby();
+};
+
+// 右上のホームボタンでタイトル（認証画面）に戻る
+$('back-auth-btn').onclick = () => {$('lobby').style.display = 'none';
+  $('menu-btn').style.display = 'none';$('back-auth-btn').style.display = 'none';
+  $('side-menu').style.display = 'none';$('login-id-input').value = nmId;
+  $('auth-screen').style.display = 'flex';
+};
+
+// ハンバーガーメニュー開閉（開いたときにボタンを隠す）
+$('menu-btn').onclick = () => { 
+  $('side-menu').style.display = 'flex';$('menu-btn').style.display = 'none';
+};
+$('close-menu-btn').onclick = () => { 
+  $('side-menu').style.display = 'none';$('menu-btn').style.display = 'block';
+};
+
+// フレンド追加
+$('btn-add-friend').onclick = () => {
+  const fid = $('add-friend-id').value.trim();
+  if(!fid || fid === nmId){ alert('正しいIDを入力してください'); return; }
+  const formatted = fid.startsWith('NM-') ? fid : 'NM-' + fid;
+  if(!friendList.includes(formatted)){
+    friendList.push(formatted);
+    localStorage.setItem('nm_friends', JSON.stringify(friendList));
+    updateFriendUI();
+    $('add-friend-id').value = '';
+    alert(formatted + ' をフレンドに追加しました！');
+  } else {
+    alert('すでに追加されています');
+  }
+};
 
 const SKINS = {
   'default': { name: 'スタンダード', color: '#c33', price: 0 },
@@ -196,16 +371,20 @@ function updateShopUI(){
       if(owned){
         currentSkin = key;
         localStorage.setItem('nm_current_skin', currentSkin);
+        localStorage.setItem('nm_current_skin_' + nmId, currentSkin);
         updateShopUI();
         $('shop-st').textContent = skin.name + 'を装着しました！';
       } else {
         if(myCoins >= skin.price){
           myCoins -= skin.price;
           localStorage.setItem('nm_coins', myCoins);
+          localStorage.setItem('nm_coins_' + nmId, myCoins);
           ownedSkins.push(key);
           localStorage.setItem('nm_owned_skins', JSON.stringify(ownedSkins));
+          localStorage.setItem('nm_owned_skins_' + nmId, JSON.stringify(ownedSkins));
           currentSkin = key;
           localStorage.setItem('nm_current_skin', currentSkin);
+          localStorage.setItem('nm_current_skin_' + nmId, currentSkin);
           updateShopUI();
           $('shop-st').textContent = skin.name + 'を購入しました！';
         } else {
@@ -227,17 +406,36 @@ function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
   stopBGM();
-  ('lobby').style.display='flex';('st').textContent='';
+  $('room-wait-modal').style.display='none';
+  $('lobby').style.display='flex';$('menu-btn').style.display='block';
+  $('back-auth-btn').style.display='block';$('st').textContent='';
 }
 
 $('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
-$('create').onclick=()=> { initAudio(); startBGM(); socket.emit('create', getPayload(), r=>{$('st').textContent='ルームコード: '+r.code+'  （相手の参加を待っています…）';}); };
+
+// ルーム作成（作成後は部屋待機ロビー画面を表示）
+$('create').onclick=()=> { 
+  initAudio(); startBGM(); 
+  socket.emit('create', getPayload(), r => {
+    $('wait-room-code').textContent = r.code;
+    $('lobby').style.display = 'none';$('menu-btn').style.display = 'none';
+    $('back-auth-btn').style.display = 'none';$('room-wait-modal').style.display = 'flex';
+  }); 
+};
+
+// 待機解散ボタン
+$('btn-cancel-room').onclick = () => {
+  returnLobby();
+};
+
 $('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;}); };
 
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
   startBGM();
-  ('lobby').style.display='none';('shop-modal').style.display='none';
+  $('lobby').style.display='none';$('room-wait-modal').style.display='none';
+  $('shop-modal').style.display='none';$('side-menu').style.display='none';
+  $('menu-btn').style.display='none';$('back-auth-btn').style.display='none';
 });
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
@@ -246,6 +444,7 @@ socket.on('reward', data => {
   if(data.gain){
     myCoins += data.gain;
     localStorage.setItem('nm_coins', myCoins);
+    localStorage.setItem('nm_coins_' + nmId, myCoins);
     $('disp-coin').textContent = myCoins;
   }
 });
@@ -587,5 +786,3 @@ function draw(){
 let lt=performance.now();
 (function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
 </script></body></html>
-
-
