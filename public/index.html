@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>なにが目的なん？ ONLINE</title>
 <style>
-html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;user-select:none}
+html,body{margin:0;background:#10131a;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh}
 #wrap{position:relative;max-width:100%}
 canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid #333}
@@ -14,50 +14,35 @@ canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid
 .auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
 
 /* メインロビー画面 */
-#lobby{position:absolute;inset:0;background:radial-gradient(circle at center, #1e2638 0%, #0a0c14 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;gap:10px;z-index:10}
-h1{margin:0;font-size:30px;text-shadow:0 2px 8px rgba(0,0,0,0.8);letter-spacing:1px}
+#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+h1{margin:0 0 2px;font-size:34px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
 
-/* 🛒ショップボタン（最上部中央） */
-button.shop-btn{background:transparent;border:0;font-size:36px;cursor:pointer;padding:0;line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
+/* 大きな🛒ショップボタンのスタイル */
+button.shop-btn{background:transparent;border:0;font-size:48px;cursor:pointer;padding:0;line-height:1;margin-bottom:2px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
 button.shop-btn:hover{transform:scale(1.1);}
 
 input{width:180px;text-align:center}
-#pname{width:160px;font-weight:bold;background:rgba(0,0,0,0.4);color:#fff;border:1px solid #556}
-#code{width:110px;letter-spacing:2px;background:rgba(0,0,0,0.4);color:#fff;border:1px solid #556}
-#st{min-height:20px;color:#9fd;font-size:13px;text-shadow:0 1px 4px #000}
-#profile-box{font-size:12px;color:#bbb;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;display:flex;gap:10px;align-items:center;border:1px solid rgba(255,255,255,0.1)}
+#pname{width:180px;font-weight:bold}
+#code{width:130px;letter-spacing:3px}
+#st{min-height:20px;color:#9fd;font-size:14px}
+#profile-box{font-size:13px;color:#bbb;background:rgba(255,255,255,0.07);padding:6px 12px;border-radius:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
 
-/* キャラクター立ち絵プレビューエリア */
-#character-preview-box{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;margin:4px 0;}
-#skin-preview-canvas{width:130px;height:130px;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.7));}
-.skin-selector{display:flex;align-items:center;gap:12px;margin-top:2px;}
-.skin-arrow-btn{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:14px;padding:3px 8px;border-radius:50%;}
-.skin-arrow-btn:hover{background:rgba(255,255,255,0.3);}
-#current-skin-name{font-weight:bold;font-size:14px;color:#ffd54f;text-shadow:0 2px 4px rgba(0,0,0,0.8);}
-
-/* ロビー下部・対戦設定＆準備OKエリアのコンテナボックス */
-.lobby-box{display:flex;flex-direction:column;align-items:center;gap:10px;background:rgba(0,0,0,0.4);padding:14px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);}
-.room-controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;}
-
-/* 準備OKボタン */
-#ready-btn{width:200px;height:42px;font-size:18px;letter-spacing:1px;background:#81c784;color:#000;border-radius:21px;box-shadow:0 4px 12px rgba(129,199,132,0.4);transition:all 0.2s;}
-#ready-btn.is-ready{background:#ff5252;color:#fff;box-shadow:0 4px 12px rgba(255,82,82,0.4);}
-
-/* ハンバーガーメニューボタン（左上） */
+/* ハンバーガーメニューボタン */
 #menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
-/* タイトル認証画面へ戻るボタン（右上） */
-#back-auth-btn{position:absolute;top:12px;right:12px;z-index:30;background:#2b3245;color:#fff;font-size:18px;padding:6px 10px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
-
 /* ハンバーガーサイドメニュー */
-#side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
+#side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:25;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
 #side-menu h3{margin:0 0 8px;font-size:18px;border-bottom:1px solid #445;padding-bottom:6px;color:#ffd54f}
 .friend-list{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto}
 .friend-item{background:#222738;padding:8px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
 .friend-item button{padding:4px 8px;font-size:12px}
+
+/* ルーム待機ロビー画面 */
+#room-wait-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:35}
+.wait-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #ffd54f;display:flex;flex-direction:column;align-items:center;gap:12px;width:300px;text-align:center}
 
 #shop-modal{position:absolute;inset:0;background:rgba(15,18,28,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:30}
 .skin-grid{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -69,8 +54,6 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
-<!-- 右上のタイトル認証画面へ戻る（ID切替等）ボタン -->
-<button id="back-auth-btn" title="タイトル（ID認証）へ戻る">🏠</button>
 
 <!-- サイドメニュー（フレンド機能・ショートカット） -->
 <div id="side-menu">
@@ -90,7 +73,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div>
     <p style="text-align:left;margin:10px 0 6px;font-size:12px;color:#889;">フレンド一覧・ワンタップ参加</p>
     <div class="friend-list" id="friend-list-container">
-      <!-- フレンド項目 -->
+      <!-- フレンド項目がここに挿入されます -->
     </div>
   </div>
 </div>
@@ -116,31 +99,25 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
-    <span>| NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
+    <button id="btn-logout" style="font-size:11px;padding:3px 8px;background:#e57373;color:#fff;">ID切替</button>
+    <span>NMcoin: <b id="disp-coin" style="color:#ffd700">0</b> NC</span>
   </div>
-
-  <!-- キャラクタープレビュー＆スキン変更 -->
-  <div id="character-preview-box">
-    <canvas id="skin-preview-canvas" width="160" height="130"></canvas>
-    <div class="skin-selector">
-      <button class="skin-arrow-btn" id="prev-skin-btn">◀</button>
-      <span id="current-skin-name">スタンダード</span>
-      <button class="skin-arrow-btn" id="next-skin-btn">▶</button>
-    </div>
-  </div>
-
-  <!-- 対戦設定＆準備OKエリア -->
-  <div class="lobby-box">
-    <div class="room-controls">
-      <input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー">
-      <button id="solo" class="solo">ソロ(CPU)</button>
-      <button id="create">部屋作成</button>
-      <input id="code" maxlength="6" placeholder="部屋コード" inputmode="numeric">
-      <button id="join">参加</button>
-    </div>
-    <button id="ready-btn">準備 OK !</button>
-  </div>
+  <div><input id="pname" maxlength="10" placeholder="プレイヤー名" value="プレイヤー"></div>
+  <button id="solo" class="solo">ソロ（CPU対戦）</button>
+  <button id="create">ルーム作成</button>
+  <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
   <div id="st"></div>
+</div>
+
+<!-- ルーム作成時の待機ロビー画面 -->
+<div id="room-wait-modal">
+  <div class="wait-box">
+    <h2>🏠 ルーム待機中</h2>
+    <p style="font-size:14px;color:#aaa;margin:0;">部屋コード</p>
+    <h1 id="wait-room-code" style="font-size:42px;letter-spacing:4px;color:#ffd54f;margin:4px 0;">------</h1>
+    <p style="font-size:13px;color:#81c784;">相手の参加を待っています…</p>
+    <button id="btn-cancel-room" style="background:#e57373;color:#fff;margin-top:10px;width:100%;">ルームを解散して戻る</button>
+  </div>
 </div>
 
 <div id="shop-modal">
@@ -159,7 +136,6 @@ const $=id=>document.getElementById(id),COL=['#4fc3f7','#ffb74d'],CAR=['#c33','#
 const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 let hitEffects = [];
-let isReady = false;
 
 // --- Web Audio API (BGM & SE) ---
 let audioCtx = null;
@@ -268,75 +244,9 @@ let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default
 let currentSkin = localStorage.getItem('nm_current_skin') || 'default';
 let friendList = JSON.parse(localStorage.getItem('nm_friends') || '[]');
 
-const SKINS = {
-  'default': { name: 'スタンダード', color: '#c33', price: 0 },
-  'gold':    { name: 'ゴールド', color: '#ffd700', price: 50 },
-  'cyber':   { name: 'サイバー', color: '#00ffcc', price: 100 },
-  'dark':    { name: 'ダーク', color: '#333333', price: 80 },
-  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 }
-};
-
-const skinKeys = Object.keys(SKINS);
-
 if(nmId){
   $('login-id-input').value = nmId;
 }
-
-// キャラクター立ち絵プレビュー描画
-const prevCanvas = $('skin-preview-canvas');
-const pCtx = prevCanvas.getContext('2d');
-
-function renderSkinPreview(){
-  pCtx.clearRect(0,0,160,130);
-  const skin = SKINS[currentSkin] || SKINS['default'];
-  $('current-skin-name').textContent = skin.name;
-
-  // 影
-  pCtx.fillStyle='rgba(0,0,0,0.3)';
-  pCtx.beginPath();
-  pCtx.ellipse(80, 115, 40, 10, 0, 0, Math.PI*2);
-  pCtx.fill();
-
-  let col = skin.color;
-  const k = 2.8;
-  const X = 80, Y = 105;
-
-  pCtx.fillStyle='#1a1a1a'; pCtx.fillRect(X - k * 0.45, Y - k * 1.8, k * 0.9, k * 1.8);
-  pCtx.fillStyle='#222'; pCtx.fillRect(X - k * 1.15, Y - k * 3.1, k * 2.3, k * 0.3);
-  pCtx.fillStyle='#111'; pCtx.fillRect(X - k * .2, Y - k * 2.4, k * .4, k * 2.4);
-
-  if(currentSkin === 'myart' && myArtImg.complete && myArtImg.naturalWidth !== 0){
-    const imgRatio = myArtImg.naturalWidth / myArtImg.naturalHeight;
-    const baseH = k * 2.2;
-    const baseW = baseH * imgRatio;
-    pCtx.drawImage(myArtImg, X - baseW / 2, Y - k * 4.2, baseW, baseH);
-  } else {
-    pCtx.fillStyle = col;
-    pCtx.fillRect(X - k * 0.65, Y - k * 3.8, k * 1.3, k * 1.9);
-    pCtx.fillStyle = 'rgba(255,255,255,0.2)';
-    pCtx.fillRect(X - k * 0.55, Y - k * 3.7, k * 0.3, k * 1.7);
-  }
-
-  pCtx.fillStyle='#ffd7b0';
-  pCtx.beginPath();
-  pCtx.arc(X, Y - k * 4.5, k * 0.65, 0, Math.PI*2);
-  pCtx.fill();
-}
-
-function changeSkinOffset(dir){
-  const ownedList = skinKeys.filter(k => ownedSkins.includes(k));
-  if(ownedList.length === 0) return;
-  let idx = ownedList.indexOf(currentSkin);
-  if(idx === -1) idx = 0;
-  idx = (idx + dir + ownedList.length) % ownedList.length;
-  currentSkin = ownedList[idx];
-  localStorage.setItem('nm_current_skin', currentSkin);
-  localStorage.setItem('nm_current_skin_' + nmId, currentSkin);
-  renderSkinPreview();
-}
-
-$('prev-skin-btn').onclick = () => changeSkinOffset(-1);
-$('next-skin-btn').onclick = () => changeSkinOffset(1);
 
 function updateFriendUI(){
   const container = $('friend-list-container');
@@ -362,9 +272,8 @@ function updateFriendUI(){
 function enterLobby(){
   $('disp-id').textContent = 'ID: ' + nmId;
   $('disp-coin').textContent = myCoins;
-  $('auth-screen').style.display = 'none';$('lobby').style.display = 'flex';
-  $('menu-btn').style.display = 'block';$('back-auth-btn').style.display = 'block';
-  renderSkinPreview();
+  $('auth-screen').style.display = 'none';
+  ('lobby').style.display='flex';('menu-btn').style.display = 'block';
   updateFriendUI();
 }
 
@@ -403,37 +312,16 @@ $('btn-login').onclick = () => {
   enterLobby();
 };
 
-// 右上のボタンでタイトル（認証画面）に戻る
-$('back-auth-btn').onclick = () => {$('lobby').style.display = 'none';
-  $('menu-btn').style.display = 'none';$('back-auth-btn').style.display = 'none';
-  $('side-menu').style.display = 'none';$('login-id-input').value = nmId;
+// ID切替
+$('btn-logout').onclick = () => {
+  ('lobby').style.display='none';('menu-btn').style.display = 'none';
+  ('side-menu').style.display='none';('login-id-input').value = nmId;
   $('auth-screen').style.display = 'flex';
 };
 
 // ハンバーガーメニュー開閉
-$('menu-btn').onclick = () => { 
-  $('side-menu').style.display = 'flex';$('menu-btn').style.display = 'none';
-};
-$('close-menu-btn').onclick = () => { 
-  $('side-menu').style.display = 'none';$('menu-btn').style.display = 'block';
-};
-
-// 準備OKボタン切替ロジック
-$('ready-btn').onclick = () => {
-  isReady = !isReady;
-  const btn = $('ready-btn');
-  if(isReady){
-    btn.textContent = '準備完了！ (CANCEL)';
-    btn.classList.add('is-ready');
-    $('st').textContent = '準備完了状態です。全員がOKを押すとスタート！';
-    socket.emit('set_ready', { ready: true, ...getPayload() });
-  } else {
-    btn.textContent = '準備 OK !';
-    btn.classList.remove('is-ready');
-    $('st').textContent = '';
-    socket.emit('set_ready', { ready: false, ...getPayload() });
-  }
-};
+$('menu-btn').onclick = () => {$('side-menu').style.display = 'flex'; };
+$('close-menu-btn').onclick = () => {$('side-menu').style.display = 'none'; };
 
 // フレンド追加
 $('btn-add-friend').onclick = () => {
@@ -449,6 +337,14 @@ $('btn-add-friend').onclick = () => {
   } else {
     alert('すでに追加されています');
   }
+};
+
+const SKINS = {
+  'default': { name: 'スタンダード', color: '#c33', price: 0 },
+  'gold':    { name: 'ゴールド', color: '#ffd700', price: 50 },
+  'cyber':   { name: 'サイバー', color: '#00ffcc', price: 100 },
+  'dark':    { name: 'ダーク', color: '#333333', price: 80 },
+  'myart':   { name: '自作イラスト', color: '#ff69b4', price: 150 }
 };
 
 function updateShopUI(){
@@ -469,7 +365,6 @@ function updateShopUI(){
         localStorage.setItem('nm_current_skin', currentSkin);
         localStorage.setItem('nm_current_skin_' + nmId, currentSkin);
         updateShopUI();
-        renderSkinPreview();
         $('shop-st').textContent = skin.name + 'を装着しました！';
       } else {
         if(myCoins >= skin.price){
@@ -483,7 +378,6 @@ function updateShopUI(){
           localStorage.setItem('nm_current_skin', currentSkin);
           localStorage.setItem('nm_current_skin_' + nmId, currentSkin);
           updateShopUI();
-          renderSkinPreview();
           $('shop-st').textContent = skin.name + 'を購入しました！';
         } else {
           $('shop-st').textContent = 'コインが足りません！';
@@ -504,33 +398,34 @@ function returnLobby(){
   socket.emit('leave');
   inGame=false;S=D=null;
   stopBGM();
-  isReady = false;
-  $('ready-btn').textContent = '準備 OK !';
-  $('ready-btn').classList.remove('is-ready');
-  $('lobby').style.display='flex';$('menu-btn').style.display='block';
-  $('back-auth-btn').style.display='block';$('st').textContent='';
-  renderSkinPreview();
+  ('room-wait-modal').style.display='none';('lobby').style.display='flex';
+  ('menu-btn').style.display='block';('st').textContent='';
 }
 
 $('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
 
-// ルーム作成
+// ルーム作成（作成後は部屋待機ロビー画面を表示）
 $('create').onclick=()=> { 
   initAudio(); startBGM(); 
   socket.emit('create', getPayload(), r => {
-    $('code').value = r.code;
-    $('st').textContent = '部屋コード [' + r.code + '] を作成しました。相手の参加と準備OKを待っています！';
+    $('wait-room-code').textContent = r.code;
+    ('lobby').style.display='none';('room-wait-modal').style.display = 'flex';
   }); 
 };
 
-$('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code:$('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;else$('st').textContent='部屋に参加しました！準備OKを押してください。';}); };
+// 待機解散ボタン
+$('btn-cancel-room').onclick = () => {
+  returnLobby();
+};
+
+$('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $('code').value.trim(), ...getPayload() }, r=>{if(!r.ok)$('st').textContent=r.err;}); };
 
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
   startBGM();
   $('lobby').style.display='none';
-  $('shop-modal').style.display='none';$('side-menu').style.display='none';
-  $('menu-btn').style.display='none';$('back-auth-btn').style.display='none';
+  ('room-wait-modal').style.display='none';('shop-modal').style.display='none';
+  ('side-menu').style.display='none';('menu-btn').style.display='none';
 });
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
@@ -881,3 +776,5 @@ function draw(){
 let lt=performance.now();
 (function loop(t){const dt=Math.min(.05,(t-lt)/1000);lt=t;sync(dt);draw();requestAnimationFrame(loop);})(lt);
 </script></body></html>
+
+
