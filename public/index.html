@@ -19,7 +19,11 @@ h1{margin:0 0 2px;font-size:34px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
-button.shop-btn{background:#ba68c8;color:#fff}
+
+/* 大きな🛒ショップボタンのスタイル */
+button.shop-btn{background:transparent;border:0;font-size:48px;cursor:pointer;padding:0;line-height:1;margin-bottom:2px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
+button.shop-btn:hover{transform:scale(1.1);}
+
 input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
@@ -91,6 +95,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 
 <!-- メインロビー画面 -->
 <div id="lobby">
+  <button id="open-shop" class="shop-btn" title="スキンショップ">🛒</button>
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
@@ -101,7 +106,6 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <button id="solo" class="solo">ソロ（CPU対戦）</button>
   <button id="create">ルーム作成</button>
   <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
-  <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
   <div id="st"></div>
 </div>
 
@@ -256,7 +260,6 @@ function updateFriendUI(){
     item.className = 'friend-item';
     item.innerHTML = `<span><b>${fid}</b></span><button style="background:#ffd54f;color:#000;">参加</button>`;
     item.querySelector('button').onclick = () => {
-      // フレンドのルームへコード入力なしで直接参加を試みる
       initAudio(); startBGM();
       socket.emit('join_friend', { targetId: fid, ...getPayload() }, r => {
         if(!r.ok) alert(r.err || 'フレンドは現在ルームを作成していません');
