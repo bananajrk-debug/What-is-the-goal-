@@ -8,22 +8,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 #wrap{position:relative;max-width:100%}
 canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid #333}
 
-/* 認証・タイトル選択画面 */
+/* 認証・タイトル選択画面（ログイン / ニューゲーム） */
 #auth-screen{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20}
 .auth-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
 
-/* メインロビー画面 */
-#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:10}
-h1{margin:0 0 2px;font-size:32px}
+/* 元の美しいロビー画面ベース */
+#lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
+h1{margin:0 0 2px;font-size:34px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
 button{background:#ffd54f;font-weight:bold;cursor:pointer}
 button.solo{background:#81c784}
-
-/* 🛒ショップボタン（最上部に配置） */
-button.shop-btn{background:transparent;border:0;font-size:42px;cursor:pointer;padding:0;line-height:1;margin-bottom:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6));transition:transform 0.1s;}
-button.shop-btn:hover{transform:scale(1.1);}
-
+button.shop-btn{background:#ba68c8;color:#fff}
 input{width:180px;text-align:center}
 #pname{width:180px;font-weight:bold}
 #code{width:130px;letter-spacing:3px}
@@ -33,9 +29,6 @@ input{width:180px;text-align:center}
 /* ハンバーガーメニューボタン（左上） */
 #menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
-/* タイトルへ戻るホームボタン（右上・案3） */
-#back-auth-btn{position:absolute;top:12px;right:12px;z-index:30;background:#2b3245;color:#fff;font-size:18px;padding:6px 10px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
-
 /* ハンバーガーサイドメニュー */
 #side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
 #side-menu h3{margin:0 0 8px;font-size:18px;border-bottom:1px solid #445;padding-bottom:6px;color:#ffd54f}
@@ -43,7 +36,7 @@ input{width:180px;text-align:center}
 .friend-item{background:#222738;padding:8px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
 .friend-item button{padding:4px 8px;font-size:12px}
 
-/* ルーム待機ロビー画面 */
+/* ルーム作成時の待機ロビー画面 */
 #room-wait-modal{position:absolute;inset:0;background:rgba(10,12,20,0.98);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:35}
 .wait-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #ffd54f;display:flex;flex-direction:column;align-items:center;gap:12px;width:300px;text-align:center}
 
@@ -57,10 +50,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
-<!-- 右上のタイトルへ戻るボタン（案3） -->
-<button id="back-auth-btn" title="タイトルへ戻る">🏠</button>
 
-<!-- サイドメニュー（フレンド機能・ショートカット） -->
+<!-- サイドメニュー（フレンド機能・ワンタップ参加） -->
 <div id="side-menu">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3>メニュー / フレンド</h3>
@@ -81,6 +72,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
       <!-- フレンド項目 -->
     </div>
   </div>
+  <button id="btn-logout" style="background:#e57373;color:#fff;margin-top:auto;width:100%;">ID切替 / 認証に戻る</button>
 </div>
 
 <!-- ログイン / ニューゲーム選択画面 -->
@@ -98,9 +90,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   </div>
 </div>
 
-<!-- メインロビー画面 -->
+<!-- 元のロビー画面ベース -->
 <div id="lobby">
-  <button id="open-shop" class="shop-btn" title="スキンショップ">🛒</button>
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
     <span id="disp-id">ID: ---</span>
@@ -110,6 +101,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <button id="solo" class="solo">ソロ（CPU対戦）</button>
   <button id="create">ルーム作成</button>
   <div><input id="code" maxlength="6" placeholder="6桁コード" inputmode="numeric"> <button id="join">参加</button></div>
+  <button id="open-shop" class="shop-btn">スキンショップ / 着替え</button>
   <div id="st"></div>
 </div>
 
@@ -141,7 +133,6 @@ const HY=170,GY=540,K=1.9,ROAD_W=112.5;
 let slot=0,S=null,D=null,inGame=false,last={l:0,r:0};
 let hitEffects = [];
 
-// --- Web Audio API (BGM & SE) ---
 let audioCtx = null;
 let bgmInterval = null;
 
@@ -241,7 +232,6 @@ function playCrashSound(){
 const myArtImg = new Image();
 myArtImg.src = 'my_art.png';
 
-// --- ユーザーID・ログイン・フレンド管理 ---
 let nmId = localStorage.getItem('nm_id') || '';
 let myCoins = parseInt(localStorage.getItem('nm_coins') || '0', 10);
 let ownedSkins = JSON.parse(localStorage.getItem('nm_owned_skins') || '["default"]');
@@ -276,12 +266,11 @@ function updateFriendUI(){
 function enterLobby(){
   $('disp-id').textContent = 'ID: ' + nmId;
   $('disp-coin').textContent = myCoins;
-  $('auth-screen').style.display = 'none';$('lobby').style.display = 'flex';
-  $('menu-btn').style.display = 'block';$('back-auth-btn').style.display = 'block';
+  $('auth-screen').style.display = 'none';
+  $('lobby').style.display = 'flex';$('menu-btn').style.display = 'block';
   updateFriendUI();
 }
 
-// ニューゲーム
 $('btn-new-game').onclick = () => {
   initAudio();
   nmId = 'NM-' + Math.floor(100000 + Math.random() * 900000);
@@ -292,12 +281,10 @@ $('btn-new-game').onclick = () => {
   myCoins = 0;
   ownedSkins = ['default'];
   currentSkin = 'default';
-
   alert('新しいIDを発行しました！\nあなたのID: ' + nmId);
   enterLobby();
 };
 
-// ログイン
 $('btn-login').onclick = () => {
   initAudio();
   const val = $('login-id-input').value.trim();
@@ -316,14 +303,12 @@ $('btn-login').onclick = () => {
   enterLobby();
 };
 
-// 右上のホームボタンでタイトル（認証画面）に戻る
-$('back-auth-btn').onclick = () => {$('lobby').style.display = 'none';
-  $('menu-btn').style.display = 'none';$('back-auth-btn').style.display = 'none';
+$('btn-logout').onclick = () => {
+  $('lobby').style.display = 'none';$('menu-btn').style.display = 'none';
   $('side-menu').style.display = 'none';$('login-id-input').value = nmId;
   $('auth-screen').style.display = 'flex';
 };
 
-// ハンバーガーメニュー開閉（開いたときにボタンを隠す）
 $('menu-btn').onclick = () => { 
   $('side-menu').style.display = 'flex';$('menu-btn').style.display = 'none';
 };
@@ -331,7 +316,6 @@ $('close-menu-btn').onclick = () => {
   $('side-menu').style.display = 'none';$('menu-btn').style.display = 'block';
 };
 
-// フレンド追加
 $('btn-add-friend').onclick = () => {
   const fid = $('add-friend-id').value.trim();
   if(!fid || fid === nmId){ alert('正しいIDを入力してください'); return; }
@@ -408,7 +392,7 @@ function returnLobby(){
   stopBGM();
   $('room-wait-modal').style.display='none';
   $('lobby').style.display='flex';$('menu-btn').style.display='block';
-  $('back-auth-btn').style.display='block';$('st').textContent='';
+  $('side-menu').style.display='none';$('st').textContent='';
 }
 
 $('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
@@ -418,8 +402,7 @@ $('create').onclick=()=> {
   initAudio(); startBGM(); 
   socket.emit('create', getPayload(), r => {
     $('wait-room-code').textContent = r.code;
-    $('lobby').style.display = 'none';$('menu-btn').style.display = 'none';
-    $('back-auth-btn').style.display = 'none';$('room-wait-modal').style.display = 'flex';
+    $('lobby').style.display = 'none';$('room-wait-modal').style.display = 'flex';
   }); 
 };
 
@@ -433,9 +416,9 @@ $('join').onclick=()=> { initAudio(); startBGM(); socket.emit('join', { code: $(
 socket.on('start',d=>{
   slot=d.slot;inGame=true;S=D=null;
   startBGM();
-  $('lobby').style.display='none';$('room-wait-modal').style.display='none';
-  $('shop-modal').style.display='none';$('side-menu').style.display='none';
-  $('menu-btn').style.display='none';$('back-auth-btn').style.display='none';
+  $('lobby').style.display='none';
+  $('room-wait-modal').style.display='none';$('shop-modal').style.display='none';
+  $('side-menu').style.display='none';$('menu-btn').style.display='none';
 });
 
 socket.on('left',()=>{returnLobby();$('st').textContent='相手が退出しました';});
