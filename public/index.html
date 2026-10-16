@@ -61,7 +61,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
     <button id="close-menu-btn" style="background:transparent;color:#aaa;font-size:18px;padding:0 4px;">✕</button>
   </div>
   
-  <!-- NM-430859 専用の音声管理セクション（初期状態は非表示） -->
+  <!-- NM-430859 専用の音声管理セクション -->
   <div id="admin-audio-section" style="display:none;background:#222738;padding:10px;border-radius:6px;border:1px solid #ffd54f;">
     <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#ffd54f;font-weight:bold;">🎵 管理者用：衝突音設定</p>
     <input type="file" id="audio-file-input" accept="audio/*" style="font-size:11px;width:100%;padding:4px;background:#10131a;color:#fff;border:1px solid #445;border-radius:4px;box-sizing:border-box;">
@@ -167,7 +167,7 @@ if(audioFileInput){
   };
 }
 
-// 障害物・車との衝突時のみ再生（追い抜かし時は再生されないようにしています）
+// 障害物や車との衝突（クラッシュ）のときのみ再生する関数
 function playCustomCrashAudio(){
   if(customAudio.src){
     customAudio.currentTime = 0;
@@ -250,7 +250,7 @@ function playBoostSound(){
 
 function playCrashSound(){
   initAudio();
-  // 衝突・クラッシュ時のみカスタム音声を再生
+  // 衝突・クラッシュ時のみカスタム音声を再生（追い抜かし時には呼ばれません）
   playCustomCrashAudio();
 
   if(!audioCtx) return;
@@ -489,6 +489,7 @@ let lastBrakesCount = [0, 0];
 let lastBoostState = [false, false];
 
 socket.on('st',s=>{
+  // 追い抜かしなどの通常状態では再生せず、result（衝突や結末）に切り替わった瞬間のみ playCrashSound を呼び出します
   if(D && s.s === 'result' && lastState !== 'result'){
     playCrashSound();
   }
