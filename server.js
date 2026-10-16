@@ -35,7 +35,6 @@ function resetMatch(R) {
 function endRound(R, w, pen, text) {
   if (w >= 0) {
     R.sc[w]++;
-    // ラウンド勝利時にNMcoin（10NC）を付与するイベントを該当プレイヤーに送信
     if (R.ids[w]) {
       io.to(R.ids[w]).emit('reward', { gain: 10 });
     }
@@ -68,7 +67,6 @@ function updateCpuInp(R) {
   if (!cpuP) return;
 
   let targetX = cpuP.x;
-
   const aheadCars = R.obs.filter(o => o.z > cpuP.z && o.z - cpuP.z < 260);
   if (aheadCars.length > 0) {
     aheadCars.sort((a, b) => a.z - b.z);
@@ -298,5 +296,3 @@ io.on('connection', socket => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('listening on ' + PORT));
-
-
