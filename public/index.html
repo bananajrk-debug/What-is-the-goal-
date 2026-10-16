@@ -13,7 +13,7 @@ canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid
 .auth-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
 
-/* 元の美しいロビー画面ベース */
+/* 元のロビー画面ベース */
 #lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
 h1{margin:0 0 2px;font-size:34px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
@@ -51,21 +51,21 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
 
-<!-- 衝突時再生用の隠しaudio要素 -->
-<audio id="custom-audio" style="display:none;"></audio>
+<!-- 衝突音再生用の隠しaudio要素（通常は画面に表示されません） -->
+<audio id="custom-crash-audio" src="マイ録音.m4a" style="display:none;"></audio>
 
-<!-- サイドメニュー（フレンド機能・音声管理・ワンタップ参加） -->
+<!-- サイドメニュー -->
 <div id="side-menu">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3>メニュー / フレンド</h3>
     <button id="close-menu-btn" style="background:transparent;color:#aaa;font-size:18px;padding:0 4px;">✕</button>
   </div>
   
-  <!-- NM-430859 専用の音声管理セクション -->
+  <!-- IDが "NM-430859" のプレイヤーにのみ表示される管理者用音声設定 -->
   <div id="admin-audio-section" style="display:none;background:#222738;padding:10px;border-radius:6px;border:1px solid #ffd54f;">
-    <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#ffd54f;font-weight:bold;">🎵 管理者用：衝突音設定</p>
+    <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#ffd54f;font-weight:bold;">🎵 管理者用：衝突音ファイル変更</p>
     <input type="file" id="audio-file-input" accept="audio/*" style="font-size:11px;width:100%;padding:4px;background:#10131a;color:#fff;border:1px solid #445;border-radius:4px;box-sizing:border-box;">
-    <p id="audio-file-info" style="text-align:left;margin:6px 0 0;font-size:11px;color:#aaa;">デフォルト: マイ録音.m4a</p>
+    <p id="audio-file-info" style="text-align:left;margin:6px 0 0;font-size:11px;color:#aaa;">現在の音声: マイ録音.m4a</p>
   </div>
 
   <div>
@@ -78,9 +78,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 
   <div>
     <p style="text-align:left;margin:10px 0 6px;font-size:12px;color:#889;">フレンド一覧・ワンタップ参加</p>
-    <div class="friend-list" id="friend-list-container">
-      <!-- フレンド項目 -->
-    </div>
+    <div class="friend-list" id="friend-list-container"></div>
   </div>
   <button id="btn-logout" style="background:#e57373;color:#fff;margin-top:auto;width:100%;">ID切替 / 認証に戻る</button>
 </div>
@@ -100,7 +98,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   </div>
 </div>
 
-<!-- 元のロビー画面ベース -->
+<!-- ロビー画面 -->
 <div id="lobby">
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
@@ -146,35 +144,22 @@ let hitEffects = [];
 let audioCtx = null;
 let bgmInterval = null;
 
-// 音声ファイルのセットアップ
-const customAudio = $('custom-audio');
-customAudio.src = 'マイ録音.m4a';
-customAudio.load();
-
-// ハンバーガーメニュー内のファイル選択イベント（NM-430859専用）
+// カスタム衝突音（マイ録音.m4a）のセットアップ
+const customCrashAudio = $('custom-crash-audio');
 const audioFileInput = $('audio-file-input');
 const audioFileInfo = $('audio-file-info');
 
+// NM-430859のユーザーがメニューからファイルを変更した場合の処理
 if(audioFileInput){
   audioFileInput.onchange = (e) => {
     const file = e.target.files[0];
     if(file){
       const fileURL = URL.createObjectURL(file);
-      customAudio.src = fileURL;
-      customAudio.load();
+      customCrashAudio.src = fileURL;
+      customCrashAudio.load();
       audioFileInfo.textContent = '変更中: ' + file.name;
     }
   };
-}
-
-// 障害物や車との衝突（クラッシュ）のときのみ再生する関数
-function playCustomCrashAudio(){
-  if(customAudio.src){
-    customAudio.currentTime = 0;
-    customAudio.play().catch(err => {
-      console.log('自動再生制限:', err);
-    });
-  }
 }
 
 function initAudio(){
@@ -248,10 +233,16 @@ function playBoostSound(){
   osc.stop(audioCtx.currentTime + 0.42);
 }
 
+// 衝突・クラッシュ時（車との衝突、パトカー逮捕など）のみ「マイ録音.m4a」を再生
 function playCrashSound(){
   initAudio();
-  // 衝突・クラッシュ時のみカスタム音声を再生（追い抜かし時には呼ばれません）
-  playCustomCrashAudio();
+  
+  if(customCrashAudio.src){
+    customCrashAudio.currentTime = 0;
+    customCrashAudio.play().catch(err => {
+      console.log('自動再生制限によるブロック:', err);
+    });
+  }
 
   if(!audioCtx) return;
   const bufferSize = audioCtx.sampleRate * 0.4;
@@ -313,7 +304,7 @@ function enterLobby(){
   $('auth-screen').style.display = 'none';
   $('lobby').style.display = 'flex';$('menu-btn').style.display = 'block';
   
-  // NM-430859 の場合だけメニュー内に音声管理画面を表示
+  // IDが "NM-430859" の場合のみ、ハンバーガーメニュー内に音声設定を表示
   if(nmId === 'NM-430859'){
     $('admin-audio-section').style.display = 'block';
   } else {
@@ -449,7 +440,6 @@ function returnLobby(){
 
 $('solo').onclick=()=> { initAudio(); startBGM(); socket.emit('solo', getPayload()); };
 
-// ルーム作成（作成後は部屋待機ロビー画面を表示）
 $('create').onclick=()=> { 
   initAudio(); startBGM(); 
   socket.emit('create', getPayload(), r => {
@@ -458,7 +448,6 @@ $('create').onclick=()=> {
   }); 
 };
 
-// 待機解散ボタン
 $('btn-cancel-room').onclick = () => {
   returnLobby();
 };
@@ -489,7 +478,8 @@ let lastBrakesCount = [0, 0];
 let lastBoostState = [false, false];
 
 socket.on('st',s=>{
-  // 追い抜かしなどの通常状態では再生せず、result（衝突や結末）に切り替わった瞬間のみ playCrashSound を呼び出します
+  // ゲームの状態が 'result'（衝突・クラッシュなど）に切り替わった瞬間のみ playCrashSound を呼び出す
+  // ※追い抜かし成功時には result にならずラウンドが継続するため、音声は鳴りません
   if(D && s.s === 'result' && lastState !== 'result'){
     playCrashSound();
   }
@@ -765,7 +755,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
