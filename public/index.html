@@ -30,7 +30,7 @@ input{width:180px;text-align:center}
 #menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
 /* ハンバーガーサイドメニュー */
-#side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
+#side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5);overflow-y:auto;}
 #side-menu h3{margin:0 0 8px;font-size:18px;border-bottom:1px solid #445;padding-bottom:6px;color:#ffd54f}
 .friend-list{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto}
 .friend-item{background:#222738;padding:8px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
@@ -51,16 +51,23 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
 
-<!-- UIに表示させないため非表示にした音声プレイヤー -->
+<!-- 衝突時再生用の隠しaudio要素 -->
 <audio id="custom-audio" style="display:none;"></audio>
 
-<!-- サイドメニュー（フレンド機能・ワンタップ参加） -->
+<!-- サイドメニュー（フレンド機能・音声管理・ワンタップ参加） -->
 <div id="side-menu">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <h3>メニュー / フレンド</h3>
     <button id="close-menu-btn" style="background:transparent;color:#aaa;font-size:18px;padding:0 4px;">✕</button>
   </div>
   
+  <!-- NM-430859 専用の音声管理セクション（初期状態は非表示） -->
+  <div id="admin-audio-section" style="display:none;background:#222738;padding:10px;border-radius:6px;border:1px solid #ffd54f;">
+    <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#ffd54f;font-weight:bold;">🎵 管理者用：衝突音設定</p>
+    <input type="file" id="audio-file-input" accept="audio/*" style="font-size:11px;width:100%;padding:4px;background:#10131a;color:#fff;border:1px solid #445;border-radius:4px;box-sizing:border-box;">
+    <p id="audio-file-info" style="text-align:left;margin:6px 0 0;font-size:11px;color:#aaa;">デフォルト: マイ録音.m4a</p>
+  </div>
+
   <div>
     <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#889;">フレンド追加 (NM IDを入力)</p>
     <div style="display:flex;gap:6px;">
@@ -139,17 +146,33 @@ let hitEffects = [];
 let audioCtx = null;
 let bgmInterval = null;
 
-// コード内でファイル名を直接指定（HTMLファイルと同じ場所に「マイ録音.m4a」を置いてください）
+// 音声ファイルのセットアップ
 const customAudio = $('custom-audio');
 customAudio.src = 'マイ録音.m4a';
 customAudio.load();
 
-// 衝突時に呼ばれる関数
+// ハンバーガーメニュー内のファイル選択イベント（NM-430859専用）
+const audioFileInput = $('audio-file-input');
+const audioFileInfo = $('audio-file-info');
+
+if(audioFileInput){
+  audioFileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if(file){
+      const fileURL = URL.createObjectURL(file);
+      customAudio.src = fileURL;
+      customAudio.load();
+      audioFileInfo.textContent = '変更中: ' + file.name;
+    }
+  };
+}
+
+// 障害物・車との衝突時のみ再生（追い抜かし時は再生されないようにしています）
 function playCustomCrashAudio(){
   if(customAudio.src){
-    customAudio.currentTime = 0; // 再生位置を最初に戻す
+    customAudio.currentTime = 0;
     customAudio.play().catch(err => {
-      console.log('自動再生がブロックされました:', err);
+      console.log('自動再生制限:', err);
     });
   }
 }
@@ -227,7 +250,7 @@ function playBoostSound(){
 
 function playCrashSound(){
   initAudio();
-  // 衝突時に音声ファイルを自動再生
+  // 衝突・クラッシュ時のみカスタム音声を再生
   playCustomCrashAudio();
 
   if(!audioCtx) return;
@@ -289,6 +312,14 @@ function enterLobby(){
   $('disp-coin').textContent = myCoins;
   $('auth-screen').style.display = 'none';
   $('lobby').style.display = 'flex';$('menu-btn').style.display = 'block';
+  
+  // NM-430859 の場合だけメニュー内に音声管理画面を表示
+  if(nmId === 'NM-430859'){
+    $('admin-audio-section').style.display = 'block';
+  } else {
+    $('admin-audio-section').style.display = 'none';
+  }
+
   updateFriendUI();
 }
 
@@ -733,7 +764,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
