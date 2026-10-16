@@ -29,9 +29,6 @@ input{width:180px;text-align:center}
 /* ハンバーガーメニューボタン（左上） */
 #menu-btn{position:absolute;top:12px;left:12px;z-index:30;background:#2b3245;color:#fff;font-size:20px;padding:6px 12px;border-radius:6px;border:1px solid #445;display:none;cursor:pointer}
 
-/* 音声ファイル設定ウィジェット（右上） */
-#custom-audio-box{position:absolute;top:12px;right:12px;z-index:30;background:rgba(30,35,51,0.9);padding:8px 12px;border-radius:8px;border:1px solid #445;display:flex;flex-direction:column;gap:6px;font-size:12px;max-width:220px;}
-
 /* ハンバーガーサイドメニュー */
 #side-menu{position:absolute;top:0;left:0;bottom:0;width:280px;background:rgba(15,18,28,0.98);border-right:2px solid #334;z-index:35;display:none;flex-direction:column;padding:16px;box-sizing:border-box;gap:14px;box-shadow:4px 0 16px rgba(0,0,0,0.5)}
 #side-menu h3{margin:0 0 8px;font-size:18px;border-bottom:1px solid #445;padding-bottom:6px;color:#ffd54f}
@@ -54,14 +51,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
 
-<!-- 追加：衝突時再生用音声ファイル設定ウィジェット -->
-<div id="custom-audio-box">
-  <span style="color:#ffd54f;font-weight:bold;">💥 衝突時ボイス設定</span>
-  <input type="file" id="audio-file-input" accept="audio/*" style="font-size:10px;width:190px;padding:2px;">
-  <span id="audio-file-name" style="color:#aaa;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">未選択 (自動で「マイ録音.m4a」読込)</span>
-  <!-- 非ヘルパーの隠しaudio要素 -->
-  <audio id="custom-audio" style="display:none;"></audio>
-</div>
+<!-- UIに表示させないため非表示にした音声プレイヤー -->
+<audio id="custom-audio" style="display:none;"></audio>
 
 <!-- サイドメニュー（フレンド機能・ワンタップ参加） -->
 <div id="side-menu">
@@ -148,36 +139,15 @@ let hitEffects = [];
 let audioCtx = null;
 let bgmInterval = null;
 
-// 音声ファイル（衝突時自動再生用）の設定
-const audioFileInput = $('audio-file-input');
+// コード内でファイル名を直接指定（HTMLファイルと同じ場所に「マイ録音.m4a」を置いてください）
 const customAudio = $('custom-audio');
-const audioFileName = $('audio-file-name');
-
-// デフォルトで同じフォルダにある「マイ録音.m4a」の読み込みを試みる
 customAudio.src = 'マイ録音.m4a';
 customAudio.load();
-customAudio.onloadeddata = () => {
-  audioFileName.textContent = 'マイ録音.m4a (準備完了)';
-};
-customAudio.onerror = () => {
-  audioFileName.textContent = 'マイ録音.m4aが見つかりません（手動選択可）';
-};
 
-// ユーザーがファイルを自分で選択した場合
-audioFileInput.onchange = (e) => {
-  const file = e.target.files[0];
-  if(file){
-    const fileURL = URL.createObjectURL(file);
-    customAudio.src = fileURL;
-    customAudio.load();
-    audioFileName.textContent = file.name + ' (設定完了)';
-  }
-};
-
-// 衝突時に呼ばれる関数（ここでカスタム音声を再生）
+// 衝突時に呼ばれる関数
 function playCustomCrashAudio(){
   if(customAudio.src){
-    customAudio.currentTime = 0; // 先頭に戻す
+    customAudio.currentTime = 0; // 再生位置を最初に戻す
     customAudio.play().catch(err => {
       console.log('自動再生がブロックされました:', err);
     });
@@ -257,7 +227,7 @@ function playBoostSound(){
 
 function playCrashSound(){
   initAudio();
-  // 衝突用のカスタム音声を自動再生
+  // 衝突時に音声ファイルを自動再生
   playCustomCrashAudio();
 
   if(!audioCtx) return;
@@ -522,11 +492,6 @@ function sendInp(){
 
 addEventListener('keydown',e=>{
   initAudio();
-  // ブラウザの自動再生ポリシー対策として、キー入力時にもオーディオコンテキストを有効化
-  if(customAudio.paused && customAudio.src){
-    // 何らかのインタラクションで再生許可を得る準備
-  }
-
   if(['ArrowLeft','ArrowRight','ArrowUp','Space'].includes(e.code))e.preventDefault();
   if(!keys[e.code]){
     if(['KeyW','ArrowUp','Space'].includes(e.code)&&inGame){
@@ -768,7 +733,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
