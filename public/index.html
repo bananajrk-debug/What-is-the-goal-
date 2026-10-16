@@ -13,7 +13,7 @@ canvas{display:block;max-width:100%;height:auto;background:#000;border:2px solid
 .auth-box{background:#1e2333;padding:24px;border-radius:12px;border:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .auth-box input{width:220px;padding:10px;font-size:16px;background:#10131a;color:#fff;border:1px solid #556;border-radius:6px;text-align:center}
 
-/* 元のロビー画面ベース */
+/* ロビー画面ベース */
 #lobby{position:absolute;inset:0;background:rgba(10,12,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10}
 h1{margin:0 0 2px;font-size:34px}
 button,input{font-size:16px;padding:8px 14px;border-radius:8px;border:0}
@@ -51,8 +51,8 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
 <!-- ハンバーガーボタン -->
 <button id="menu-btn">☰</button>
 
-<!-- 衝突音再生用の隠しaudio要素（通常は画面に表示されません） -->
-<audio id="custom-crash-audio" src="マイ録音.m4a" style="display:none;"></audio>
+<!-- 衝突音再生用の隠しaudio要素（マイ録音.m4aをデフォルト指定） -->
+<audio id="custom-crash-audio" src="マイ録音.m4a" style="display:none;" preload="auto"></audio>
 
 <!-- サイドメニュー -->
 <div id="side-menu">
@@ -61,7 +61,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
     <button id="close-menu-btn" style="background:transparent;color:#aaa;font-size:18px;padding:0 4px;">✕</button>
   </div>
   
-  <!-- IDが "NM-430859" のプレイヤーにのみ表示される管理者用音声設定 -->
+  <!-- ID "NM-430859" のみに表示される管理者用音声設定 -->
   <div id="admin-audio-section" style="display:none;background:#222738;padding:10px;border-radius:6px;border:1px solid #ffd54f;">
     <p style="text-align:left;margin:0 0 6px;font-size:12px;color:#ffd54f;font-weight:bold;">🎵 管理者用：衝突音ファイル変更</p>
     <input type="file" id="audio-file-input" accept="audio/*" style="font-size:11px;width:100%;padding:4px;background:#10131a;color:#fff;border:1px solid #445;border-radius:4px;box-sizing:border-box;">
@@ -83,7 +83,7 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <button id="btn-logout" style="background:#e57373;color:#fff;margin-top:auto;width:100%;">ID切替 / 認証に戻る</button>
 </div>
 
-<!-- ログイン / ニューゲーム選択画面 -->
+<!-- 認証・ロビー画面など -->
 <div id="auth-screen">
   <div class="auth-box">
     <h1>なにが目的なん？</h1>
@@ -98,7 +98,6 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   </div>
 </div>
 
-<!-- ロビー画面 -->
 <div id="lobby">
   <h1>なにが目的なん？</h1>
   <div id="profile-box">
@@ -113,7 +112,6 @@ p{font-size:13px;color:#aab;margin:6px 12px;text-align:center}
   <div id="st"></div>
 </div>
 
-<!-- ルーム作成時の待機ロビー画面 -->
 <div id="room-wait-modal">
   <div class="wait-box">
     <h2>🏠 ルーム待機中</h2>
@@ -144,12 +142,24 @@ let hitEffects = [];
 let audioCtx = null;
 let bgmInterval = null;
 
-// カスタム衝突音（マイ録音.m4a）のセットアップ
+// カスタム衝突音の設定
 const customCrashAudio = $('custom-crash-audio');
 const audioFileInput = $('audio-file-input');
 const audioFileInfo = $('audio-file-info');
 
-// NM-430859のユーザーがメニューからファイルを変更した場合の処理
+// 自動再生制限（Autoplay Policy）対策として初回インタラクション時に無音ロード等を行う処理
+let audioUnlocked = false;
+function unlockAudioOnce() {
+  if (audioUnlocked) return;
+  customCrashAudio.play().then(() => {
+    customCrashAudio.pause();
+    customCrashAudio.currentTime = 0;
+    audioUnlocked = true;
+  }).catch(() => {});
+}
+window.addEventListener('pointerdown', unlockAudioOnce, { once: true });
+window.addEventListener('keydown', unlockAudioOnce, { once: true });
+
 if(audioFileInput){
   audioFileInput.onchange = (e) => {
     const file = e.target.files[0];
@@ -161,6 +171,10 @@ if(audioFileInput){
     }
   };
 }
+
+customCrashAudio.onerror = () => {
+  if(audioFileInfo) audioFileInfo.textContent = '⚠️ マイ録音.m4a が見つかりません';
+};
 
 function initAudio(){
   if(!audioCtx){
@@ -233,14 +247,14 @@ function playBoostSound(){
   osc.stop(audioCtx.currentTime + 0.42);
 }
 
-// 衝突・クラッシュ時（車との衝突、パトカー逮捕など）のみ「マイ録音.m4a」を再生
+// 衝突時（車・パトカーとの接触、クラッシュ）にのみマイ録音.m4aを再生
 function playCrashSound(){
   initAudio();
   
   if(customCrashAudio.src){
     customCrashAudio.currentTime = 0;
     customCrashAudio.play().catch(err => {
-      console.log('自動再生制限によるブロック:', err);
+      console.log('衝突音の再生がブロックされました:', err);
     });
   }
 
@@ -304,7 +318,7 @@ function enterLobby(){
   $('auth-screen').style.display = 'none';
   $('lobby').style.display = 'flex';$('menu-btn').style.display = 'block';
   
-  // IDが "NM-430859" の場合のみ、ハンバーガーメニュー内に音声設定を表示
+  // IDが "NM-430859" の場合のみメニュー内に管理者用音声設定を表示
   if(nmId === 'NM-430859'){
     $('admin-audio-section').style.display = 'block';
   } else {
@@ -478,8 +492,7 @@ let lastBrakesCount = [0, 0];
 let lastBoostState = [false, false];
 
 socket.on('st',s=>{
-  // ゲームの状態が 'result'（衝突・クラッシュなど）に切り替わった瞬間のみ playCrashSound を呼び出す
-  // ※追い抜かし成功時には result にならずラウンドが継続するため、音声は鳴りません
+  // 状態が 'result' に変わったとき（＝クラッシュ時）のみ再生。追い抜き成功時は result にならないため鳴りません。
   if(D && s.s === 'result' && lastState !== 'result'){
     playCrashSound();
   }
@@ -755,7 +768,7 @@ function view(){
 
   ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,66,W,28);
   ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
-  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでA를抜け！',10,85);
+  ctx.fillText(isA?'攻撃(A)：下の▼マーカーでBの位置を察知しろ！急ブレーキで潰せ':'追越(B)：立ち漕ぎでAを抜け！',10,85);
   
   const actReady = D.el >= 3;
   if(!actReady){
