@@ -11,14 +11,14 @@ const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
 const rooms = new Map();
 const attOf = r => (r < 3 ? 0 : r < 6 ? 1 : r % 2);
 const rnd = (a, b) => a + Math.random() * (b - a);
-const mk = (x, z, skin) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0, skin: skin || 'default' });
+const mk = (x, z, skin, hair) => ({ x, z, v: BASE, brk: 0, brakes: 3, boost: 0, cd: 0, skin: skin || 'default', hair: hair || 'default' });
 
 function newRound(R) {
   R.att = attOf(R.round);
   const d = 1 - R.att;
   R.P = [];
-  R.P[R.att] = mk(rnd(-30, 30), 60, R.skins ? R.skins[R.att] : 'default');
-  R.P[d] = mk(rnd(-30, 30), 0, R.skins ? R.skins[d] : 'default');
+  R.P[R.att] = mk(rnd(-30, 30), 60, R.skins && R.skins[R.att], R.hairs && R.hairs[R.att]);
+  R.P[d] = mk(rnd(-30, 30), 0, R.skins && R.skins[d], R.hairs && R.hairs[d]);
   R.obs = []; R.nid = 1;
   R.inp = [{ l: 0, r: 0 }, { l: 0, r: 0 }];
   R.act = [false, false];
@@ -193,12 +193,12 @@ function snap(R, slot) {
     if ((R.state === 'play' || R.state === 'count') && isAttacker && isTargetOpponent && p.boost <= 0) {
       return null;
     }
-    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), skin: p.skin };
+    return { x: r1(p.x), z: r1(p.z), v: r1(p.v), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), skin: p.skin, hair: p.hair };
   });
 
   return { 
     s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names,
+    course: R.course || 0, bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names,
     P, obs: (R.obs || []).map(o => ({ id: o.id, k: o.k, x: r1(o.x), z: r1(o.z), c: o.c })) 
   };
 }
@@ -213,53 +213,89 @@ setInterval(() => {
   }
 }, TICK * 1000);
 
+// ---- 見た目データの検証（性能には一切影響しない） ----
+const clean = (v, def) => (typeof v === 'string' && /^[\w-]{1,24}$/.test(v)) ? v : def;
+const cleanName = (v, def) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, 10) : def;
+const cleanCourse = v => { v = parseInt(v, 10); return v >= 0 && v < 4 ? v : 0; };
+
+// ---- フレンド機能：在席管理 ----
+const byId = new Map(); // NM-ID -> socket.id
+function statusOf(id) {
+  const sid = byId.get(id), sk = sid && io.sockets.sockets.get(sid);
+  if (!sk) return 'offline';
+  const R = sk.data && rooms.get(sk.data.code);
+  return R ? ((!R.ids[1] && !R.isCpu) ? 'waiting' : 'playing') : 'online';
+}
+function joinRoom(socket, R, d, reply) {
+  d = (d && typeof d === 'object') ? d : {};
+  if (!R) return reply({ ok: false, err: 'ルームが見つかりません' });
+  if (R.ids[1] || R.isCpu) return reply({ ok: false, err: 'ルームに参加できません' });
+  R.ids[1] = socket.id;
+  R.names[1] = cleanName(d.name, 'プレイヤー2');
+  R.skins[1] = clean(d.skin, 'default');
+  R.hairs[1] = clean(d.hair, 'default');
+  socket.data = { code: R.code, slot: 1 };
+  resetMatch(R);
+  reply({ ok: true });
+  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course });
+}
+
 io.on('connection', socket => {
+  const rp = cb => (typeof cb === 'function' ? cb : () => {});
+
+  socket.on('hello', d => {
+    const id = clean(d && d.id, '');
+    if (id) { socket.nmId = id; byId.set(id, socket.id); }
+  });
+
+  socket.on('friends_status', (ids, cb) => {
+    const o = {};
+    (Array.isArray(ids) ? ids.slice(0, 50) : []).forEach(id => { if (typeof id === 'string') o[id] = statusOf(id); });
+    rp(cb)(o);
+  });
+
   socket.on('solo', d => {
-    let code = 'SOLO_' + socket.id;
-    const pName = (d && d.name) ? d.name : 'プレイヤー';
-    const pSkin = (d && d.skin) ? d.skin : 'default';
-    const R = { 
-      code, ids: [socket.id, null], 
-      names: [pName, 'CPU'], 
-      skins: [pSkin, 'default'],
-      idsMap: {},
-      isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    d = d || {};
+    const code = 'SOLO_' + socket.id;
+    const R = {
+      code, ids: [socket.id, null],
+      names: [cleanName(d.name, 'プレイヤー'), 'CPU'],
+      skins: [clean(d.skin, 'default'), 'default'], hairs: [clean(d.hair, 'default'), 'default'],
+      course: cleanCourse(d.course), hostId: clean(d.id, ''),
+      isCpu: true, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: []
     };
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
-    socket.emit('start', { slot: 0 });
+    socket.emit('start', { slot: 0, course: R.course });
   });
 
   socket.on('create', (d, cb) => {
     if (typeof d === 'function') { cb = d; d = {}; }
+    d = d || {};
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
-    const pName = (d && d.name) ? d.name : 'プレイヤー1';
-    const pSkin = (d && d.skin) ? d.skin : 'default';
-    rooms.set(code, { 
-      code, ids: [socket.id, null], 
-      names: [pName, 'プレイヤー2'], 
-      skins: [pSkin, 'default'],
-      isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [] 
+    rooms.set(code, {
+      code, ids: [socket.id, null],
+      names: [cleanName(d.name, 'プレイヤー1'), 'プレイヤー2'],
+      skins: [clean(d.skin, 'default'), 'default'], hairs: [clean(d.hair, 'default'), 'default'],
+      course: cleanCourse(d.course), hostId: clean(d.id, ''),
+      isCpu: false, inp: [{ l: 0, r: 0 }, { l: 0, r: 0 }], act: [false, false], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: []
     });
     socket.data = { code, slot: 0 };
-    if (typeof cb === 'function') cb({ code });
+    rp(cb)({ code });
   });
 
   socket.on('join', (d, cb) => {
-    const code = (typeof d === 'object') ? d.code : d;
-    const pName = (typeof d === 'object' && d.name) ? d.name : 'プレイヤー2';
-    const pSkin = (typeof d === 'object' && d.skin) ? d.skin : 'default';
-    const R = rooms.get(String(code));
-    if (!R) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームが見つかりません' }); return; }
-    if (R.ids[1] || R.isCpu) { if (typeof cb === 'function') cb({ ok: false, err: 'ルームに参加できません' }); return; }
-    R.ids[1] = socket.id;
-    R.names[1] = pName;
-    R.skins[1] = pSkin;
-    socket.data = { code: R.code, slot: 1 };
-    resetMatch(R);
-    if (typeof cb === 'function') cb({ ok: true });
-    for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i });
+    const code = (d && typeof d === 'object') ? d.code : d;
+    joinRoom(socket, rooms.get(String(code)), d, rp(cb));
+  });
+
+  // フレンドの部屋にワンタップ参加（部屋コード不要）
+  socket.on('join_friend', (d, cb) => {
+    const t = clean(d && d.targetId, '');
+    const R = [...rooms.values()].find(r => t && r.hostId === t && !r.ids[1] && !r.isCpu && r.ids[0] !== socket.id);
+    if (!R) return rp(cb)({ ok: false, err: 'フレンドは現在ルームを作成していません' });
+    joinRoom(socket, R, d, rp(cb));
   });
 
   socket.on('inp', d => {
@@ -286,6 +322,7 @@ io.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
+    if (socket.nmId && byId.get(socket.nmId) === socket.id) byId.delete(socket.nmId);
     const R = rooms.get(socket.data && socket.data.code);
     if (!R) return;
     const other = R.ids[1 - socket.data.slot];
