@@ -1,11 +1,12 @@
-// なにが目的なん？ ONLINE v6 — Express + Socket.io（サーバー権威型）
-// 対戦（ルームロビー / CPU / フレンドIDでワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
-// ログインID（端末アカウント・非公開）とフレンドID（F-XXXX-XXXX・公開用）は別物として扱う
+// なにが目的なん？ ONLINE v7 — Express + Socket.io（サーバー権威型）
+// 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
+// フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
 'use strict';
 const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -57,7 +58,9 @@ const r1 = n => Math.round(n * 10) / 10;
 /* ===== 入力値の検証（見た目データは性能に一切影響しない） ===== */
 const clean = (v, def) => (typeof v === 'string' && /^[\w-]{1,24}$/.test(v)) ? v : def;
 const cleanUid = v => (typeof v === 'string' && /^[\w-]{8,64}$/.test(v)) ? v : '';
-const cleanFid = v => (typeof v === 'string' && /^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)) ? v : '';   // フレンドID
+const cleanFid = v => (typeof v === 'string' && /^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)) ? v : '';   // 旧フレンドID（v6）…移行のためだけに使う
+const cleanPk = v => (typeof v === 'string' && /^[0-9a-f]{16}$/.test(v)) ? v : '';             // フレンド用の内部キー（端末UUIDのハッシュ。画面には出さない）
+const pkOf = uid => crypto.createHash('sha256').update('nm-friend:' + uid).digest('hex').slice(0, 16);
 const isLoginId = v => typeof v === 'string' && /^NM-[\w-]{3,20}$/.test(v);
 const cleanText = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').trim().slice(0, max) : '');
 const cleanName = (v, def) => cleanText(v, 10) || def;
@@ -67,9 +70,58 @@ const look = (d, defName) => {
   return {
     name: cleanName(d.name, defName), skin: clean(d.skin, 'default'), hair: clean(d.hair, 'default'), fit: clean(d.fit, 'default'),
     acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, ''),
-    ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999), fid: cleanFid(d.fid)
+    ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999), pk: ''
   };
 };
+// プレイヤーの見た目＋（名簿に登録された）ユーザー名。名前は送られてきた値ではなくサーバーの登録名を使う
+const lookS = (sock, d, defName) => {
+  const L = look(d, defName);
+  L.name = (sock && sock.nmRegName) || ('ゲスト' + (sock ? sock.id.replace(/[^0-9]/g, '').slice(-3) || '0' : '0'));
+  L.pk = (sock && sock.nmPk) || '';
+  return L;
+};
+
+/* =====================================================================
+   ユーザー名の名簿（重複禁止）：正規化したキー → { name, pk, uid }
+   全角/半角・大文字/小文字・ひらがな/カタカナの違いは同じ名前として扱う
+   ===================================================================== */
+const NAMES_FILE = process.env.NAMES_FILE || path.join(__dirname, 'names.json');
+const nameReg = new Map();   // key -> { name, pk, uid, ts }
+const pkKey = new Map();     // pk  -> key
+const nkey = n => String(n).normalize('NFKC').toLowerCase().replace(/[\u3041-\u3096]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)).replace(/\s+/g, '');
+function validName(v) {
+  if (typeof v !== 'string') return '';
+  const n = v.normalize('NFKC').trim(), len = [...n].length;
+  if (len < 2 || len > 10) return '';
+  if (!/^[\p{L}\p{N}ー・_\-]+$/u.test(n)) return '';
+  return n;
+}
+const RESERVED = new Set(['CPU', 'プレイヤー', 'プレイヤー2', 'ゲスト', '運営', '管理者', '公式', 'admin', 'administrator', 'system', 'システム', 'moderator', 'GM', 'なにが目的なん'].concat(BOT_NAMES).map(nkey));
+try {
+  const j = JSON.parse(fs.readFileSync(NAMES_FILE, 'utf8'));
+  if (Array.isArray(j)) for (const e of j) if (e && validName(e.name) && cleanPk(e.pk) && cleanUid(e.uid)) { const k = nkey(e.name); nameReg.set(k, e); pkKey.set(e.pk, k); }
+} catch (e) { /* 初回 */ }
+let namesTimer = null;
+function saveNames() { if (namesTimer) return; namesTimer = setTimeout(() => { namesTimer = null; fs.writeFile(NAMES_FILE, JSON.stringify([...nameReg.values()]), () => {}); }, 1500); }
+function nameProblem(n, uid) {            // 使えない理由（使えるなら空文字）
+  if (!n) return 'invalid';
+  const k = nkey(n);
+  if (RESERVED.has(k) || /^ゲスト/.test(n)) return 'reserved';
+  const e = nameReg.get(k);
+  if (e && e.uid !== uid) return 'taken';
+  return '';
+}
+function claimName(n, uid, pk) {          // 1アカウント1名前：古い名前は手放す
+  const k = nkey(n), old = pkKey.get(pk);
+  if (old && old !== k) { const oe = nameReg.get(old); if (oe && oe.uid === uid) nameReg.delete(old); }
+  nameReg.set(k, { name: n, pk, uid, ts: Date.now() }); pkKey.set(pk, k); saveNames();
+}
+function suggestName() {
+  const pre = ['ライダー', 'チャリ', 'ペダル', 'サドル', 'ギア', 'ベル', 'タイヤ', 'ハンドル'];
+  for (let i = 0; i < 50; i++) { const n = pre[Math.floor(Math.random() * pre.length)] + Math.floor(100 + Math.random() * (i < 25 ? 900 : 9900)); if (!nameReg.has(nkey(n))) return n; }
+  return 'ライダー' + Date.now().toString().slice(-6);
+}
+const nameOfPk = pk => { const k = pkKey.get(pk), e = k && nameReg.get(k); return e ? e.name : ''; };
 
 /* ===== ランキング（ranking.json に保存） ===== */
 const RANK_FILE = process.env.RANK_FILE || path.join(__dirname, 'ranking.json');
@@ -502,8 +554,8 @@ setInterval(() => {
    ===================================================================== */
 const byId = new Map();   // ログインID(NM-…) -> socket.id
 const owners = new Map(); // ログインID -> 端末UUID（なりすまし防止の簡易チェック）
-const byFid = new Map();  // フレンドID(F-XXXX-XXXX) -> socket.id
-const fidOwners = new Map(); // フレンドID -> 端末UUID
+const byPk = new Map();   // フレンド用内部キー -> socket.id
+const byFid = new Map();  // 旧フレンドID(v6) -> socket.id（古いフレンド登録を自動で移行するためだけに使う）
 const sockOf = sid => sid && io.sockets.sockets.get(sid);
 function statusOf(sid) {
   const sk = sockOf(sid);
@@ -513,21 +565,21 @@ function statusOf(sid) {
   if (!R) return 'online';
   return (R.mode === 'versus' && !R.isCpu && !R.ids[1]) ? 'waiting' : 'playing';
 }
-function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.fids[i] = L.fid; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
+function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.pks[i] = L.pk; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
 function newRoom(code, socket, d, extra) {
   const R = Object.assign({
     code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
-    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], fids: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
-    course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), hostFid: cleanFid(d && d.fid), mode: 'versus', isCpu: false,
+    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], pks: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
+    course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), hostPk: socket.nmPk || '', mode: 'versus', isCpu: false,
     inp: [{ s: 0 }, { s: 0 }], act: [false, false], actK: [null, null], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], nid: 1
   }, extra || {});
-  setLook(R, 0, look(d, 'プレイヤー'));
+  setLook(R, 0, lookS(socket, d, 'プレイヤー'));
   return R;
 }
 function roomInfo(R, me) {
   return {
     code: R.code, me, course: R.course, state: R.state,
-    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], fid: R.fids[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
+    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], pk: R.pks[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
   };
 }
 function sendRoom(R) { for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('room', roomInfo(R, i)); }
@@ -562,12 +614,12 @@ function joinRoom(socket, R, d, reply) {
   if (R.ids[0] === socket.id) return reply({ ok: false, err: '自分のルームには参加できません' });
   leaveRoom(socket);
   R.ids[1] = socket.id; R.ready = [false, false];
-  setLook(R, 1, look(d, 'プレイヤー2'));
+  setLook(R, 1, lookS(socket, d, 'プレイヤー2'));
   socket.data = { code: R.code, slot: 1 };
   reply({ ok: true });
   sendRoom(R);
 }
-const oppInfo = (R, i) => ({ name: R.names[i], fid: (R.isCpu && i === 1) ? '' : R.fids[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
+const oppInfo = (R, i) => ({ name: R.names[i], pk: (R.isCpu && i === 1) ? '' : R.pks[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
 function startRoomMatch(R) {
   resetMatch(R);
   for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: true, opp: oppInfo(R, 1 - i) });
@@ -587,14 +639,14 @@ function startRanked(a, b) {
   R.rps[0] = a.rp;
   if (b) {
     const sb = io.sockets.sockets.get(b.sid); if (!sb) { rankQ.push(a); return; }
-    R.ids[1] = b.sid; setLook(R, 1, look(b.d, 'プレイヤー2')); R.rps[1] = b.rp;
+    R.ids[1] = b.sid; setLook(R, 1, lookS(sb, b.d, 'プレイヤー2')); R.rps[1] = b.rp;
     sb.data = { code, slot: 1 };
   } else {
     const lv = R.lvs[0] || 1, pick = arr => arr[Math.floor(Math.random() * arr.length)];
     setLook(R, 1, {
       name: pick(BOT_NAMES), skin: pick(['default', 'gold', 'cyber', 'ocean', 'neon', 'tiger', 'mint', 'sunset']), hair: pick(['helmet', 'short_b', 'spiky', 'pony', 'mohawk', 'bob']),
       fit: pick(['jersey', 'racer', 'hoodie', 'happi', 'aloha', 'suit']), acc: pick(['none', 'cap', 'sunglass', 'goggles', 'headphone']), trail: pick(['none', 'fire', 'spark', 'bubble']),
-      lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', fid: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
+      lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
     });
     R.skill = clamp(0.25 + a.rp / 1700, 0.25, 0.95);
   }
@@ -632,36 +684,55 @@ io.on('connection', socket => {
   const rp = cb => (typeof cb === 'function' ? cb : () => {});
   const myRoom = () => rooms.get(socket.data && socket.data.code);
 
-  // 接続のたびに：ログインID（非公開）＋フレンドID（公開用）を登録
+  // 接続のたびに：ログインID（非公開）を登録し、ユーザー名を名簿で確認（未登録なら登録、他人が使用中なら変更をお願いする）
   socket.on('hello', d => {
-    const id = clean(d && d.id, ''), uid = cleanUid(d && d.uid), fid = cleanFid(d && d.fid);
-    if (!id) return;
+    const id = clean(d && d.id, ''), uid = cleanUid(d && d.uid);
+    if (!id || !uid) return;
     const owner = owners.get(id), sid = byId.get(id);
-    if (owner && uid && owner !== uid && sid && sid !== socket.id && sockOf(sid)) { socket.emit('id_conflict'); return; }
-    if (uid) owners.set(id, uid);
-    socket.nmId = id; byId.set(id, socket.id);
-    socket.nmName = cleanName(d && d.name, 'プレイヤー'); socket.nmLv = clamp(parseInt(d && d.lv, 10) || 1, 1, 99);
-    if (fid) {
-      const fo = fidOwners.get(fid), fs = byFid.get(fid);
-      if (fo && uid && fo !== uid && fs && fs !== socket.id && sockOf(fs)) { socket.emit('fid_conflict'); return; }   // 別の端末が使用中 → 再発行してもらう
-      if (socket.nmFid && socket.nmFid !== fid && byFid.get(socket.nmFid) === socket.id) byFid.delete(socket.nmFid);
-      if (uid) fidOwners.set(fid, uid);
-      socket.nmFid = fid; byFid.set(fid, socket.id);
-    }
+    if (owner && owner !== uid && sid && sid !== socket.id && sockOf(sid)) { socket.emit('id_conflict'); return; }
+    owners.set(id, uid);
+    socket.nmId = id; byId.set(id, socket.id); socket.nmUid = uid;
+    const pk = pkOf(uid);
+    if (socket.nmPk && socket.nmPk !== pk && byPk.get(socket.nmPk) === socket.id) byPk.delete(socket.nmPk);
+    socket.nmPk = pk; byPk.set(pk, socket.id);
+    socket.nmLv = clamp(parseInt(d && d.lv, 10) || 1, 1, 99);
+    const lf = cleanFid(d && d.fid); if (lf) { socket.nmFid = lf; byFid.set(lf, socket.id); }
+    const n = validName(d && d.name), why = nameProblem(n, uid);
+    if (!why) { claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n }); }
+    else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
   });
-  // フレンドの在席状況（フレンドIDで問い合わせ。旧バージョンのログインID登録は新しいフレンドIDへ自動移行）
+  // ユーザー名：入力中の空きチェック／登録（変更）／おまかせ候補
+  socket.on('name_check', (v, cb) => { const n = validName(v), why = nameProblem(n, socket.nmUid); rp(cb)(why ? { ok: false, reason: why } : { ok: true, name: n }); });
+  socket.on('name_suggest', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ name: suggestName() }); });
+  socket.on('name_claim', (v, cb) => {
+    if (!socket.nmUid) return rp(cb)({ ok: false, reason: 'nohello' });
+    const now = Date.now(); if (now - (socket.lastNameT || 0) < 1500) return rp(cb)({ ok: false, reason: 'busy' }); socket.lastNameT = now;
+    const n = validName(v), why = nameProblem(n, socket.nmUid);
+    if (why) return rp(cb)({ ok: false, reason: why, suggest: suggestName() });
+    claimName(n, socket.nmUid, socket.nmPk); socket.nmRegName = n;
+    const R = myRoom(); if (R && R.state === 'lobby' && socket.data.slot != null) { R.names[socket.data.slot] = n; sendRoom(R); }
+    rp(cb)({ ok: true, name: n });
+  });
+  // フレンドの在席状況（内部キーで問い合わせ。名前が変わっても追いかける。v6以前の登録は自動で移行）
   socket.on('friends_status', (list, cb) => {
     const o = {};
     (Array.isArray(list) ? list.slice(0, 50) : []).forEach(f => {
-      if (cleanFid(f)) { const sid = byFid.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), name: sk ? sk.nmName : undefined, lv: sk ? sk.nmLv : undefined }; }
-      else if (isLoginId(f)) { const sid = byId.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), fid: sk && sk.nmFid ? sk.nmFid : undefined, name: sk ? sk.nmName : undefined }; }
+      if (cleanPk(f)) { const sid = byPk.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), name: nameOfPk(f) || undefined, lv: sk ? sk.nmLv : undefined }; }
+      else if (cleanFid(f) || isLoginId(f)) {
+        const sid = cleanFid(f) ? byFid.get(f) : byId.get(f), sk = sockOf(sid);
+        o[f] = { s: statusOf(sid), pk: sk && sk.nmPk ? sk.nmPk : undefined, name: sk && sk.nmRegName ? sk.nmRegName : undefined };
+      }
     });
     rp(cb)(o);
   });
-  // フレンドID検索（オンラインのプレイヤーのみ名前がわかる）
-  socket.on('friend_lookup', (fid, cb) => {
-    fid = cleanFid(fid); const sid = fid && byFid.get(fid), sk = sockOf(sid);
-    rp(cb)(sk ? { found: true, name: sk.nmName, lv: sk.nmLv, s: statusOf(sid), me: sid === socket.id } : { found: false });
+  // ユーザー名でフレンド検索（完全一致＋前方一致。オフラインの人も名簿から見つかる）
+  socket.on('friend_lookup', (q, cb) => {
+    const raw = typeof q === 'string' ? q.normalize('NFKC').trim().slice(0, 12) : '';
+    if (!raw) return rp(cb)({ list: [] });
+    const k = nkey(raw), out = [], add = e => { const sid = byPk.get(e.pk), sk = sockOf(sid); out.push({ name: e.name, pk: e.pk, s: statusOf(sid), lv: sk ? sk.nmLv : null, me: e.pk === socket.nmPk }); };
+    const ex = nameReg.get(k); if (ex) add(ex);
+    if (k.length >= 1) for (const [kk, e] of nameReg) { if (out.length >= 8) break; if (kk !== k && kk.startsWith(k)) add(e); }
+    rp(cb)({ list: out });
   });
   socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId) }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
@@ -670,7 +741,7 @@ io.on('connection', socket => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
     socket.rkOk = false;
     const id = clean(d.id, ''); if (!id) return rp(cb)({ ok: false });
-    rp(cb)({ ok: true, rank: submitRp(id, cleanName(d.name, 'プレイヤー'), clamp(parseInt(d.rp, 10) || 0, 0, 99999), clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
+    rp(cb)({ ok: true, rank: submitRp(id, socket.nmRegName || 'ゲスト', clamp(parseInt(d.rp, 10) || 0, 0, 99999), clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
   });
   // ランクマッチの待ち行列に入る／抜ける
   socket.on('rank_q', d => {
@@ -685,7 +756,7 @@ io.on('connection', socket => {
   socket.on('solo', d => {
     leaveRoom(socket); qRemove(socket.id);
     const code = 'SOLO_' + socket.id, R = newRoom(code, socket, d, { isCpu: true });
-    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', fid: '', ttl: 'rookie', pl: 'normal', rp: 0 });
+    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: 0 });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
@@ -716,14 +787,14 @@ io.on('connection', socket => {
   });
   // フレンドの部屋にワンタップ参加（部屋コード不要）
   socket.on('join_friend', (d, cb) => {
-    const tf = cleanFid(d && d.targetFid), tl = isLoginId(d && d.targetId) ? d.targetId : '';
-    const R = [...rooms.values()].find(r => (tf ? r.hostFid === tf : (tl && r.hostId === tl)) && r.mode === 'versus' && r.state === 'lobby' && !r.ids[1] && !r.isCpu && r.ids[0] !== socket.id);
+    const tp = cleanPk(d && d.targetPk);
+    const R = [...rooms.values()].find(r => tp && r.hostPk === tp && r.mode === 'versus' && r.state === 'lobby' && !r.ids[1] && !r.isCpu && r.ids[0] !== socket.id);
     if (!R) return rp(cb)({ ok: false, err: 'フレンドは今ルームで待っていません' });
     joinRoom(socket, R, d, rp(cb));
   });
   socket.on('room_ready', v => { const R = myRoom(); if (!R || R.state !== 'lobby' || socket.data.slot !== 1) return; R.ready[1] = !!v; sendRoom(R); });
   socket.on('room_course', v => { const R = myRoom(); if (!R || R.state !== 'lobby' || socket.data.slot !== 0) return; R.course = cleanCourse(v); sendRoom(R); });
-  socket.on('room_look', d => { const R = myRoom(); if (!R || R.state !== 'lobby') return; setLook(R, socket.data.slot, look(d, R.names[socket.data.slot])); sendRoom(R); });
+  socket.on('room_look', d => { const R = myRoom(); if (!R || R.state !== 'lobby') return; setLook(R, socket.data.slot, lookS(socket, d, R.names[socket.data.slot])); sendRoom(R); });
   socket.on('room_start', () => {
     const R = myRoom();
     if (!R || R.state !== 'lobby' || socket.data.slot !== 0) return;
@@ -771,6 +842,7 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     if (socket.nmId && byId.get(socket.nmId) === socket.id) byId.delete(socket.nmId);
     if (socket.nmFid && byFid.get(socket.nmFid) === socket.id) byFid.delete(socket.nmFid);
+    if (socket.nmPk && byPk.get(socket.nmPk) === socket.id) byPk.delete(socket.nmPk);
     qRemove(socket.id); leaveRoom(socket);
   });
 });
