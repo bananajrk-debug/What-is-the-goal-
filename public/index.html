@@ -257,6 +257,23 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .card.lock{filter:grayscale(.85) brightness(.75)}
 @media (max-height:430px){.res-title{font-size:3.3em}.res-row{padding:.28em .5em}.res-panel{gap:.32em}.res-score{font-size:2em}.rankbtn canvas{width:2.6em;height:2.6em}}
 @media (max-aspect-ratio:1/1){.res-panel{left:.8em;right:.8em;width:auto;top:45%}.res-head{width:100%}}
+
+/* ===== フレンドID・ウィークリー ===== */
+.fid-card{display:flex;align-items:center;gap:.7em;flex-wrap:wrap;background:linear-gradient(120deg,#1f7a4a,#1b4f8f);border:3px solid var(--ln);border-radius:16px;padding:.55em .8em;box-shadow:0 4px 0 var(--ln)}
+.fid-l{flex:1;min-width:12em;display:flex;flex-direction:column;gap:.1em}
+.fid-l b{font-size:1.55em;letter-spacing:.08em;color:#fff;text-shadow:0 2px 0 var(--ln);font-family:var(--D),var(--F)}
+.fid-l small{font-size:.75em;color:#d7ffe9}
+.fid-btns{display:flex;gap:.35em;flex-wrap:wrap}
+#find-res{min-height:1.4em;display:flex;align-items:center;flex-wrap:wrap;gap:.3em}
+.fcode{font-size:.78em;color:#9fe0ff;letter-spacing:.04em}
+.wreward{display:flex;align-items:center;gap:.7em;background:linear-gradient(120deg,#5a2ca0,#2a1b6a);border:3px solid var(--ln);border-radius:16px;padding:.5em .7em;box-shadow:0 4px 0 var(--ln)}
+.wreward canvas{width:9.5em;aspect-ratio:300/180;border-radius:12px;border:3px solid var(--ln);flex:0 0 auto}
+.wreward b{font-size:1.08em}
+.qcard.week{background:linear-gradient(180deg,#3a2a7a,#21184d)}
+.qcard.week .qbar i{background:linear-gradient(90deg,#d9a2ff,#7d36e8)}
+#qw-fill{background:linear-gradient(90deg,#ffe56b,#ff9f1a)}
+#wk-banner{display:flex;align-items:center;gap:.5em;border:3px solid var(--ln);border-radius:12px;background:linear-gradient(90deg,#4a2a9a,#29347a);color:#fff;padding:.3em .6em;font-size:.86em;cursor:pointer;box-shadow:0 3px 0 var(--ln);text-align:left}
+#wk-banner span:first-child{font-size:1.4em}
 </style></head><body>
 <canvas id="c"></canvas>
 
@@ -294,6 +311,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
         <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>練習・XPかせぎ</small></button></div>
         <div class="row"><button id="create" class="btn blue grow">🏠 ルームを作る</button><input id="code" class="tx" style="width:6.4em" maxlength="6" placeholder="6桁コード" inputmode="numeric"><button id="join" class="btn blue">参加</button></div>
         <div class="course-sel"><button id="cprev" class="btn sm dark">◀</button><b id="cname"></b><button id="cnext" class="btn sm dark">▶</button></div>
+        <button id="wk-banner"></button>
         <div id="quick-friends"></div>
         <div id="st"></div>
       </div>
@@ -325,6 +343,9 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <section id="pg-quest" class="pg">
       <div class="row"><b class="grow">📅 デイリークエスト</b><span class="muted" id="q-timer"></span></div>
       <div id="q-daily" style="display:flex;flex-direction:column;gap:.45em"></div>
+      <div class="row" style="margin-top:.3em"><b class="grow">📆 ウィークリークエスト</b><span class="muted" id="qw-timer"></span></div>
+      <div class="wreward"><canvas id="qw-cv" width="300" height="180"></canvas><div class="grow"><b id="qw-title"></b><div class="muted" id="qw-desc"></div><div class="qbar"><i id="qw-fill"></i></div><span id="qw-prog" class="muted"></span></div><button id="qw-claim" class="btn dark">受け取る</button></div>
+      <div id="q-weekly" style="display:flex;flex-direction:column;gap:.45em"></div>
       <b class="sec-title">🏅 アチーブメント</b>
       <div id="q-ach" style="display:flex;flex-direction:column;gap:.45em"></div>
     </section>
@@ -334,8 +355,12 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     </section>
     <section id="pg-course" class="pg"><div class="scroll"><div class="grid" id="co-list" style="grid-template-columns:repeat(auto-fill,minmax(12em,1fr))"></div></div></section>
     <section id="pg-friends" class="pg">
-      <div class="panel row" style="flex-wrap:wrap">あなたのID <b id="my-id" style="color:#ffe56b;font-size:1.2em"></b><button id="copy-id" class="btn sm blue">コピー</button><span class="muted">このIDを相手に教えるとフレンド登録できます</span></div>
-      <div class="row"><input id="add-friend-id" class="tx grow" placeholder="フレンドのID（NM-123456）"><button id="btn-add-friend" class="btn green">追加</button></div>
+      <div class="fid-card">
+        <div class="fid-l"><small>あなたのフレンドID（フレンド追加・招待専用）</small><b id="my-fid">F-XXXX-XXXX</b><small>ログインID（端末アカウント）とは別のIDです。人に教えるのはこのフレンドIDだけでOK。</small></div>
+        <div class="fid-btns"><button id="copy-fid" class="btn sm blue">IDをコピー</button><button id="invite-fid" class="btn sm green">招待リンクを送る</button><button id="reissue-fid" class="btn sm dark">再発行</button></div>
+      </div>
+      <div class="row"><input id="add-friend-id" class="tx grow" maxlength="14" autocapitalize="characters" autocomplete="off" placeholder="フレンドIDで検索（F-XXXX-XXXX）"><button id="btn-find-friend" class="btn blue">検索</button><button id="btn-add-friend" class="btn green">追加</button></div>
+      <div id="find-res" class="muted"></div>
       <div class="scroll"><div id="friend-list-container" style="display:flex;flex-direction:column;gap:.35em"></div></div>
     </section>
   </main>
@@ -370,7 +395,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <div class="res-row"><div id="res-lv" class="res-lv">1</div><div class="grow"><div class="res-lbl"><b>経験値</b><span id="res-xpd" class="res-d"></span></div><div class="res-bar xp"><i id="res-xpfill"></i><span id="res-xpnum"></span></div></div></div>
     <div class="res-row coins"><span class="coin">NC</span><b class="grow">コイン</b><span id="res-coin" class="res-d"></span></div>
     <div id="res-stats" class="res-stats"></div>
-    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
+    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-addf" class="btn big green hide">＋フレンド</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
   </div>
   <div id="res-promo" class="res-promo hide"></div>
 </div>
@@ -390,6 +415,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
       <div id="rm-log"></div>
       <div class="chips" id="rm-phr"></div>
       <div class="row"><input id="rm-text" class="tx grow" maxlength="30" placeholder="メッセージ（30文字まで）"><button id="rm-send" class="btn sm blue">送信</button></div>
+      <button id="rm-addf" class="btn sm green hide">＋ 相手をフレンドに追加</button>
       <button id="rm-go" class="btn big green">準備OK</button>
       <span id="rm-hint" class="muted" style="text-align:center"></span>
     </div>
@@ -408,7 +434,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <button id="btn-fs" class="btn blue">⛶ 全画面にする（横向き固定）</button>
   <div class="sm-sec">
     <b>アカウント（この端末専用）</b>
-    <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ID：<b id="sm-id" style="color:#fff"></b>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
+    <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ログインID（端末アカウント・引き継ぎ用。人には教えないでください）：<b id="sm-id" style="color:#fff"></b><br>フレンドID（公開用）：<b id="sm-fid" style="color:#9fe0ff"></b><br>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
     <button id="btn-export" class="btn sm dark">引き継ぎコードを表示</button>
     <textarea id="bk-code" class="tx hide" readonly></textarea>
     <div class="row"><button id="btn-copy-code" class="btn sm blue hide">コピー</button><button id="btn-import" class="btn sm">コードから復元</button></div>
@@ -490,7 +516,20 @@ const SKINS={
  sunset:{n:'夕焼け',c:'#ff7043',a:'#ffd180',p:90,r:2},grape:{n:'グレープ',c:'#7e57c2',a:'#ede7f6',p:90,r:2},
  retro:{n:'レトロ',c:'#a1887f',a:'#fff3e0',str:1,p:110,r:2},zebra:{n:'ゼブラ',c:'#fafafa',a:'#111111',str:1,rim:'#111111',p:130,r:3},
  pixel:{n:'ピクセル',c:'#00e676',a:'#1b5e20',str:1,rim:'#00e676',p:140,r:3},sakura24:{n:'夜桜(限定)',c:'#3b1a4a',a:'#ff9ecb',rim:'#ff9ecb',gx:1,g:1,r:4},
- hof:{n:'殿堂チャリ（ランク報酬）',c:'#ffd54f',a:'#ff5a4e',chrome:1,gold:1,rim:'#ff5a4e',rk:6,r:4}};
+ hof:{n:'殿堂チャリ（ランク報酬）',c:'#ffd54f',a:'#ff5a4e',chrome:1,gold:1,rim:'#ff5a4e',rk:6,r:4},
+ // ▼ 季節の限定スキン：ウィークリークエストを全部クリアすると、その月のスキンがもらえる（ev=月）
+ ev_newyear:{n:'初日の出チャリ',c:'#d32f2f',a:'#ffd23f',rim:'#ffd23f',deco:'🎍',ev:1,r:4},
+ ev_valentine:{n:'チョコレートチャリ',c:'#6d3b2a',a:'#ff80ab',rim:'#ff80ab',deco:'💝',ev:2,r:4},
+ ev_hina:{n:'ひなまつりチャリ',c:'#f8bbd0',a:'#66bb6a',rim:'#fff59d',str:1,deco:'🎎',ev:3,r:4},
+ ev_sakura:{n:'春らんまんチャリ',c:'#ffb7d5',a:'#ffffff',rim:'#ffe4ef',gx:1,deco:'🌸',ev:4,r:4},
+ ev_koinobori:{n:'こいのぼりチャリ',c:'#1e88e5',a:'#e53935',str:1,rim:'#ffffff',deco:'🎏',ev:5,r:4},
+ ev_ajisai:{n:'あじさいチャリ',c:'#7e57c2',a:'#81d4fa',rim:'#81d4fa',deco:'☔',ev:6,r:4},
+ ev_tanabata:{n:'七夕チャリ',c:'#1a237e',a:'#fff59d',rim:'#fff59d',gx:1,deco:'🎋',ev:7,r:4},
+ ev_hanabi:{n:'夏祭りチャリ',c:'#0d47a1',a:'#ff7043',rim:'#ffca28',str:1,deco:'🎆',ev:8,r:4},
+ ev_tsukimi:{n:'お月見チャリ',c:'#37474f',a:'#ffe082',rim:'#ffe082',deco:'🎑',ev:9,r:4},
+ ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4},
+ ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4},
+ ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4}};
 const HAIRS={
  default:{n:'ショート',st:'short',c:'#2a221c',p:0,r:1},
  short_b:{n:'ショート(茶)',st:'short',c:'#8d5a3b',p:30,r:1},
@@ -623,13 +662,18 @@ const IDB={db:null,
   open(){return new Promise(res=>{try{const r=indexedDB.open('nm_game',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>{IDB.db=r.result;res(IDB.db);};r.onerror=()=>res(null);}catch(e){res(null);}});},
   async get(k){const db=IDB.db||await IDB.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('kv','readonly').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});},
   async put(k,v){const db=IDB.db||await IDB.open();if(!db)return;try{db.transaction('kv','readwrite').objectStore('kv').put(v,k);}catch(e){}}};
-const six=()=>'NM-'+(100000+Math.floor(Math.random()*900000));
-function newSave(id){return {v:4,uid:uuid4(),id:id||six(),created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
+const six=()=>'NM-'+(100000+Math.floor(Math.random()*900000));   // ログインID（端末アカウント・人に教えない）
+const FID_CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';                      // まぎらわしい 0/O/1/I を除く
+function genFid(){const b=new Uint8Array(8);try{crypto.getRandomValues(b);}catch(e){for(let i=0;i<8;i++)b[i]=Math.random()*256|0;}let s='';for(let i=0;i<8;i++){s+=FID_CH[b[i]%32];if(i===3)s+='-';}return 'F-'+s;}   // フレンドID（公開用）
+const FID_RE=/^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/,LEGACY_RE=/^NM-[\w-]{3,20}$/;
+// 入力をフレンドIDの形に整える（小文字・空白・ハイフンなしでもOK）
+function normFid(v){const t=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^F(?=[A-Z0-9]{8}$)/,'');return t.length===8?'F-'+t.slice(0,4)+'-'+t.slice(4):'';}
+function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:genFid(),fnames:{},created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
   inv:{skin:['default'],hair:['default'],fit:['default'],acc:['none'],trail:['none'],emote:['wave','thumbs','laugh','wheelie'],se:['none','bell'],bgm:['default'],wfx:['confetti']},
   eq:{skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
   slots:['wave','thumbs','laugh','wheelie'],friends:[],course:0,best:0,sens:1,
-  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},ach:{},vol:{bgm:.6,se:.85,amb:.6},ts:Date.now()};}
+  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},weekly:{wk:'',ids:[],prog:{},claimed:{},rw:false,rwKey:''},ach:{},vol:{bgm:.6,se:.85,amb:.6},ts:Date.now()};}
 function fixSave(s){
   const d=newSave(s&&typeof s.id==='string'?s.id:undefined);
   if(!s||typeof s!=='object')return d;
@@ -644,11 +688,15 @@ function fixSave(s){
   o.coins=num(o.coins,0,1e9,0);o.xp=num(o.xp,0,1e9,0);o.lv=num(o.lv,1,99,1);o.best=num(o.best,0,1e9,0);o.course=num(o.course,0,COURSES.length-1,0);
   o.sens=isFinite(+o.sens)?clamp(+o.sens,.6,1.6):1;
   o.name=(typeof o.name==='string'&&o.name.trim())?o.name.trim().slice(0,10):'プレイヤー';
-  o.friends=(Array.isArray(o.friends)?o.friends:[]).filter(f=>typeof f==='string'&&/^[\w-]{4,24}$/.test(f)).slice(0,50);
+  o.friends=[...new Set((Array.isArray(o.friends)?o.friends:[]).filter(f=>typeof f==='string'&&(FID_RE.test(f)||LEGACY_RE.test(f))))].slice(0,50);
+  if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid=genFid();
+  o.friends=o.friends.filter(f=>f!==o.fid&&f!==o.id);
+  const fn={};if(o.fnames&&typeof o.fnames==='object')for(const k in o.fnames)if(o.friends.includes(k)&&typeof o.fnames[k]==='string')fn[k]=o.fnames[k].slice(0,10);o.fnames=fn;
   o.slots=(Array.isArray(o.slots)?o.slots:d.slots).filter(k=>o.inv.emote.includes(k)).slice(0,4);
   for(const k of d.slots)if(o.slots.length<4&&!o.slots.includes(k))o.slots.push(k);
   o.stats=(o.stats&&typeof o.stats==='object')?o.stats:{};for(const k in o.stats)o.stats[k]=num(o.stats[k],0,1e12,0);
   if(!o.daily||typeof o.daily!=='object')o.daily=d.daily;o.daily.prog=o.daily.prog||{};o.daily.claimed=o.daily.claimed||{};o.daily.ids=Array.isArray(o.daily.ids)?o.daily.ids:[];
+  if(!o.weekly||typeof o.weekly!=='object')o.weekly=d.weekly;o.weekly.prog=o.weekly.prog||{};o.weekly.claimed=o.weekly.claimed||{};o.weekly.ids=Array.isArray(o.weekly.ids)?o.weekly.ids:[];o.weekly.rw=!!o.weekly.rw;o.weekly.rwKey=typeof o.weekly.rwKey==='string'?o.weekly.rwKey:'';
   o.ach=(o.ach&&typeof o.ach==='object')?o.ach:{};
   o.rp=num(o.rp,0,99999,0);o.rpBest=Math.max(o.rp,num(o.rpBest,0,99999,0));o.rkTop=Math.max(tierOf(o.rpBest),num(o.rkTop,0,RANKS.length-1,0));
   o.rkStreak=num(o.rkStreak,0,999,0);o.rkPlay=num(o.rkPlay,0,1e9,0);o.rkWin=num(o.rkWin,0,1e9,0);
@@ -706,6 +754,27 @@ const DAILY=[
  {id:'over2',n:'追い抜きを2回成功させる',i:'🚴',k:'overtake',goal:2,c:40,xp:50},
  {id:'rank1',n:'ランクマッチを1回遊ぶ',i:'🏆',k:'rkplay',goal:1,c:50,xp:50},
  {id:'rankw',n:'ランクマッチで1回勝つ',i:'🥇',k:'rkwin',goal:1,c:70,xp:70}];
+// ウィークリークエスト（毎週月曜 0:00 に5つ入れかえ。全部クリアでその月の限定スキン）
+const WEEKLY=[
+ {id:'w_runs',n:'エンドレスランを15回走る',i:'🏃',k:'runs',goal:15,c:150,xp:150},
+ {id:'w_dist',n:'合計 20,000m 走る',i:'🛣️',k:'dist',goal:20000,c:200,xp:200},
+ {id:'w_wins',n:'対戦（CPU戦・ランク・フレンド）で5回勝つ',i:'⚔',k:'wins',goal:5,c:200,xp:200},
+ {id:'w_rank',n:'ランクマッチを5回遊ぶ',i:'🏆',k:'rkplay',goal:5,c:200,xp:200},
+ {id:'w_near',n:'ニアミスを80回決める',i:'💨',k:'near',goal:80,c:150,xp:150},
+ {id:'w_cop',n:'パトカーを15回やりすごす',i:'🚓',k:'cop',goal:15,c:150,xp:150},
+ {id:'w_gacha',n:'ガチャを5回まわす',i:'🎰',k:'gacha',goal:5,c:100,xp:100},
+ {id:'w_chat',n:'エモート・チャットを15回使う',i:'💬',k:'chat',goal:15,c:80,xp:80},
+ {id:'w_boost',n:'ブーストを100回使う',i:'⚡',k:'boost',goal:100,c:120,xp:120},
+ {id:'w_round',n:'対戦でポイントを20回取る',i:'🎯',k:'roundwin',goal:20,c:200,xp:200},
+ {id:'w_score',n:'エンドレスランで2,500点以上を出す',i:'⭐',k:'runbest',goal:2500,c:200,xp:200},
+ {id:'w_plays',n:'どのモードでも25回遊ぶ',i:'🎮',k:'plays',goal:25,c:150,xp:150}];
+// 月ごとの季節テーマ（ウィークリー完走報酬のスキン）
+const SEASON=[
+ {key:'ev_newyear',t:'お正月',i:'🎍'},{key:'ev_valentine',t:'バレンタイン',i:'💝'},{key:'ev_hina',t:'ひなまつり',i:'🎎'},{key:'ev_sakura',t:'お花見',i:'🌸'},
+ {key:'ev_koinobori',t:'こどもの日',i:'🎏'},{key:'ev_ajisai',t:'梅雨',i:'☔'},{key:'ev_tanabata',t:'七夕',i:'🎋'},{key:'ev_hanabi',t:'夏祭り',i:'🎆'},
+ {key:'ev_tsukimi',t:'お月見',i:'🎑'},{key:'ev_halloween',t:'ハロウィン',i:'🎃'},{key:'ev_momiji',t:'紅葉狩り',i:'🍁'},{key:'ev_xmas',t:'クリスマス',i:'🎄'}];
+const seasonNow=()=>{const m=new Date().getMonth();return Object.assign({m:m+1},SEASON[m]);};
+const WEEK_DUP_COINS=300;   // その月のスキンをすでに持っていたときの代わりの報酬
 const ACH=[
  {id:'dist',n:'累計走行距離',i:'🛣️',k:'dist',tiers:[1000,10000,50000],c:[50,150,400],u:'m'},
  {id:'best',n:'エンドレス最高スコア',i:'🏆',k:'best',tiers:[1000,3000,8000],c:[50,150,400]},
@@ -717,6 +786,16 @@ const ACH=[
  {id:'friend',n:'フレンド登録',i:'🤝',k:'friends',tiers:[1,5,10],c:[30,100,200]},
  {id:'rank',n:'チャリランク到達',i:'🏆',k:'rktop',tiers:[2,4,6],c:[100,300,1000],lbl:['ゴールド','ダイヤモンド','殿堂自転車']}];
 const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
+const weekStart=()=>{const d=new Date(),k=(d.getDay()+6)%7;return new Date(d.getFullYear(),d.getMonth(),d.getDate()-k);};   // 今週の月曜 0:00
+const weekKey=()=>{const m=weekStart();return 'W'+m.getFullYear()+'-'+(m.getMonth()+1)+'-'+m.getDate();};
+function ensureWeekly(){
+  const k=weekKey();if(SV.weekly.wk===k&&SV.weekly.ids.length===5)return false;
+  const r=mulberry(strHash(k+SV.id)),pool=WEEKLY.map(q=>q.id),ids=[];
+  while(ids.length<5)ids.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
+  SV.weekly={wk:k,ids,prog:{},claimed:{},rw:false,rwKey:''};save();return true;
+}
+function weeklyItems(){return SV.weekly.ids.map(id=>{const q=WEEKLY.find(x=>x.id===id);if(!q)return null;const v=SV.weekly.prog[q.k]||0;return {q,v:Math.min(v,q.goal),done:v>=q.goal,claimed:!!SV.weekly.claimed[id]};}).filter(Boolean);}
+const weeklyAllDone=()=>{const w=weeklyItems();return w.length===5&&w.every(d=>d.done);};
 function ensureDaily(){
   const k=todayKey();if(SV.daily.date===k&&SV.daily.ids.length===3)return false;
   const r=mulberry(strHash(k+SV.id)),pool=DAILY.map(q=>q.id),ids=[];
@@ -726,7 +805,7 @@ function ensureDaily(){
 const statVal=k=>k==='lv'?SV.lv:k==='best'?SV.best:k==='items'?itemCount():k==='friends'?SV.friends.length:k==='rktop'?SV.rkTop:(SV.stats[k]||0);
 function dailyItems(){return SV.daily.ids.map(id=>{const q=DAILY.find(x=>x.id===id);if(!q)return null;const v=SV.daily.prog[q.k]||0;return {q,v:Math.min(v,q.goal),done:v>=q.goal,claimed:!!SV.daily.claimed[id]};}).filter(Boolean);}
 function achItems(){return ACH.map(a=>{const t=SV.ach[a.id]||0,v=statVal(a.k);return {a,t,v,goal:a.tiers[Math.min(t,a.tiers.length-1)],done:t<a.tiers.length&&v>=a.tiers[t],max:t>=a.tiers.length};});}
-const claimable=()=>dailyItems().filter(d=>d.done&&!d.claimed).length+achItems().filter(a=>a.done).length;
+const claimable=()=>dailyItems().filter(d=>d.done&&!d.claimed).length+weeklyItems().filter(d=>d.done&&!d.claimed).length+(weeklyAllDone()&&!SV.weekly.rw?1:0)+achItems().filter(a=>a.done).length;
 
 /* =====================================================================
    チャリランク（ランクマッチ）：ブロンズ → … → 殿堂自転車
@@ -763,7 +842,8 @@ const TITLES={
 const PLATES={auto:{n:'自動（いちばん豪華なもの）'},normal:{n:'ノーマル',lv:1},bronze:{n:'ブロンズ',lv:5},silver:{n:'シルバー',lv:10},gold:{n:'ゴールド',lv:20},
  crystal:{n:'クリスタル',lv:30},legend:{n:'レジェンド',lv:50},hof:{n:'殿堂',rk:6}};
 const unlockOk=o=>!o||((o.lv==null||SV.lv>=o.lv)&&(o.rk==null||SV.rkTop>=o.rk));
-const reqText=o=>o.rk!=null?'🏆 '+RANKS[o.rk].n+'到達で解放':o.lv!=null?'🎖️ Lv'+o.lv+'で解放':'';
+const reqText=o=>o.ev?'📅 '+o.ev+'月のウィークリー完走報酬':o.rk!=null?'🏆 '+RANKS[o.rk].n+'到達で解放':o.lv!=null?'🎖️ Lv'+o.lv+'で解放':'';
+const isSpecial=it=>it.lv!=null||it.rk!=null||!!it.ev;
 function autoPlate(lv,rkTop){if(rkTop>=6)return 'hof';let b='normal';for(const k of['bronze','silver','gold','crystal','legend'])if(lv>=PLATES[k].lv)b=k;return b;}
 const myPlate=()=>SV.plate==='auto'||!unlockOk(PLATES[SV.plate])?autoPlate(SV.lv,SV.rkTop):SV.plate;
 const myTitle=()=>unlockOk(TITLES[SV.title])?SV.title:'rookie';
@@ -1299,6 +1379,9 @@ function drawSide(c,w,h,lk,t,sc,opt){
   if(lk.skin==='myart'&&myArtOk){const iw=R*.9,ih=iw*myArtImg.naturalHeight/myArtImg.naturalWidth;c.drawImage(myArtImg,(hip[0]+sh[0])/2-iw/2,(hip[1]+sh[1])/2-ih/2,iw,ih);}
   limb(c,[BB,P1],R*.1,'#5a5a64');
   legSide(c,hip,P1,R,ft.pants);
+  if(sk.deco){   // 季節スキンの飾り（うしろの荷台にのせる）
+    const dx=x1-R*.2,dy=wy-R*1.28;limb(c,[[x1-R*.75,wy-R*.98],[x1+R*.3,wy-R*.98]],R*.09,'#4a4a52');
+    if(opt.flip){c.save();c.translate(dx,dy);c.scale(-1,1);emoji(c,sk.deco,0,0,R*.8);c.restore();}else emoji(c,sk.deco,dx,dy,R*.8);}
   const el=ik(sh,hand,R*.72,elbowFront);
   limb(c,[sh,el],R*.26,upper);limb(c,[el,hand],R*.24,fore);
   blob(c,hand[0],hand[1],R*.15,SKIN_TONE,Math.max(1.2,R*.06));
@@ -1434,7 +1517,7 @@ function drawPlate(c,x,y,w,h,o,t){
 let page='home',lockCat='skin',shopCat='skin',fStatus={};
 const emoteState={home:null,lk:null,im:null};
 function fitCv(cv){const d=Math.min(devicePixelRatio||1,2),w=Math.max(1,cv.clientWidth*d|0),h=Math.max(1,cv.clientHeight*d|0);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}return d;}
-function payload(){return Object.assign({name:SV.name,id:SV.id,lv:SV.lv,course:SV.course,ttl:myTitle(),pl:myPlate(),rp:SV.rp},myLook());}
+function payload(){return Object.assign({name:SV.name,id:SV.id,fid:SV.fid,lv:SV.lv,course:SV.course,ttl:myTitle(),pl:myPlate(),rp:SV.rp},myLook());}
 function updateTop(){
   $('disp-coin').textContent=SV.coins.toLocaleString();
   $('lv-num').textContent='Lv'+SV.lv;$('xp-fill').style.width=(SV.lv>=99?100:SV.xp/xpNeed(SV.lv)*100)+'%';
@@ -1458,16 +1541,21 @@ function updateHome(){
   $('cname').textContent=COURSES[SV.course].n;$('home-best').textContent='ベスト '+SV.best.toLocaleString();
   const ri=rankInfo(SV.rp);$('rk-sub').textContent=ri.name+' ・ '+SV.rp+' RP'+(SV.rkStreak>1?' ・ 🔥'+SV.rkStreak+'連勝':'');$('rk-fill').style.width=(ri.prog*100)+'%';
   const bc=$('rk-badge'),bg=bc.getContext('2d');bg.setTransform(1,0,0,1,0,0);bg.clearRect(0,0,120,120);drawRankBadge(bg,60,62,96,ri.i,performance.now(),ri.div);
-  $('disp-id').textContent='ID: '+SV.id;$('pname').value=SV.name;
+  $('disp-id').textContent='フレンドID: '+SV.fid;$('pname').value=SV.name;
+  const wd=weeklyItems().filter(d=>d.done).length,sn=seasonNow(),wb=$('wk-banner');
+  wb.innerHTML='';const wi=document.createElement('span');wi.textContent=sn.i;const wt=document.createElement('span');wt.className='grow';
+  wt.textContent=SV.weekly.rw?'今週のウィークリー完走！ 来週もがんばろう':'ウィークリー '+wd+'/5 クリアで「'+SKINS[sn.key].n+'」';wb.append(wi,wt);
   renderEmoteBar('home-emotes',k=>useLobbyEmote('home',k));renderQuickFriends();
 }
-$('pname').addEventListener('input',()=>{SV.name=($('pname').value.trim()||'プレイヤー').slice(0,10);save();});
+let helloT=null;
+$('pname').addEventListener('input',()=>{SV.name=($('pname').value.trim()||'プレイヤー').slice(0,10);save();clearTimeout(helloT);helloT=setTimeout(()=>hello(),800);});
 function setCourse(i){SV.course=(i+COURSES.length)%COURSES.length;save();$('cname').textContent=COURSES[SV.course].n;if(page==='course')renderCourse();}
 $('cprev').onclick=()=>setCourse(SV.course-1);$('cnext').onclick=()=>setCourse(SV.course+1);
 
 /* ===== XP・クエストの進行 ===== */
-function bump(k,n){n=n==null?1:n;if(!n)return;SV.stats[k]=(SV.stats[k]||0)+n;ensureDaily();SV.daily.prog[k]=(SV.daily.prog[k]||0)+n;save();questChanged();}
-function bumpMax(k,v){SV.stats[k]=Math.max(SV.stats[k]||0,v);ensureDaily();SV.daily.prog[k]=Math.max(SV.daily.prog[k]||0,v);save();questChanged();}
+// 記録をデイリー・ウィークリーの両方に進める
+function bump(k,n){n=n==null?1:n;if(!n)return;SV.stats[k]=(SV.stats[k]||0)+n;ensureDaily();ensureWeekly();SV.daily.prog[k]=(SV.daily.prog[k]||0)+n;SV.weekly.prog[k]=(SV.weekly.prog[k]||0)+n;save();questChanged();}
+function bumpMax(k,v){SV.stats[k]=Math.max(SV.stats[k]||0,v);ensureDaily();ensureWeekly();SV.daily.prog[k]=Math.max(SV.daily.prog[k]||0,v);SV.weekly.prog[k]=Math.max(SV.weekly.prog[k]||0,v);save();questChanged();}
 let lastClaimable=0;
 function questChanged(){const n=claimable();if(n>lastClaimable&&n>0)toast('🎉 クエスト達成！クエスト画面で報酬を受け取ろう',2600);lastClaimable=n;updateTop();if(page==='quest'&&$('lobby').style.display!=='none')renderQuests();}
 let lvupT=null;
@@ -1567,22 +1655,23 @@ function renderShop(){
   dailyFeatured().forEach(([c,k])=>{const own=SV.inv[c].includes(k);fb.appendChild(itemCard(c,k,{owned:own,off:!own,sub:own?'所持済み':'<span class="coin">NC</span>'+priceOf(c,k),onClick:()=>openItem(c,k)}));});
   chips($('shop-cats'),Object.keys(CATN),shopCat,c=>{shopCat=c;renderShop();});
   const box=$('shop-list');box.innerHTML='';
-  const ord=it=>(it.rk!=null?3e4+it.rk:it.lv!=null?2e4+it.lv:it.g?1e4:0)+(it.p||0);
+  const ord=it=>(it.ev?4e4+it.ev:it.rk!=null?3e4+it.rk:it.lv!=null?2e4+it.lv:it.g?1e4:0)+(it.p||0);
   const keys=Object.keys(CAT[shopCat]).sort((a,b)=>ord(CAT[shopCat][a])-ord(CAT[shopCat][b]));
   keys.forEach(k=>{const it=CAT[shopCat][k],own=SV.inv[shopCat].includes(k);
-    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':(it.lv!=null||it.rk!=null)?reqText(it):'<span class="coin">NC</span>'+priceOf(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
+    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':isSpecial(it)?reqText(it):'<span class="coin">NC</span>'+priceOf(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
   shopTimer();
 }
 function untilMidnight(){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const s=Math.max(0,(m-n)/1000|0);return Math.floor(s/3600)+'時間'+String(Math.floor(s%3600/60)).padStart(2,'0')+'分';}
-function shopTimer(){$('shop-timer').textContent='入れかえまで '+untilMidnight();$('q-timer').textContent='更新まで '+untilMidnight();}
-setInterval(()=>{if(page==='shop'||page==='quest')shopTimer();if(SV&&ensureDaily()&&page==='quest')renderQuests();},30000);
+function untilMonday(){const m=weekStart();m.setDate(m.getDate()+7);const s=Math.max(0,(m-new Date())/1000|0);return Math.floor(s/86400)+'日'+Math.floor(s%86400/3600)+'時間';}
+function shopTimer(){$('shop-timer').textContent='入れかえまで '+untilMidnight();$('q-timer').textContent='更新まで '+untilMidnight();$('qw-timer').textContent='更新まで '+untilMonday()+'（毎週月曜）';}
+setInterval(()=>{if(page==='shop'||page==='quest')shopTimer();if(SV){const a=ensureDaily(),b=ensureWeekly();if((a||b)&&page==='quest')renderQuests();if((a||b)&&page==='home')updateHome();}},30000);
 // アイテム詳細
 let IM=null;
 function openItem(c,k){
   IM={c,k};const it=CAT[c][k],own=SV.inv[c].includes(k),pr=priceOf(c,k);
   $('im-rar').innerHTML='<span class="rar'+(it.r||1)+'">'+RN[it.r||1]+'</span> ・ '+esc(CATN[c]);
-  $('im-name').textContent=it.n;$('im-desc').textContent=CATDESC[c]+'。見た目だけの変更で、速度や当たり判定は変わりません。';
-  const special=it.lv!=null||it.rk!=null;
+  $('im-name').textContent=it.n;$('im-desc').textContent=CATDESC[c]+'。見た目だけの変更で、速度や当たり判定は変わりません。'+(it.ev?'　'+it.ev+'月中にウィークリークエストを5つ全部クリアすると手に入る季節限定スキンです。':'');
+  const special=isSpecial(it);
   $('im-price').innerHTML=own?'✅ 所持済み':it.g?'🎰 ガチャでのみ入手できます':special?esc(reqText(it)):'<span class="coin">NC</span> '+pr+(pr<it.p?' <s class="muted">'+it.p+'</s>':'')+'（所持 '+SV.coins+' NC）';
   const b=$('im-buy');b.classList.toggle('hide',!own&&(!!it.g||special));
   if(own){const on=c==='emote'?SV.slots.includes(k):SV.eq[c]===k;b.textContent=c==='emote'?(on?'スロットから外す':'スロットに入れる'):(on?'装備中':'装備する');b.disabled=c!=='emote'&&on;b.className='btn big blue';}
@@ -1594,7 +1683,7 @@ function openItem(c,k){
 $('im-buy').onclick=()=>{
   if(!IM)return;const {c,k}=IM,it=CAT[c][k];
   if(SV.inv[c].includes(k)){equip(c,k);openItem(c,k);return;}
-  if(it.g||it.lv!=null||it.rk!=null)return;
+  if(it.g||isSpecial(it))return;
   const pr=priceOf(c,k);if(SV.coins<pr){toast('コインが足りません');return;}
   SV.coins-=pr;SV.inv[c].push(k);save();if(AU.ctx)SFX.coin();toast(it.n+' を手に入れた！');
   equip(c,k);updateTop();openItem(c,k);questChanged();
@@ -1738,6 +1827,18 @@ function renderQuests(){
     b.onclick=()=>{SV.daily.claimed[q.id]=true;SV.coins+=q.c;if(AU.ctx)SFX.claim();toast('+'+q.c+' NC を受け取りました');addXP(q.xp);save();renderQuests();};
     el.querySelector('.qr').appendChild(b);db.appendChild(el);
   });
+  // ウィークリー
+  ensureWeekly();
+  const wb=$('q-weekly');wb.innerHTML='';
+  weeklyItems().forEach(({q,v,done,claimed})=>{
+    const el=document.createElement('div');el.className='qcard week'+(claimed?' done':'');
+    el.innerHTML='<span class="qi">'+q.i+'</span><div class="qb"><b class="qn"></b><div class="qbar"><i style="width:'+(v/q.goal*100)+'%"></i></div><span class="muted">'+v.toLocaleString()+' / '+q.goal.toLocaleString()+'</span></div><div class="qr"><span><span class="coin">NC</span> '+q.c+'　+'+q.xp+'XP</span></div>';
+    el.querySelector('.qn').textContent=q.n;
+    const b=document.createElement('button');b.className='btn sm '+(done&&!claimed?'green':'dark');b.textContent=claimed?'受取済み':done?'受け取る':'挑戦中';b.disabled=!done||claimed;
+    b.onclick=()=>{SV.weekly.claimed[q.id]=true;SV.coins+=q.c;if(AU.ctx)SFX.claim();toast('+'+q.c+' NC を受け取りました');addXP(q.xp);save();renderQuests();};
+    el.querySelector('.qr').appendChild(b);wb.appendChild(el);
+  });
+  renderWeekReward();
   const ab=$('q-ach');ab.innerHTML='';
   achItems().forEach(({a,t,v,goal,done,max})=>{
     const el=document.createElement('div');el.className='qcard'+(max?' done':'');
@@ -1750,6 +1851,26 @@ function renderQuests(){
   });
   updateTop();lastClaimable=claimable();
 }
+
+/* ===== ウィークリー完走報酬（その月の季節限定スキン） ===== */
+function renderWeekReward(){
+  const sn=seasonNow(),it=SKINS[sn.key],own=SV.inv.skin.includes(sn.key),n=weeklyItems().filter(d=>d.done).length,all=weeklyAllDone();
+  $('qw-title').textContent=sn.i+' '+sn.m+'月の限定スキン「'+it.n+'」';
+  $('qw-desc').textContent=SV.weekly.rw?'今週の完走報酬は受け取り済みです（来週の月曜にリセット）':'今週のウィークリークエストを5つ全部クリアすると、'+sn.t+'の限定スキンがもらえます。'+(own?'（すでに持っている場合は '+WEEK_DUP_COINS+' NC）':'');
+  $('qw-fill').style.width=(n/5*100)+'%';$('qw-prog').textContent=n+' / 5 クリア';
+  const b=$('qw-claim');b.disabled=!all||SV.weekly.rw;b.textContent=SV.weekly.rw?'受取済み':all?'🎁 受け取る':'あと'+(5-n)+'つ';b.className='btn '+(all&&!SV.weekly.rw?'green':'dark');
+  const cv=$('qw-cv'),g=cv.getContext('2d');g.setTransform(1,0,0,1,0,0);const bg=g.createLinearGradient(0,0,0,cv.height);bg.addColorStop(0,'#5a2ca0');bg.addColorStop(1,'#1b1450');g.fillStyle=bg;g.fillRect(0,0,cv.width,cv.height);
+  g.fillStyle='rgba(255,215,80,.18)';g.beginPath();g.arc(cv.width/2,cv.height*.55,cv.height*.48,0,7);g.fill();
+  const lk=myLook();lk.skin=sn.key;drawSide(g,cv.width,cv.height,lk,600,1.05,{idle:true});
+  if(!own&&!SV.weekly.rw){g.font='900 '+(cv.height*.12|0)+'px '+FONT;g.textAlign='left';g.textBaseline='top';g.lineWidth=4;g.strokeStyle=OUTL;g.strokeText('LIMITED',8,6);g.fillStyle='#ffe56b';g.fillText('LIMITED',8,6);}
+}
+$('qw-claim').onclick=()=>{
+  initAudio();if(!weeklyAllDone()||SV.weekly.rw)return;
+  const sn=seasonNow(),k=sn.key;SV.weekly.rw=true;SV.weekly.rwKey=k;
+  if(!SV.inv.skin.includes(k)){SV.inv.skin.push(k);saveNow();if(AU.ctx)(SFX.fan||SFX.win)();toast('🎁 季節限定スキン「'+SKINS[k].n+'」を手に入れた！',3200);renderQuests();openItem('skin',k);}
+  else{SV.coins+=WEEK_DUP_COINS;saveNow();if(AU.ctx)SFX.claim();toast('🎁 ウィークリー完走！ +'+WEEK_DUP_COINS+' NC（スキンは所持済み）',3200);renderQuests();}
+  updateTop();questChanged();
+};
 
 /* ===== ホームのプレビュー（選択中コースの空と街並みを背景に） ===== */
 function stageBg(c,w,h,t,T,scroll){
@@ -1787,9 +1908,9 @@ function loadRanking(){
     const ol=$('rank-list');ol.innerHTML='';const top=(r&&r.top)||[];
     if(!top.length){const li=document.createElement('li');li.textContent=rp?'まだ記録がありません。ランクマッチで最初の殿堂入りを目指そう！':'まだ記録がありません。最初の1位を狙おう！';ol.appendChild(li);return;}
     top.forEach((e,i)=>{
-      const li=document.createElement('li');if(e.id===SV.id)li.className='me';
+      const li=document.createElement('li');if(e.me)li.className='me';
       const rk=document.createElement('span');rk.className='rk';rk.textContent=i<3?['🥇','🥈','🥉'][i]:(i+1);
-      const nm=document.createElement('span');nm.className='nm';nm.textContent='Lv'+(e.lv||1)+'　'+e.name+(rp&&TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':'')+(e.id===SV.id?'（あなた）':'');
+      const nm=document.createElement('span');nm.className='nm';nm.textContent='Lv'+(e.lv||1)+'　'+e.name+(rp&&TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':'')+(e.me?'（あなた）':'');
       const sc=document.createElement('span');sc.className='scv';sc.textContent=rp?rankInfo(e.rp).name+'　'+e.rp+' RP':Number(e.score).toLocaleString();
       li.append(rk,nm,sc);ol.appendChild(li);
     });
@@ -1815,39 +1936,102 @@ $('rk-close').onclick=()=>$('rk-modal').classList.add('hide');
 $('rk-modal').addEventListener('click',e=>{if(e.target.id==='rk-modal')$('rk-modal').classList.add('hide');});
 $('rank-reload').onclick=loadRanking;
 
-/* ===== フレンド（IDベース・在席状況・ワンタップ参加） ===== */
+/* =====================================================================
+   フレンド（フレンドID F-XXXX-XXXX で検索・招待。ログインIDとは別）
+   ===================================================================== */
 const FL={online:'🟢 オンライン',waiting:'🟡 ルームで待機中（参加できます）',playing:'🔴 プレイ中',offline:'⚪ オフライン'};
-function joinFriend(fid){initAudio();socket.emit('join_friend',Object.assign({targetId:fid},payload()),r=>{if(!r||!r.ok){toast((r&&r.err)||'参加できません');pollFriends();}});}
-function pollFriends(){if(!SV.friends.length){fStatus={};renderFriends();return;}socket.emit('friends_status',SV.friends,m=>{fStatus=m||{};renderFriends();renderQuickFriends();});}
+const fst=f=>(fStatus[f]&&fStatus[f].s)||'offline';
+const fname=f=>(fStatus[f]&&fStatus[f].name)||SV.fnames[f]||'';
+function joinFriend(f){
+  initAudio();const tg=FID_RE.test(f)?{targetFid:f}:{targetId:f};
+  socket.emit('join_friend',Object.assign(tg,payload()),r=>{if(!r||!r.ok){toast((r&&r.err)||'参加できません');pollFriends();}});
+}
+function pollFriends(){
+  if(!SV.friends.length){fStatus={};renderFriends();return;}
+  socket.emit('friends_status',SV.friends,m=>{
+    fStatus=m||{};let changed=false;
+    for(const f of SV.friends.slice()){const st=fStatus[f];if(!st)continue;
+      if(st.name&&SV.fnames[f]!==st.name){SV.fnames[f]=st.name;changed=true;}
+      if(LEGACY_RE.test(f)&&st.fid&&FID_RE.test(st.fid)){   // 旧ID（ログインID）で登録していた相手 → 相手の新しいフレンドIDへ自動で切り替え
+        const i=SV.friends.indexOf(f);if(SV.friends.includes(st.fid)||st.fid===SV.fid)SV.friends.splice(i,1);else SV.friends[i]=st.fid;
+        if(st.name)SV.fnames[st.fid]=st.name;delete SV.fnames[f];fStatus[st.fid]=st;changed=true;}
+    }
+    if(changed)save();renderFriends();renderQuickFriends();
+  });
+}
 setInterval(()=>{if(SV&&!inGame&&!ROOM&&$('lobby').style.display!=='none'&&SV.friends.length)pollFriends();},4000);
 function renderQuickFriends(){
   const qf=$('quick-friends');qf.innerHTML='';
-  SV.friends.filter(f=>fStatus[f]==='waiting').forEach(fid=>{const q=document.createElement('button');q.className='btn green';q.textContent='⚡ '+fid+' のルームにワンタップ参加';q.onclick=()=>joinFriend(fid);qf.appendChild(q);});
+  SV.friends.filter(f=>fst(f)==='waiting').forEach(f=>{const q=document.createElement('button');q.className='btn green';q.textContent='⚡ '+(fname(f)||f)+' のルームにワンタップ参加';q.onclick=()=>joinFriend(f);qf.appendChild(q);});
+}
+function addFriend(f,name,quiet){
+  f=normFid(f)||f;
+  if(!FID_RE.test(f)){toast('フレンドIDは「F-XXXX-XXXX」の形です');return false;}
+  if(f===SV.fid){toast('自分のフレンドIDです');return false;}
+  if(SV.friends.includes(f)){if(!quiet)toast('すでにフレンドです');return false;}
+  if(SV.friends.length>=50){toast('フレンドは50人までです');return false;}
+  SV.friends.push(f);if(name)SV.fnames[f]=String(name).slice(0,10);save();
+  if(!quiet)toast((name?name+'（'+f+'）':f)+' をフレンドに追加しました');
+  if(AU.ctx)SFX.pop();pollFriends();questChanged();renderRoomControls();
+  return true;
 }
 function renderFriends(){
-  $('my-id').textContent=SV.id;
+  $('my-fid').textContent=SV.fid;
   const box=$('friend-list-container');box.innerHTML='';
-  if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。相手のIDを入力して追加しよう。';box.appendChild(p);}
-  SV.friends.forEach(fid=>{
-    const st=fStatus[fid]||'offline',it=document.createElement('div');it.className='friend-item';
-    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=fid;const sm=document.createElement('small');sm.textContent=FL[st];fn.append(b,sm);
-    const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting';j.onclick=()=>joinFriend(fid);
-    const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';del.onclick=()=>{SV.friends=SV.friends.filter(x=>x!==fid);save();renderFriends();};
+  if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。相手のフレンドIDを入力するか、招待リンクを送ってもらおう。';box.appendChild(p);}
+  SV.friends.forEach(f=>{
+    const st=fst(f),it=document.createElement('div'),nm=fname(f),leg=LEGACY_RE.test(f);it.className='friend-item';
+    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=nm?nm+'　':'';const code=document.createElement('span');code.className='fcode';code.textContent=leg?'旧ID登録':f;b.appendChild(code);
+    const sm=document.createElement('small');sm.textContent=FL[st]+(leg?'（相手が新バージョンでログインすると、フレンドIDに自動で切り替わります）':'');fn.append(b,sm);
+    const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting';j.onclick=()=>joinFriend(f);
+    const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';
+    let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}SV.friends=SV.friends.filter(x=>x!==f);delete SV.fnames[f];save();renderFriends();};
     it.append(fn,j,del);box.appendChild(it);
   });
   renderQuickFriends();
 }
-$('btn-add-friend').onclick=()=>{
-  let f=$('add-friend-id').value.trim().toUpperCase();if(f&&!f.startsWith('NM-'))f='NM-'+f;
-  if(!/^[\w-]{4,24}$/.test(f)||f===SV.id){toast('正しいIDを入力してください');return;}
-  if(SV.friends.includes(f)){toast('すでに追加されています');return;}
-  SV.friends.push(f);save();$('add-friend-id').value='';pollFriends();toast(f+' をフレンドに追加しました');questChanged();
+$('add-friend-id').addEventListener('input',()=>{$('find-res').textContent='';});
+$('add-friend-id').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btn-find-friend').onclick();}});
+$('btn-find-friend').onclick=()=>{
+  initAudio();const raw=$('add-friend-id').value.trim(),f=normFid(raw),out=$('find-res');out.innerHTML='';
+  if(LEGACY_RE.test(raw.toUpperCase())){out.textContent='それはログインIDです。フレンド追加には相手の「フレンドID（F-XXXX-XXXX）」を使ってください。';return;}
+  if(!f){out.textContent='フレンドIDは「F-XXXX-XXXX」の形です（ハイフンや小文字は自動で直します）';return;}
+  $('add-friend-id').value=f;
+  if(f===SV.fid){out.textContent='これはあなた自身のフレンドIDです';return;}
+  out.textContent='検索中…';
+  socket.emit('friend_lookup',f,r=>{
+    out.innerHTML='';const sp=document.createElement('span');
+    if(r&&r.found){sp.textContent='🟢 見つかりました：'+r.name+'（Lv'+r.lv+'）'+(SV.friends.includes(f)?'　すでにフレンドです':'');out.appendChild(sp);
+      if(!SV.friends.includes(f)){const b=document.createElement('button');b.className='btn sm green';b.textContent='追加する';b.style.marginLeft='.5em';b.onclick=()=>{if(addFriend(f,r.name)){$('add-friend-id').value='';out.textContent='';}};out.appendChild(b);}}
+    else{sp.textContent='⚪ いまオンラインのプレイヤーには見つかりませんでした（オフラインの可能性があります。追加はできます）';out.appendChild(sp);
+      const b=document.createElement('button');b.className='btn sm';b.textContent='このIDで追加';b.style.marginLeft='.5em';b.onclick=()=>{if(addFriend(f)){$('add-friend-id').value='';out.textContent='';}};out.appendChild(b);}
+  });
 };
-$('copy-id').onclick=()=>copyText(SV.id,'IDをコピーしました');
+$('btn-add-friend').onclick=()=>{const raw=$('add-friend-id').value.trim();if(LEGACY_RE.test(raw.toUpperCase())){$('btn-find-friend').onclick();return;}if(addFriend(raw)){$('add-friend-id').value='';$('find-res').textContent='';}};
+$('copy-fid').onclick=()=>copyText(SV.fid,'フレンドIDをコピーしました');
+const inviteUrl=()=>location.origin+location.pathname+'?friend='+encodeURIComponent(SV.fid);
+$('invite-fid').onclick=async()=>{
+  const url=inviteUrl(),text='「なにが目的なん？」で一緒に遊ぼう！ フレンドID：'+SV.fid;
+  try{if(navigator.share){await navigator.share({title:'なにが目的なん？ ONLINE',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  copyText(text+'\n'+url,'招待リンクをコピーしました');
+};
+let reT=0;
+$('reissue-fid').onclick=()=>{
+  if(Date.now()-reT>3000){reT=Date.now();toast('もう一度押すとフレンドIDを再発行します（古いIDでは見つからなくなります）',3000);return;}
+  SV.fid=genFid();saveNow();hello();renderFriends();updateHome();toast('新しいフレンドID：'+SV.fid);
+};
 function copyText(s,msg){try{navigator.clipboard.writeText(s).then(()=>toast(msg),()=>toast(s));}catch(e){toast(s);}}
+// 招待リンク（?friend=F-XXXX-XXXX）から開いたらフレンドに追加
+function handleInvite(){
+  let q='';try{q=new URLSearchParams(location.search).get('friend')||'';}catch(e){}
+  if(!q)return;try{history.replaceState(null,'',location.pathname);}catch(e){}
+  const f=normFid(q);if(!f||f===SV.fid)return;
+  if(addFriend(f,'',true))toast('招待リンクから '+f+' をフレンドに追加しました！',3200);else if(SV.friends.includes(f))toast('招待してくれた '+f+' はすでにフレンドです');
+  showPage('friends');
+}
 
 /* ===== 設定メニュー ===== */
-$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
+$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-fid').textContent=SV.fid;$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
   ['bgm','se','amb'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
 $('close-menu-btn').onclick=()=>$('side-menu').classList.add('hide');
 $('side-menu').addEventListener('click',e=>{if(e.target.id==='side-menu')$('side-menu').classList.add('hide');});
@@ -1896,6 +2080,8 @@ function renderRoomControls(){
     $('rm-hint').textContent=!op?'相手の参加を待っています…（フレンドはロビーからワンタップで参加できます）':op.ready?'相手の準備ができました！スタートを押そう':'相手の「準備OK」を待っています';}
   else{const r=ROOM.players[1]&&ROOM.players[1].ready;go.textContent=r?'準備を取り消す':'✔ 準備OK';go.disabled=false;go.className='btn big '+(r?'dark':'green');
     $('rm-hint').textContent=r?'ホストのスタートを待っています…':'準備ができたら「準備OK」を押そう';}
+  const af=$('rm-addf'),ofid=op&&op.fid;af.classList.toggle('hide',!ofid||SV.friends.includes(ofid)||ofid===SV.fid);
+  if(ofid)af.onclick=()=>{if(addFriend(ofid,op.name))sysLog((op.name||'相手')+' をフレンドに追加しました');renderRoomControls();};
   const ph=$('rm-phr');if(!ph.childElementCount)PHRASES.forEach(p=>{const b=document.createElement('button');b.className='phr';b.textContent=p;b.onclick=()=>sendChat('x',p);ph.appendChild(b);});
   renderEmoteBar('rm-emotes',k=>sendChat('e',k));
 }
@@ -2434,6 +2620,7 @@ function drawRider(p,team,t,name,alpha){
   const fe=[];for(let i=0;i<=8;i++){const a=Math.PI*(.15+i*.09);fe.push(L(0,6+Math.sin(a)*7.6,-8-Math.cos(a)*7.6));}rigSeg(fe,1.4,col);
   const rl=L(0,12,-14.4);ctx.fillStyle=bk?'#ff3030':'#a01818';ctx.beginPath();ctx.arc(rl[0],rl[1],1.5*rl[2],0,7);ctx.fill();
   if(bk){ctx.globalCompositeOperation='lighter';glow(rl[0],rl[1],12*rl[2],'rgba(255,40,40,.75)');ctx.globalCompositeOperation='source-over';}
+  if(sk.deco){const dp=L(0,9.5,-11.5);emoji(ctx,sk.deco,dp[0],dp[1],Math.max(9,8.5*dp[2]));}   // 季節スキンの飾り（荷台）
   rigSeg([L(0,16.9,-7.5),L(0,16.9,-3.6)],2.4,'#262630');
   const SL=[-7.2,sy,sz],SR=[7.2,sy,sz];
   const sleeve=ft.st==='cape'?'#f3e5ab':ft.c,upper=F.sl==='n'?SKIN_TONE:sleeve,fore=F.sl==='l'?sleeve:SKIN_TONE;
@@ -2976,10 +3163,11 @@ function drawGame(dt,t){
 /* =====================================================================
    通信
    ===================================================================== */
-function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid});}
+function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid,name:SV.name,lv:SV.lv});}
 socket.on('connect',hello);
 socket.on('disconnect',()=>{if(MM)hideMM();if(inGame&&GAME.ranked&&SV.rkPend&&!(D&&D.s==='match'))rankPenalty('通信が切れたためランクマッチは敗北扱いになりました');if(inGame||ROOM){stopGame();hideRoom();startBGM(SV.eq.bgm,true);$('lobby').style.display='flex';showPage('home');toast('通信が切れました。もう一度お試しください',3000);}});
-socket.on('id_conflict',()=>toast('このIDは別の画面で使用中です',3000));
+socket.on('id_conflict',()=>toast('このログインIDは別の画面で使用中です',3000));
+socket.on('fid_conflict',()=>{SV.fid=genFid();saveNow();hello();if(page==='friends')renderFriends();updateHome();toast('フレンドIDが他の人と重なっていたため、新しいIDを発行しました：'+SV.fid,3500);});
 socket.on('start',d=>enterGame(d));
 socket.on('room',info=>{
   if(!info)return;
@@ -3046,6 +3234,7 @@ $('solo').onclick=()=>{initAudio();socket.emit('solo',payload());};
 $('create').onclick=()=>{initAudio();socket.emit('create',payload(),r=>{if(!r||!r.code)toast('ルームを作れませんでした');});};
 $('rankbtn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();startRankQueue();};
 $('mm-cancel').onclick=()=>{socket.emit('rank_cancel');hideMM();};
+$('wk-banner').onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage('quest');};
 $('join').onclick=()=>{
   initAudio();const code=$('code').value.trim();
   if(!/^\d{6}$/.test(code)){toast('6桁のコードを入力してください');return;}
@@ -3081,11 +3270,12 @@ function loop(t){
 /* ===== 起動：セーブデータを読み込んでからロビーを表示 ===== */
 (async function boot(){
   try{await loadSave();}catch(e){console.error(e);SV=fixSave(null);saveNow();}
-  ensureDaily();grantUnlocks();lastClaimable=claimable();
+  ensureDaily();ensureWeekly();grantUnlocks();lastClaimable=claimable();
   if(SV.rkPend)setTimeout(()=>rankPenalty('前回のランクマッチを途中で抜けたため敗北扱いになりました'),1200);
   resize();showPage('home');updateTop();
   $('boot').classList.add('hide');
   if(socket.connected)hello();
+  handleInvite();
   requestAnimationFrame(loop);
 })();
 
@@ -3180,6 +3370,8 @@ function showResult(o){
   const bt=$('res-btns');bt.classList.remove('show');
   $('res-again').textContent=GAME.ranked?'🏆 次のランク戦':'もう一回';$('res-again').disabled=!!(o.oppLeft&&!GAME.ranked);
   $('res-room').classList.toggle('hide',!roomGame);$('res-room').disabled=!!o.oppLeft;
+  const ofid=v&&op.fid&&!op.bot&&!op.cpu?op.fid:'',af=$('res-addf');af.classList.toggle('hide',!ofid||SV.friends.includes(ofid)||ofid===SV.fid);
+  af.onclick=()=>{if(addFriend(ofid,op.name))af.classList.add('hide');};
   if(AU.ctx){if(win)(SFX.fan||SFX.win)();else SFX.lose();}
   try{navigator.vibrate&&navigator.vibrate(win?[40,40,80]:60);}catch(e){}
 }
