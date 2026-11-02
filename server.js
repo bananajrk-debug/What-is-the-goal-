@@ -1,5 +1,6 @@
-// なにが目的なん？ ONLINE v5 — Express + Socket.io（サーバー権威型）
-// 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
+// なにが目的なん？ ONLINE v6 — Express + Socket.io（サーバー権威型）
+// 対戦（ルームロビー / CPU / フレンドIDでワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
+// ログインID（端末アカウント・非公開）とフレンドID（F-XXXX-XXXX・公開用）は別物として扱う
 'use strict';
 const express = require('express');
 const http = require('http');
@@ -56,6 +57,8 @@ const r1 = n => Math.round(n * 10) / 10;
 /* ===== 入力値の検証（見た目データは性能に一切影響しない） ===== */
 const clean = (v, def) => (typeof v === 'string' && /^[\w-]{1,24}$/.test(v)) ? v : def;
 const cleanUid = v => (typeof v === 'string' && /^[\w-]{8,64}$/.test(v)) ? v : '';
+const cleanFid = v => (typeof v === 'string' && /^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)) ? v : '';   // フレンドID
+const isLoginId = v => typeof v === 'string' && /^NM-[\w-]{3,20}$/.test(v);
 const cleanText = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').trim().slice(0, max) : '');
 const cleanName = (v, def) => cleanText(v, 10) || def;
 const cleanCourse = v => { v = parseInt(v, 10); return v >= 0 && v < PATHS.length ? v : 0; };
@@ -64,7 +67,7 @@ const look = (d, defName) => {
   return {
     name: cleanName(d.name, defName), skin: clean(d.skin, 'default'), hair: clean(d.hair, 'default'), fit: clean(d.fit, 'default'),
     acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, ''),
-    ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999)
+    ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999), fid: cleanFid(d.fid)
   };
 };
 
@@ -96,7 +99,8 @@ function submitScore(id, name, score, lv) {
   saveRanking();
   return { best, rank: ranking.findIndex(r => r.id === id) + 1, improved };
 }
-const topN = n => ranking.slice(0, n).map(r => ({ id: r.id, name: r.name, score: r.score, lv: r.lv || 1 }));
+// 公開するランキングにはログインIDを含めない（自分の行だけ me:true を付ける）
+const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, me: !!me && r.id === me }));
 // チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
@@ -110,7 +114,7 @@ function submitRp(id, name, rp, lv, ttl) {
   rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp();
   return rpBoard.findIndex(r => r.id === id) + 1;
 }
-const rpTop = n => rpBoard.slice(0, n).map(r => ({ id: r.id, name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie' }));
+const rpTop = (n, me) => rpBoard.slice(0, n).map(r => ({ name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie', me: !!me && r.id === me }));
 app.get('/api/ranking', (req, res) => res.json({ top: topN(50), rp: rpTop(50) }));
 app.get('/api/sounds', (req, res) => {
   fs.readdir(path.join(__dirname, 'public', 'sounds'), (err, list) => {
@@ -417,7 +421,7 @@ function overEndless(R, kind, reason) {
   const coins = Math.floor(R.score / 40), sid = R.ids[0];
   if (coins > 0) io.to(sid).emit('reward', { gain: coins });
   prog(R, 0, 'run', { score: R.score, dist: Math.floor(p.z / 10) });
-  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10) });
+  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10, R.hostId) });
 }
 function stepEndless(R, dt) {
   if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
@@ -496,22 +500,25 @@ setInterval(() => {
 /* =====================================================================
    ルーム・フレンド・チャット
    ===================================================================== */
-const byId = new Map();   // NM-ID -> socket.id
-const owners = new Map(); // NM-ID -> 端末UUID（なりすまし防止の簡易チェック）
-function statusOf(id) {
-  const sid = byId.get(id), sk = sid && io.sockets.sockets.get(sid);
+const byId = new Map();   // ログインID(NM-…) -> socket.id
+const owners = new Map(); // ログインID -> 端末UUID（なりすまし防止の簡易チェック）
+const byFid = new Map();  // フレンドID(F-XXXX-XXXX) -> socket.id
+const fidOwners = new Map(); // フレンドID -> 端末UUID
+const sockOf = sid => sid && io.sockets.sockets.get(sid);
+function statusOf(sid) {
+  const sk = sockOf(sid);
   if (!sk) return 'offline';
   if (rankQ.some(q => q.sid === sid)) return 'playing';
   const R = sk.data && rooms.get(sk.data.code);
   if (!R) return 'online';
   return (R.mode === 'versus' && !R.isCpu && !R.ids[1]) ? 'waiting' : 'playing';
 }
-function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
+function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.fids[i] = L.fid; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
 function newRoom(code, socket, d, extra) {
   const R = Object.assign({
     code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
-    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
-    course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), mode: 'versus', isCpu: false,
+    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], fids: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
+    course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), hostFid: cleanFid(d && d.fid), mode: 'versus', isCpu: false,
     inp: [{ s: 0 }, { s: 0 }], act: [false, false], actK: [null, null], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], nid: 1
   }, extra || {});
   setLook(R, 0, look(d, 'プレイヤー'));
@@ -520,7 +527,7 @@ function newRoom(code, socket, d, extra) {
 function roomInfo(R, me) {
   return {
     code: R.code, me, course: R.course, state: R.state,
-    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], id: R.pids[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
+    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], fid: R.fids[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
   };
 }
 function sendRoom(R) { for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('room', roomInfo(R, i)); }
@@ -560,7 +567,7 @@ function joinRoom(socket, R, d, reply) {
   reply({ ok: true });
   sendRoom(R);
 }
-const oppInfo = (R, i) => ({ name: R.names[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
+const oppInfo = (R, i) => ({ name: R.names[i], fid: (R.isCpu && i === 1) ? '' : R.fids[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
 function startRoomMatch(R) {
   resetMatch(R);
   for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: true, opp: oppInfo(R, 1 - i) });
@@ -587,7 +594,7 @@ function startRanked(a, b) {
     setLook(R, 1, {
       name: pick(BOT_NAMES), skin: pick(['default', 'gold', 'cyber', 'ocean', 'neon', 'tiger', 'mint', 'sunset']), hair: pick(['helmet', 'short_b', 'spiky', 'pony', 'mohawk', 'bob']),
       fit: pick(['jersey', 'racer', 'hoodie', 'happi', 'aloha', 'suit']), acc: pick(['none', 'cap', 'sunglass', 'goggles', 'headphone']), trail: pick(['none', 'fire', 'spark', 'bubble']),
-      lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
+      lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', fid: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
     });
     R.skill = clamp(0.25 + a.rp / 1700, 0.25, 0.95);
   }
@@ -625,22 +632,40 @@ io.on('connection', socket => {
   const rp = cb => (typeof cb === 'function' ? cb : () => {});
   const myRoom = () => rooms.get(socket.data && socket.data.code);
 
+  // 接続のたびに：ログインID（非公開）＋フレンドID（公開用）を登録
   socket.on('hello', d => {
-    const id = clean(d && d.id, ''), uid = cleanUid(d && d.uid);
+    const id = clean(d && d.id, ''), uid = cleanUid(d && d.uid), fid = cleanFid(d && d.fid);
     if (!id) return;
     const owner = owners.get(id), sid = byId.get(id);
-    if (owner && uid && owner !== uid && sid && sid !== socket.id && io.sockets.sockets.get(sid)) { socket.emit('id_conflict'); return; }
+    if (owner && uid && owner !== uid && sid && sid !== socket.id && sockOf(sid)) { socket.emit('id_conflict'); return; }
     if (uid) owners.set(id, uid);
     socket.nmId = id; byId.set(id, socket.id);
+    socket.nmName = cleanName(d && d.name, 'プレイヤー'); socket.nmLv = clamp(parseInt(d && d.lv, 10) || 1, 1, 99);
+    if (fid) {
+      const fo = fidOwners.get(fid), fs = byFid.get(fid);
+      if (fo && uid && fo !== uid && fs && fs !== socket.id && sockOf(fs)) { socket.emit('fid_conflict'); return; }   // 別の端末が使用中 → 再発行してもらう
+      if (socket.nmFid && socket.nmFid !== fid && byFid.get(socket.nmFid) === socket.id) byFid.delete(socket.nmFid);
+      if (uid) fidOwners.set(fid, uid);
+      socket.nmFid = fid; byFid.set(fid, socket.id);
+    }
   });
-  socket.on('friends_status', (ids, cb) => {
+  // フレンドの在席状況（フレンドIDで問い合わせ。旧バージョンのログインID登録は新しいフレンドIDへ自動移行）
+  socket.on('friends_status', (list, cb) => {
     const o = {};
-    (Array.isArray(ids) ? ids.slice(0, 50) : []).forEach(id => { if (typeof id === 'string') o[id] = statusOf(id); });
+    (Array.isArray(list) ? list.slice(0, 50) : []).forEach(f => {
+      if (cleanFid(f)) { const sid = byFid.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), name: sk ? sk.nmName : undefined, lv: sk ? sk.nmLv : undefined }; }
+      else if (isLoginId(f)) { const sid = byId.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), fid: sk && sk.nmFid ? sk.nmFid : undefined, name: sk ? sk.nmName : undefined }; }
+    });
     rp(cb)(o);
   });
-  socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30) }); });
+  // フレンドID検索（オンラインのプレイヤーのみ名前がわかる）
+  socket.on('friend_lookup', (fid, cb) => {
+    fid = cleanFid(fid); const sid = fid && byFid.get(fid), sk = sockOf(sid);
+    rp(cb)(sk ? { found: true, name: sk.nmName, lv: sk.nmLv, s: statusOf(sid), me: sid === socket.id } : { found: false });
+  });
+  socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId) }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
-  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30) }); });
+  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId) }); });
   socket.on('rank_report', (d, cb) => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
     socket.rkOk = false;
@@ -660,7 +685,7 @@ io.on('connection', socket => {
   socket.on('solo', d => {
     leaveRoom(socket); qRemove(socket.id);
     const code = 'SOLO_' + socket.id, R = newRoom(code, socket, d, { isCpu: true });
-    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', ttl: 'rookie', pl: 'normal', rp: 0 });
+    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', fid: '', ttl: 'rookie', pl: 'normal', rp: 0 });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
@@ -691,8 +716,8 @@ io.on('connection', socket => {
   });
   // フレンドの部屋にワンタップ参加（部屋コード不要）
   socket.on('join_friend', (d, cb) => {
-    const t = clean(d && d.targetId, '');
-    const R = [...rooms.values()].find(r => t && r.hostId === t && r.mode === 'versus' && r.state === 'lobby' && !r.ids[1] && !r.isCpu && r.ids[0] !== socket.id);
+    const tf = cleanFid(d && d.targetFid), tl = isLoginId(d && d.targetId) ? d.targetId : '';
+    const R = [...rooms.values()].find(r => (tf ? r.hostFid === tf : (tl && r.hostId === tl)) && r.mode === 'versus' && r.state === 'lobby' && !r.ids[1] && !r.isCpu && r.ids[0] !== socket.id);
     if (!R) return rp(cb)({ ok: false, err: 'フレンドは今ルームで待っていません' });
     joinRoom(socket, R, d, rp(cb));
   });
@@ -745,6 +770,7 @@ io.on('connection', socket => {
   socket.on('leave', () => { qRemove(socket.id); leaveRoom(socket); });
   socket.on('disconnect', () => {
     if (socket.nmId && byId.get(socket.nmId) === socket.id) byId.delete(socket.nmId);
+    if (socket.nmFid && byFid.get(socket.nmFid) === socket.id) byFid.delete(socket.nmFid);
     qRemove(socket.id); leaveRoom(socket);
   });
 });
