@@ -1,5 +1,5 @@
-// なにが目的なん？ ONLINE v4 — Express + Socket.io（サーバー権威型）
-// 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
+// なにが目的なん？ ONLINE v5 — Express + Socket.io（サーバー権威型）
+// 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 'use strict';
 const express = require('express');
 const http = require('http');
@@ -21,7 +21,10 @@ const COP_DX = 28, COP_BACK = -36, COP_FRONT = 40, COP_BLOCK = 70;
 const SAME = [-84, -28], ONC = [28, 84], LANES = [-84, -28, 28, 84];
 const STEER_ACC = 1500;  // 横移動の加速度（指の動きになめらかに追従）
 const DRIFT = 0.28;      // カーブで外側へ流される強さ
-const EMOTES = ['wave', 'thumbs', 'laugh', 'wheelie', 'dance', 'clap', 'bow', 'angry', 'cry', 'heart', 'sleep', 'gg'];
+const EMOTES = ['wave', 'thumbs', 'laugh', 'wheelie', 'dance', 'clap', 'bow', 'angry', 'cry', 'heart', 'sleep', 'gg',
+  'think', 'shock', 'cool', 'peace', 'flex', 'fire', 'party', 'crowne', 'rocket', 'hofe'];
+const BOT_AFTER = 18;    // ランクマッチ：この秒数だけ相手が見つからなければランクCPUと対戦
+const BOT_NAMES = ['チャリ太郎', 'ペダル姫', '坂道キング', 'ママチャリ番長', '立ちこぎ仮面', '風のミナト', 'ギア3速', 'サドル侍', '向かい風', 'ベル鳴らし'];
 const CPU_LINES = ['よろしく！', '負けないよ', 'ナイス！', 'GG！', '手加減しないよ', 'まだまだ！', 'いいね！'];
 
 /* ===== コースの形（クライアントと共通。[長さ, 曲がる角度(度)] の繰り返し） ===== */
@@ -60,7 +63,8 @@ const look = (d, defName) => {
   d = (d && typeof d === 'object') ? d : {};
   return {
     name: cleanName(d.name, defName), skin: clean(d.skin, 'default'), hair: clean(d.hair, 'default'), fit: clean(d.fit, 'default'),
-    acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, '')
+    acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, ''),
+    ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999)
   };
 };
 
@@ -93,7 +97,21 @@ function submitScore(id, name, score, lv) {
   return { best, rank: ranking.findIndex(r => r.id === id) + 1, improved };
 }
 const topN = n => ranking.slice(0, n).map(r => ({ id: r.id, name: r.name, score: r.score, lv: r.lv || 1 }));
-app.get('/api/ranking', (req, res) => res.json({ top: topN(50) }));
+// チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
+const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
+let rpBoard = [];
+try { const j = JSON.parse(fs.readFileSync(RP_FILE, 'utf8')); if (Array.isArray(j)) rpBoard = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.rp)).slice(0, 100); } catch (e) { /* 初回 */ }
+let rpTimer = null;
+function saveRp() { if (rpTimer) return; rpTimer = setTimeout(() => { rpTimer = null; fs.writeFile(RP_FILE, JSON.stringify(rpBoard), () => {}); }, 1500); }
+function submitRp(id, name, rp, lv, ttl) {
+  const i = rpBoard.findIndex(r => r.id === id);
+  if (i >= 0) { rp = Math.min(rp, rpBoard[i].rp + 60); rpBoard[i] = { id, name, rp, lv, ttl, ts: Date.now() }; }
+  else rpBoard.push({ id, name, rp, lv, ttl, ts: Date.now() });
+  rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp();
+  return rpBoard.findIndex(r => r.id === id) + 1;
+}
+const rpTop = n => rpBoard.slice(0, n).map(r => ({ id: r.id, name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie' }));
+app.get('/api/ranking', (req, res) => res.json({ top: topN(50), rp: rpTop(50) }));
 app.get('/api/sounds', (req, res) => {
   fs.readdir(path.join(__dirname, 'public', 'sounds'), (err, list) => {
     res.json({ files: err ? [] : list.filter(f => /^[\w-]+\.(mp3|m4a|ogg|wav)$/i.test(f)) });
@@ -247,7 +265,10 @@ function afterResult(R) {
     R.state = 'match';
     R.msg = 'MATCH WINNER: ' + R.names[w];
     R.sub = R.round >= 6 ? 'サドンデス決着' : '';
-    for (const i of [0, 1]) prog(R, i, 'match', { win: w === i });
+    for (const i of [0, 1]) {
+      prog(R, i, 'match', { win: w === i, ranked: !!R.ranked, bot: !!R.bot, oppRp: R.rps[1 - i] || 0 });
+      const sk = R.ranked && R.ids[i] && io.sockets.sockets.get(R.ids[i]); if (sk) sk.rkOk = true;   // RPランキングへの報告を1回だけ許可
+    }
     return;
   }
   R.round++; newRound(R);
@@ -257,7 +278,8 @@ function updateCpuInp(R) {
   const cpuSlot = 1, cpuP = R.P[cpuSlot], playerP = R.P[0];
   if (!cpuP) return;
   let targetX = cpuP.x;
-  const ahead = R.obs.filter(o => o.k !== 'cop' && (o.z - cpuP.z) > -20 && o.z - cpuP.z < 280 && Math.abs(o.x - cpuP.x) < 60);
+  const sk = R.skill == null ? 0.5 : R.skill;   // ランクCPUは相手のランクが高いほど上手くなる
+  const ahead = R.obs.filter(o => o.k !== 'cop' && (o.z - cpuP.z) > -20 && o.z - cpuP.z < 200 + sk * 160 && Math.abs(o.x - cpuP.x) < 60);
   const cop = R.obs.find(o => o.k === 'cop' && o.z < cpuP.z + 30 && cpuP.z - o.z < 320);
   if (cop && Math.abs(cop.x - cpuP.x) < 46) {
     targetX = cop.x > cpuP.x ? cop.x - 66 : cop.x + 66;
@@ -271,11 +293,14 @@ function updateCpuInp(R) {
     else targetX = (playerP.z - cpuP.z) < 50 ? playerP.x + (playerP.x > 0 ? -50 : 50) : playerP.x;
   }
   targetX = clamp(targetX, -HW + 14, HW - 14);
-  R.inp[cpuSlot] = { s: clamp((targetX - cpuP.x) / 40, -1, 1) };
+  R.inp[cpuSlot] = { s: clamp((targetX - cpuP.x) / (52 - sk * 22), -1, 1) };
   if (R.el >= 3) {
     if (R.att === cpuSlot) {
-      if (!cop && playerP && Math.abs(playerP.x - cpuP.x) < 30 && (cpuP.z - playerP.z) < 40 && cpuP.brakes > 0 && cpuP.brk <= 0 && Math.random() < 0.35) R.act[cpuSlot] = true;
-    } else if (cpuP.cd <= 0 && cpuP.boost <= 0) R.act[cpuSlot] = true;
+      if (!cop && playerP && Math.abs(playerP.x - cpuP.x) < 26 + sk * 10 && (cpuP.z - playerP.z) < 30 + sk * 20 && cpuP.brakes > 0 && cpuP.brk <= 0 && Math.random() < 0.15 + sk * 0.35) R.act[cpuSlot] = true;
+    } else if (cpuP.cd <= 0 && cpuP.boost <= 0) {
+      // 上手いCPUは前の攻撃側と横にずれたタイミングでブースト
+      if (sk < 0.45 || !playerP || Math.abs(playerP.x - cpuP.x) > 34 - sk * 10 || Math.random() < 0.03) R.act[cpuSlot] = true;
+    }
   }
 }
 function step(R, dt) {
@@ -350,7 +375,7 @@ function snapV(R, slot) {
   });
   return {
     mode: 'versus', s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    course: R.course || 0, bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names, lvs: R.lvs, fx: R.fx, P, obs: obsSnap(R)
+    course: R.course || 0, bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names, lvs: R.lvs, ranked: !!R.ranked, fx: R.fx, P, obs: obsSnap(R)
   };
 }
 
@@ -476,15 +501,16 @@ const owners = new Map(); // NM-ID -> 端末UUID（なりすまし防止の簡�
 function statusOf(id) {
   const sid = byId.get(id), sk = sid && io.sockets.sockets.get(sid);
   if (!sk) return 'offline';
+  if (rankQ.some(q => q.sid === sid)) return 'playing';
   const R = sk.data && rooms.get(sk.data.code);
   if (!R) return 'online';
   return (R.mode === 'versus' && !R.isCpu && !R.ids[1]) ? 'waiting' : 'playing';
 }
-function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; }
+function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
 function newRoom(code, socket, d, extra) {
   const R = Object.assign({
     code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
-    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], ready: [false, false],
+    accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
     course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), mode: 'versus', isCpu: false,
     inp: [{ s: 0 }, { s: 0 }], act: [false, false], actK: [null, null], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], nid: 1
   }, extra || {});
@@ -494,7 +520,7 @@ function newRoom(code, socket, d, extra) {
 function roomInfo(R, me) {
   return {
     code: R.code, me, course: R.course, state: R.state,
-    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], id: R.pids[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ready: !!R.ready[i] } : null)
+    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], id: R.pids[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
   };
 }
 function sendRoom(R) { for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('room', roomInfo(R, i)); }
@@ -502,14 +528,21 @@ function leaveRoom(socket) {
   const R = rooms.get(socket.data && socket.data.code);
   if (R) {
     const slot = socket.data.slot;
-    if (R.mode === 'versus' && !R.isCpu && slot === 1 && R.ids[0]) {
+    if (R.mode === 'versus' && !R.isCpu && !R.ranked && slot === 1 && R.ids[0]) {
       // ゲストが抜けた → ホストはルームロビーへ戻って次の相手を待つ
       R.ids[1] = null; R.ready = [false, false]; R.state = 'lobby'; R.P = []; R.obs = []; R.names[1] = 'プレイヤー2';
       io.to(R.ids[0]).emit('room_note', { t: 'guest_left' });
       sendRoom(R);
     } else {
       const other = R.ids[1 - slot];
-      if (other) { io.to(other).emit('left'); const os = io.sockets.sockets.get(other); if (os) os.data = {}; }
+      if (other) {
+        if (R.ranked && R.state !== 'match') {
+          // ランクマッチ中に相手が抜けた → 残った側の勝ち（抜けた側はクライアントで敗北扱い）
+          io.to(other).emit('rank_forfeit', { oppRp: R.rps[slot] || 0 });
+          const os2 = io.sockets.sockets.get(other); if (os2) os2.rkOk = true;
+        } else io.to(other).emit('left');
+        const os = io.sockets.sockets.get(other); if (os) os.data = {};
+      }
       rooms.delete(R.code);
     }
   }
@@ -527,10 +560,65 @@ function joinRoom(socket, R, d, reply) {
   reply({ ok: true });
   sendRoom(R);
 }
+const oppInfo = (R, i) => ({ name: R.names[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
 function startRoomMatch(R) {
   resetMatch(R);
-  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: true });
+  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: true, opp: oppInfo(R, 1 - i) });
 }
+
+/* =====================================================================
+   ランクマッチ（RPが近い相手と自動マッチング。見つからなければランクCPU）
+   ===================================================================== */
+const rankQ = [];   // { sid, rp, t0, d }
+const qRemove = sid => { const i = rankQ.findIndex(q => q.sid === sid); if (i >= 0) rankQ.splice(i, 1); };
+let rkSeq = 1;
+function startRanked(a, b) {
+  const sa = io.sockets.sockets.get(a.sid); if (!sa) return;
+  const code = 'RK_' + (rkSeq++);
+  const R = newRoom(code, sa, a.d, b ? { ranked: true } : { ranked: true, bot: true, isCpu: true });
+  R.course = Math.floor(Math.random() * PATHS.length);
+  R.rps[0] = a.rp;
+  if (b) {
+    const sb = io.sockets.sockets.get(b.sid); if (!sb) { rankQ.push(a); return; }
+    R.ids[1] = b.sid; setLook(R, 1, look(b.d, 'プレイヤー2')); R.rps[1] = b.rp;
+    sb.data = { code, slot: 1 };
+  } else {
+    const lv = R.lvs[0] || 1, pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    setLook(R, 1, {
+      name: pick(BOT_NAMES), skin: pick(['default', 'gold', 'cyber', 'ocean', 'neon', 'tiger', 'mint', 'sunset']), hair: pick(['helmet', 'short_b', 'spiky', 'pony', 'mohawk', 'bob']),
+      fit: pick(['jersey', 'racer', 'hoodie', 'happi', 'aloha', 'suit']), acc: pick(['none', 'cap', 'sunglass', 'goggles', 'headphone']), trail: pick(['none', 'fire', 'spark', 'bubble']),
+      lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
+    });
+    R.skill = clamp(0.25 + a.rp / 1700, 0.25, 0.95);
+  }
+  rooms.set(code, R);
+  sa.data = { code, slot: 0 };
+  resetMatch(R);
+  for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: false, ranked: true, opp: oppInfo(R, 1 - i) });
+}
+function tryMatch() {
+  const now = Date.now();
+  for (let i = rankQ.length - 1; i >= 0; i--) if (!io.sockets.sockets.get(rankQ[i].sid)) rankQ.splice(i, 1);
+  rankQ.sort((a, b) => a.t0 - b.t0);
+  for (let i = 0; i < rankQ.length; i++) {
+    const a = rankQ[i], wa = (now - a.t0) / 1000;
+    let best = -1, bd = 1e9;
+    for (let j = i + 1; j < rankQ.length; j++) {
+      const b = rankQ[j], w = Math.max(wa, (now - b.t0) / 1000), win = 150 + w * 25, d = Math.abs(a.rp - b.rp);
+      if (d <= win && d < bd) { bd = d; best = j; }
+    }
+    if (best >= 0) { const b = rankQ[best]; rankQ.splice(best, 1); rankQ.splice(i, 1); startRanked(a, b); return tryMatch(); }
+  }
+}
+setInterval(() => {
+  tryMatch();
+  const now = Date.now();
+  for (const q of rankQ.slice()) {
+    const w = (now - q.t0) / 1000;
+    if (w >= BOT_AFTER) { qRemove(q.sid); startRanked(q, null); continue; }
+    io.to(q.sid).emit('rank_wait', { t: Math.floor(w), n: rankQ.length, bot: BOT_AFTER });
+  }
+}, 1000);
 
 io.on('connection', socket => {
   socket.data = {};
@@ -552,18 +640,34 @@ io.on('connection', socket => {
   });
   socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30) }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
+  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30) }); });
+  socket.on('rank_report', (d, cb) => {
+    if (!socket.rkOk || !d) return rp(cb)({ ok: false });
+    socket.rkOk = false;
+    const id = clean(d.id, ''); if (!id) return rp(cb)({ ok: false });
+    rp(cb)({ ok: true, rank: submitRp(id, cleanName(d.name, 'プレイヤー'), clamp(parseInt(d.rp, 10) || 0, 0, 99999), clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
+  });
+  // ランクマッチの待ち行列に入る／抜ける
+  socket.on('rank_q', d => {
+    leaveRoom(socket); qRemove(socket.id);
+    const L = look(d, 'プレイヤー');
+    rankQ.push({ sid: socket.id, rp: L.rp, t0: Date.now(), d });
+    socket.emit('rank_wait', { t: 0, n: rankQ.length, bot: BOT_AFTER });
+    tryMatch();
+  });
+  socket.on('rank_cancel', () => qRemove(socket.id));
 
   socket.on('solo', d => {
-    leaveRoom(socket);
+    leaveRoom(socket); qRemove(socket.id);
     const code = 'SOLO_' + socket.id, R = newRoom(code, socket, d, { isCpu: true });
-    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '' });
+    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', ttl: 'rookie', pl: 'normal', rp: 0 });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
-    socket.emit('start', { slot: 0, course: R.course, mode: 'versus', room: false });
+    socket.emit('start', { slot: 0, course: R.course, mode: 'versus', room: false, opp: oppInfo(R, 1) });
   });
   socket.on('endless', d => {
-    leaveRoom(socket);
+    leaveRoom(socket); qRemove(socket.id);
     const code = 'RUN_' + socket.id, R = newRoom(code, socket, d, { mode: 'endless' });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
@@ -572,7 +676,7 @@ io.on('connection', socket => {
   });
   socket.on('create', (d, cb) => {
     if (typeof d === 'function') { cb = d; d = {}; }
-    leaveRoom(socket);
+    leaveRoom(socket); qRemove(socket.id);
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
     const R = newRoom(code, socket, d);
     R.state = 'lobby';
@@ -636,12 +740,12 @@ io.on('connection', socket => {
   socket.on('again', () => {
     const R = myRoom(); if (!R) return;
     if (R.mode === 'endless') { if (R.state === 'over') resetEndless(R); }
-    else if (R.state === 'match') resetMatch(R);
+    else if (R.state === 'match' && !R.ranked) resetMatch(R);   // ランクマッチは毎回マッチングし直す
   });
-  socket.on('leave', () => leaveRoom(socket));
+  socket.on('leave', () => { qRemove(socket.id); leaveRoom(socket); });
   socket.on('disconnect', () => {
     if (socket.nmId && byId.get(socket.nmId) === socket.id) byId.delete(socket.nmId);
-    leaveRoom(socket);
+    qRemove(socket.id); leaveRoom(socket);
   });
 });
 
