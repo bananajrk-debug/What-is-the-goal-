@@ -261,9 +261,30 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 /* ===== フレンドID・ウィークリー ===== */
 .fid-card{display:flex;align-items:center;gap:.7em;flex-wrap:wrap;background:linear-gradient(120deg,#1f7a4a,#1b4f8f);border:3px solid var(--ln);border-radius:16px;padding:.55em .8em;box-shadow:0 4px 0 var(--ln)}
 .fid-l{flex:1;min-width:12em;display:flex;flex-direction:column;gap:.1em}
-.fid-l b{font-size:1.55em;letter-spacing:.08em;color:#fff;text-shadow:0 2px 0 var(--ln);font-family:var(--D),var(--F)}
+.fid-l b{font-size:1.55em;color:#fff;text-shadow:0 2px 0 var(--ln)}
 .fid-l small{font-size:.75em;color:#d7ffe9}
 .fid-btns{display:flex;gap:.35em;flex-wrap:wrap}
+.fres{display:flex;align-items:center;gap:.5em;background:#1b2353;border:2px solid var(--ln);border-radius:10px;padding:.25em .5em;width:100%;color:#fff}
+.nameshow{flex:1;min-width:0;display:flex;align-items:center;background:#0b0f24;border:3px solid var(--ln);border-radius:12px;padding:.35em .7em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.idchip.warn{color:#ffb3a8}
+.nm-box{width:min(30em,94vw)}
+.nm-state{min-height:2.6em;font-size:.86em}
+.nm-state.good{color:#8cf08c}.nm-state.bad{color:#ff9a8f}
+#pv-body{display:flex;gap:.8em;align-items:stretch}
+#pv-body .cvbox{flex:1.4;min-height:12em}
+.pv-tabs{position:absolute;left:.4em;top:.4em;z-index:2;display:flex;gap:.25em}
+.pv-tabs .chip{font-size:.78em;padding:.2em .6em}
+#pv-info{flex:1;display:flex;flex-direction:column;gap:.4em;justify-content:center}
+#pv-name{font-size:1.3em}
+#pv-note{background:rgba(0,0,0,.3);border:2px solid var(--ln);border-radius:10px;padding:.3em .5em;font-size:.85em;color:#ffe56b}
+.pv-months{display:flex;gap:.4em;overflow-x:auto;padding:.2em 0 .3em;-webkit-overflow-scrolling:touch}
+.pvm{flex:0 0 auto;width:6.4em;border:3px solid var(--ln);border-radius:12px;background:#1b2353;color:#fff;padding:.2em;cursor:pointer;font-size:.72em;display:flex;flex-direction:column;align-items:center;gap:.1em}
+.pvm canvas{width:100%;border-radius:8px}
+.pvm.now{border-color:#ffd23f}
+.pvm.on{outline:3px solid #8cf08c;outline-offset:-1px;background:#2d3b8a}
+.wreward{cursor:pointer}
+.qrw{cursor:pointer;border-bottom:2px dotted rgba(255,255,255,.4)}
+@media (max-aspect-ratio:1/1){#pv-body{flex-direction:column}}
 #find-res{min-height:1.4em;display:flex;align-items:center;flex-wrap:wrap;gap:.3em}
 .fcode{font-size:.78em;color:#9fe0ff;letter-spacing:.04em}
 .wreward{display:flex;align-items:center;gap:.7em;background:linear-gradient(120deg,#5a2ca0,#2a1b6a);border:3px solid var(--ln);border-radius:16px;padding:.5em .7em;box-shadow:0 4px 0 var(--ln)}
@@ -304,7 +325,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <section id="pg-home" class="pg on">
       <div class="stage">
         <div class="cvbox"><canvas id="prev"></canvas><div class="emotes" id="home-emotes"></div></div>
-        <div class="namebar"><input id="pname" class="tx" maxlength="10" placeholder="プレイヤー名"><span class="idchip" id="disp-id">ID: ---</span></div>
+        <div class="namebar"><div class="nameshow"><b id="pname"></b></div><button id="pname-edit" class="btn sm blue">✏️ 名前を変更</button><span class="idchip" id="disp-id"></span></div>
       </div>
       <div class="side">
         <div class="rankwrap"><button id="rankbtn" class="rankbtn"><canvas id="rk-badge" width="120" height="120"></canvas><span class="rk-txt"><b><em>RANKED</em>ランクマッチ</b><small id="rk-sub">ブロンズ III ・ 0 RP</small><span class="rkbar"><i id="rk-fill"></i></span></span></button><button id="rk-info" class="rk-info" aria-label="ランク表">?</button></div>
@@ -356,10 +377,10 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <section id="pg-course" class="pg"><div class="scroll"><div class="grid" id="co-list" style="grid-template-columns:repeat(auto-fill,minmax(12em,1fr))"></div></div></section>
     <section id="pg-friends" class="pg">
       <div class="fid-card">
-        <div class="fid-l"><small>あなたのフレンドID（フレンド追加・招待専用）</small><b id="my-fid">F-XXXX-XXXX</b><small>ログインID（端末アカウント）とは別のIDです。人に教えるのはこのフレンドIDだけでOK。</small></div>
-        <div class="fid-btns"><button id="copy-fid" class="btn sm blue">IDをコピー</button><button id="invite-fid" class="btn sm green">招待リンクを送る</button><button id="reissue-fid" class="btn sm dark">再発行</button></div>
+        <div class="fid-l"><small>あなたのユーザー名（フレンドはこの名前であなたを検索します）</small><b id="my-name"></b><small id="my-name-st"></small></div>
+        <div class="fid-btns"><button id="copy-name" class="btn sm blue">名前をコピー</button><button id="invite-name" class="btn sm green">招待リンクを送る</button><button id="rename-btn" class="btn sm dark">✏️ 変更</button></div>
       </div>
-      <div class="row"><input id="add-friend-id" class="tx grow" maxlength="14" autocapitalize="characters" autocomplete="off" placeholder="フレンドIDで検索（F-XXXX-XXXX）"><button id="btn-find-friend" class="btn blue">検索</button><button id="btn-add-friend" class="btn green">追加</button></div>
+      <div class="row"><input id="add-friend-id" class="tx grow" maxlength="12" autocomplete="off" placeholder="フレンドのユーザー名で検索"><button id="btn-find-friend" class="btn blue">🔍 検索</button></div>
       <div id="find-res" class="muted"></div>
       <div class="scroll"><div id="friend-list-container" style="display:flex;flex-direction:column;gap:.35em"></div></div>
     </section>
@@ -371,6 +392,23 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <div id="im-body"><div class="cvbox"><canvas id="im-cv"></canvas></div>
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
+</div></div>
+<div id="name-modal" class="modal hide"><div class="box nm-box">
+  <b id="nm-title" style="font-size:1.2em">✏️ ユーザー名</b>
+  <div class="muted" id="nm-lead"></div>
+  <div class="row"><input id="nm-input" class="tx grow" maxlength="12" autocomplete="off" placeholder="ユーザー名（2〜10文字）"><button id="nm-auto" class="btn sm purple">🎲 おまかせ</button></div>
+  <div id="nm-state" class="nm-state muted"></div>
+  <div class="row"><button id="nm-ok" class="btn big green grow" disabled>この名前にする</button><button id="nm-cancel" class="btn big dark">閉じる</button></div>
+</div></div>
+<div id="pv-modal" class="modal hide"><div class="box wide">
+  <div class="row"><b class="grow" id="pv-head" style="font-size:1.1em"></b><button id="pv-close" class="btn sm dark">閉じる</button></div>
+  <div id="pv-body">
+    <div class="cvbox"><canvas id="pv-cv"></canvas><div class="pv-tabs" id="pv-tabs"><button class="chip on" data-v="side">横から</button><button class="chip" data-v="ride">走行中</button><button class="chip" data-v="win">勝利ポーズ</button></div></div>
+    <div id="pv-info"><span id="pv-rar"></span><b id="pv-name"></b><span id="pv-desc" class="muted"></span><span id="pv-note" class="hide"></span><span id="pv-state"></span>
+      <button id="pv-claim" class="btn big green hide">🎁 受け取る</button><button id="pv-equip" class="btn blue hide">装備する</button></div>
+  </div>
+  <div class="muted" style="font-size:.8em">季節限定スキンは毎月入れかわります（その月にウィークリーを全部クリアした人だけが手に入れられます）</div>
+  <div class="pv-months" id="pv-months"></div>
 </div></div>
 <div id="rk-modal" class="modal hide"><div class="box wide">
   <div class="row"><b class="grow" style="font-size:1.2em">🏆 チャリランク</b><button id="rk-close" class="btn sm dark">閉じる</button></div>
@@ -434,7 +472,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <button id="btn-fs" class="btn blue">⛶ 全画面にする（横向き固定）</button>
   <div class="sm-sec">
     <b>アカウント（この端末専用）</b>
-    <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ログインID（端末アカウント・引き継ぎ用。人には教えないでください）：<b id="sm-id" style="color:#fff"></b><br>フレンドID（公開用）：<b id="sm-fid" style="color:#9fe0ff"></b><br>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
+    <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ログインID（端末アカウント・引き継ぎ用。人には教えないでください）：<b id="sm-id" style="color:#fff"></b><br>ユーザー名（公開・重複不可）：<b id="sm-name" style="color:#9fe0ff"></b><br>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
     <button id="btn-export" class="btn sm dark">引き継ぎコードを表示</button>
     <textarea id="bk-code" class="tx hide" readonly></textarea>
     <div class="row"><button id="btn-copy-code" class="btn sm blue hide">コピー</button><button id="btn-import" class="btn sm">コードから復元</button></div>
@@ -663,12 +701,14 @@ const IDB={db:null,
   async get(k){const db=IDB.db||await IDB.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('kv','readonly').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});},
   async put(k,v){const db=IDB.db||await IDB.open();if(!db)return;try{db.transaction('kv','readwrite').objectStore('kv').put(v,k);}catch(e){}}};
 const six=()=>'NM-'+(100000+Math.floor(Math.random()*900000));   // ログインID（端末アカウント・人に教えない）
-const FID_CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';                      // まぎらわしい 0/O/1/I を除く
-function genFid(){const b=new Uint8Array(8);try{crypto.getRandomValues(b);}catch(e){for(let i=0;i<8;i++)b[i]=Math.random()*256|0;}let s='';for(let i=0;i<8;i++){s+=FID_CH[b[i]%32];if(i===3)s+='-';}return 'F-'+s;}   // フレンドID（公開用）
-const FID_RE=/^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/,LEGACY_RE=/^NM-[\w-]{3,20}$/;
-// 入力をフレンドIDの形に整える（小文字・空白・ハイフンなしでもOK）
-function normFid(v){const t=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^F(?=[A-Z0-9]{8}$)/,'');return t.length===8?'F-'+t.slice(0,4)+'-'+t.slice(4):'';}
-function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:genFid(),fnames:{},created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
+// フレンドは「ユーザー名」で検索・追加（v6までのフレンドIDは廃止。古い登録は自動で移行）
+const FID_RE=/^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/,LEGACY_RE=/^NM-[\w-]{3,20}$/,PK_RE=/^[0-9a-f]{16}$/;
+const isLegacyF=k=>FID_RE.test(k)||LEGACY_RE.test(k);
+// ユーザー名のルール（サーバーと同じ）：2〜10文字、文字・数字・「ー・_-」のみ
+function validName(v){if(typeof v!=='string')return '';const n=v.normalize('NFKC').trim(),len=[...n].length;if(len<2||len>10)return '';try{if(!/^[\p{L}\p{N}ー・_\-]+$/u.test(n))return '';}catch(e){if(/[\s<>&"'`\\]/.test(n))return '';}return n;}
+const NAME_RULE='2〜10文字。ひらがな・カタカナ・漢字・英数字と「ー・_-」が使えます（スペース・絵文字は不可）';
+const NAME_WHY={invalid:NAME_RULE,taken:'その名前は他のプレイヤーが使っています',reserved:'その名前は使えません',busy:'少し待ってからもう一度どうぞ',nohello:'サーバーに接続中です…',offline:'サーバーに接続できません'};
+function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
   inv:{skin:['default'],hair:['default'],fit:['default'],acc:['none'],trail:['none'],emote:['wave','thumbs','laugh','wheelie'],se:['none','bell'],bgm:['default'],wfx:['confetti']},
   eq:{skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
@@ -688,10 +728,16 @@ function fixSave(s){
   o.coins=num(o.coins,0,1e9,0);o.xp=num(o.xp,0,1e9,0);o.lv=num(o.lv,1,99,1);o.best=num(o.best,0,1e9,0);o.course=num(o.course,0,COURSES.length-1,0);
   o.sens=isFinite(+o.sens)?clamp(+o.sens,.6,1.6):1;
   o.name=(typeof o.name==='string'&&o.name.trim())?o.name.trim().slice(0,10):'プレイヤー';
-  o.friends=[...new Set((Array.isArray(o.friends)?o.friends:[]).filter(f=>typeof f==='string'&&(FID_RE.test(f)||LEGACY_RE.test(f))))].slice(0,50);
-  if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid=genFid();
-  o.friends=o.friends.filter(f=>f!==o.fid&&f!==o.id);
-  const fn={};if(o.fnames&&typeof o.fnames==='object')for(const k in o.fnames)if(o.friends.includes(k)&&typeof o.fnames[k]==='string')fn[k]=o.fnames[k].slice(0,10);o.fnames=fn;
+  // フレンド：{k:内部キー（または旧ID）, n:最後に見えたユーザー名}
+  const fnOld=(o.fnames&&typeof o.fnames==='object')?o.fnames:{},seen=new Set(),fl=[];
+  for(const f of (Array.isArray(o.friends)?o.friends:[])){
+    const e=typeof f==='string'?{k:f,n:typeof fnOld[f]==='string'?fnOld[f]:''}:(f&&typeof f==='object'?{k:String(f.k||''),n:typeof f.n==='string'?f.n:''}:null);
+    if(!e||!(PK_RE.test(e.k)||isLegacyF(e.k))||seen.has(e.k)||e.k===o.fid||e.k===o.id)continue;
+    seen.add(e.k);e.n=e.n.slice(0,10);fl.push(e);if(fl.length>=50)break;
+  }
+  o.friends=fl;delete o.fnames;
+  if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid='';   // 旧フレンドID：自分を登録してくれていた人の移行用にだけ残す
+  o.nameReg=!!o.nameReg;
   o.slots=(Array.isArray(o.slots)?o.slots:d.slots).filter(k=>o.inv.emote.includes(k)).slice(0,4);
   for(const k of d.slots)if(o.slots.length<4&&!o.slots.includes(k))o.slots.push(k);
   o.stats=(o.stats&&typeof o.stats==='object')?o.stats:{};for(const k in o.stats)o.stats[k]=num(o.stats[k],0,1e12,0);
@@ -1517,7 +1563,7 @@ function drawPlate(c,x,y,w,h,o,t){
 let page='home',lockCat='skin',shopCat='skin',fStatus={};
 const emoteState={home:null,lk:null,im:null};
 function fitCv(cv){const d=Math.min(devicePixelRatio||1,2),w=Math.max(1,cv.clientWidth*d|0),h=Math.max(1,cv.clientHeight*d|0);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}return d;}
-function payload(){return Object.assign({name:SV.name,id:SV.id,fid:SV.fid,lv:SV.lv,course:SV.course,ttl:myTitle(),pl:myPlate(),rp:SV.rp},myLook());}
+function payload(){return Object.assign({name:SV.name,id:SV.id,lv:SV.lv,course:SV.course,ttl:myTitle(),pl:myPlate(),rp:SV.rp},myLook());}
 function updateTop(){
   $('disp-coin').textContent=SV.coins.toLocaleString();
   $('lv-num').textContent='Lv'+SV.lv;$('xp-fill').style.width=(SV.lv>=99?100:SV.xp/xpNeed(SV.lv)*100)+'%';
@@ -1541,14 +1587,51 @@ function updateHome(){
   $('cname').textContent=COURSES[SV.course].n;$('home-best').textContent='ベスト '+SV.best.toLocaleString();
   const ri=rankInfo(SV.rp);$('rk-sub').textContent=ri.name+' ・ '+SV.rp+' RP'+(SV.rkStreak>1?' ・ 🔥'+SV.rkStreak+'連勝':'');$('rk-fill').style.width=(ri.prog*100)+'%';
   const bc=$('rk-badge'),bg=bc.getContext('2d');bg.setTransform(1,0,0,1,0,0);bg.clearRect(0,0,120,120);drawRankBadge(bg,60,62,96,ri.i,performance.now(),ri.div);
-  $('disp-id').textContent='フレンドID: '+SV.fid;$('pname').value=SV.name;
+  $('pname').textContent=SV.name;$('disp-id').textContent=SV.nameReg?'✔ ユーザー名 登録済み':'⚠ ユーザー名 未登録';$('disp-id').classList.toggle('warn',!SV.nameReg);
   const wd=weeklyItems().filter(d=>d.done).length,sn=seasonNow(),wb=$('wk-banner');
   wb.innerHTML='';const wi=document.createElement('span');wi.textContent=sn.i;const wt=document.createElement('span');wt.className='grow';
   wt.textContent=SV.weekly.rw?'今週のウィークリー完走！ 来週もがんばろう':'ウィークリー '+wd+'/5 クリアで「'+SKINS[sn.key].n+'」';wb.append(wi,wt);
   renderEmoteBar('home-emotes',k=>useLobbyEmote('home',k));renderQuickFriends();
 }
-let helloT=null;
-$('pname').addEventListener('input',()=>{SV.name=($('pname').value.trim()||'プレイヤー').slice(0,10);save();clearTimeout(helloT);helloT=setTimeout(()=>hello(),800);});
+/* ===== ユーザー名（重複不可。サーバーの名簿に登録して使う） ===== */
+let NM=null,nmT=null;
+const nkey=n=>String(n).normalize('NFKC').toLowerCase().replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60)).replace(/\s+/g,'');
+function nmState(txt,cls){const e=$('nm-state');e.textContent=txt;e.className='nm-state '+(cls||'muted');}
+function openNameModal(force,reason,suggest){
+  NM={force:!!force,ok:false};
+  const first=force&&(!SV.nameReg)&&(SV.name==='プレイヤー'||reason==='reserved'&&nkey(SV.name)===nkey('プレイヤー'));
+  $('nm-title').textContent=first?'👋 はじめまして！ユーザー名を決めよう':'✏️ ユーザー名';
+  $('nm-lead').textContent=(reason==='taken'&&force?'「'+SV.name+'」は他のプレイヤーが使っているため、新しい名前を決めてください。':'')+'フレンドはこの名前であなたを検索・追加します。ほかのプレイヤーと同じ名前は使えません。';
+  $('nm-cancel').classList.toggle('hide',NM.force&&socket.connected);   // 未登録のときは決めるまで閉じない（オフライン時のみ閉じられる）
+  const v=first||reason?(suggest||''):SV.name;$('nm-input').value=v;
+  $('name-modal').classList.remove('hide');
+  if(v)checkName();else nmState(NAME_RULE);
+  if(!v)socket.emit('name_suggest',{},r=>{if(NM&&r&&r.name&&!$('nm-input').value){$('nm-input').value=r.name;checkName();}});
+}
+function closeNameModal(){NM=null;$('name-modal').classList.add('hide');}
+function checkName(){
+  if(!NM)return;NM.ok=false;$('nm-ok').disabled=true;
+  const n=validName($('nm-input').value);
+  if(!n){nmState('✖ '+NAME_RULE,'bad');return;}
+  if(SV.nameReg&&nkey(n)===nkey(SV.name)&&n===SV.name){nmState('いまのユーザー名です','muted');return;}
+  if(!socket.connected){nmState(NAME_WHY.offline,'bad');return;}
+  nmState('確認中…');
+  socket.emit('name_check',n,r=>{if(!NM||validName($('nm-input').value)!==n)return;
+    if(r&&r.ok){NM.ok=true;$('nm-ok').disabled=false;nmState('✅「'+n+'」は使えます','good');}else nmState('✖ '+(NAME_WHY[r&&r.reason]||NAME_RULE),'bad');});
+}
+$('nm-input').addEventListener('input',()=>{clearTimeout(nmT);nmT=setTimeout(checkName,300);});
+$('nm-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!$('nm-ok').disabled)$('nm-ok').onclick();}});
+$('nm-auto').onclick=()=>{initAudio();socket.emit('name_suggest',{},r=>{if(r&&r.name){$('nm-input').value=r.name;checkName();}});};
+$('nm-ok').onclick=()=>{
+  const n=validName($('nm-input').value);if(!n||!NM||!NM.ok)return;
+  $('nm-ok').disabled=true;nmState('登録中…');
+  socket.emit('name_claim',n,r=>{
+    if(r&&r.ok){SV.name=r.name;SV.nameReg=true;saveNow();if(AU.ctx)SFX.claim();toast('ユーザー名を「'+r.name+'」にしました');closeNameModal();updateHome();if(page==='friends')renderFriends();}
+    else{nmState('✖ '+(NAME_WHY[r&&r.reason]||NAME_RULE),'bad');if(r&&r.suggest&&r.reason==='taken')nmState('✖ '+NAME_WHY.taken+'（例：'+r.suggest+'）','bad');$('nm-ok').disabled=false;}
+  });
+};
+$('nm-cancel').onclick=()=>{if(NM&&!NM.force)closeNameModal();};
+$('pname-edit').onclick=()=>{initAudio();openNameModal(false);};
 function setCourse(i){SV.course=(i+COURSES.length)%COURSES.length;save();$('cname').textContent=COURSES[SV.course].n;if(page==='course')renderCourse();}
 $('cprev').onclick=()=>setCourse(SV.course-1);$('cnext').onclick=()=>setCourse(SV.course+1);
 
@@ -1832,8 +1915,9 @@ function renderQuests(){
   const wb=$('q-weekly');wb.innerHTML='';
   weeklyItems().forEach(({q,v,done,claimed})=>{
     const el=document.createElement('div');el.className='qcard week'+(claimed?' done':'');
-    el.innerHTML='<span class="qi">'+q.i+'</span><div class="qb"><b class="qn"></b><div class="qbar"><i style="width:'+(v/q.goal*100)+'%"></i></div><span class="muted">'+v.toLocaleString()+' / '+q.goal.toLocaleString()+'</span></div><div class="qr"><span><span class="coin">NC</span> '+q.c+'　+'+q.xp+'XP</span></div>';
+    el.innerHTML='<span class="qi">'+q.i+'</span><div class="qb"><b class="qn"></b><div class="qbar"><i style="width:'+(v/q.goal*100)+'%"></i></div><span class="muted">'+v.toLocaleString()+' / '+q.goal.toLocaleString()+'</span></div><div class="qr"><span class="qrw" title="タップで報酬をプレビュー">🎁 <span class="coin">NC</span> '+q.c+'　+'+q.xp+'XP</span></div>';
     el.querySelector('.qn').textContent=q.n;
+    el.querySelector('.qrw').onclick=ev=>{ev.stopPropagation();initAudio();openPreview(null,'このクエストの報酬：'+q.c+' NC ＋ '+q.xp+' XP。ウィークリー5つを全部クリアすると、この限定スキンももらえます。');};
     const b=document.createElement('button');b.className='btn sm '+(done&&!claimed?'green':'dark');b.textContent=claimed?'受取済み':done?'受け取る':'挑戦中';b.disabled=!done||claimed;
     b.onclick=()=>{SV.weekly.claimed[q.id]=true;SV.coins+=q.c;if(AU.ctx)SFX.claim();toast('+'+q.c+' NC を受け取りました');addXP(q.xp);save();renderQuests();};
     el.querySelector('.qr').appendChild(b);wb.appendChild(el);
@@ -1863,14 +1947,82 @@ function renderWeekReward(){
   g.fillStyle='rgba(255,215,80,.18)';g.beginPath();g.arc(cv.width/2,cv.height*.55,cv.height*.48,0,7);g.fill();
   const lk=myLook();lk.skin=sn.key;drawSide(g,cv.width,cv.height,lk,600,1.05,{idle:true});
   if(!own&&!SV.weekly.rw){g.font='900 '+(cv.height*.12|0)+'px '+FONT;g.textAlign='left';g.textBaseline='top';g.lineWidth=4;g.strokeStyle=OUTL;g.strokeText('LIMITED',8,6);g.fillStyle='#ffe56b';g.fillText('LIMITED',8,6);}
+  g.font='900 '+(cv.height*.1|0)+'px '+FONT;g.textAlign='right';g.textBaseline='bottom';g.lineWidth=4;g.strokeStyle=OUTL;g.strokeText('🔍 タップでプレビュー',cv.width-6,cv.height-4);g.fillStyle='#fff';g.fillText('🔍 タップでプレビュー',cv.width-6,cv.height-4);
 }
-$('qw-claim').onclick=()=>{
-  initAudio();if(!weeklyAllDone()||SV.weekly.rw)return;
+function claimWeekly(fromPreview){
+  initAudio();if(!weeklyAllDone()||SV.weekly.rw)return false;
   const sn=seasonNow(),k=sn.key;SV.weekly.rw=true;SV.weekly.rwKey=k;
-  if(!SV.inv.skin.includes(k)){SV.inv.skin.push(k);saveNow();if(AU.ctx)(SFX.fan||SFX.win)();toast('🎁 季節限定スキン「'+SKINS[k].n+'」を手に入れた！',3200);renderQuests();openItem('skin',k);}
+  if(!SV.inv.skin.includes(k)){SV.inv.skin.push(k);saveNow();if(AU.ctx)(SFX.fan||SFX.win)();toast('🎁 季節限定スキン「'+SKINS[k].n+'」を手に入れた！',3200);renderQuests();if(!fromPreview)openItem('skin',k);}
   else{SV.coins+=WEEK_DUP_COINS;saveNow();if(AU.ctx)SFX.claim();toast('🎁 ウィークリー完走！ +'+WEEK_DUP_COINS+' NC（スキンは所持済み）',3200);renderQuests();}
-  updateTop();questChanged();
-};
+  updateTop();questChanged();return true;
+}
+$('qw-claim').onclick=e=>{e.stopPropagation();claimWeekly(false);};
+document.querySelector('.wreward').addEventListener('click',()=>{initAudio();if(AU.ctx)SFX.click();openPreview(null);});
+
+/* =====================================================================
+   報酬プレビュー（ウィークリー完走報酬のスキンを「横から／走行中／勝利ポーズ」で確認）
+   ===================================================================== */
+let PV=null;
+function openPreview(key,note){
+  PV={key:key||seasonNow().key,view:'side',t0:performance.now(),note:note||''};
+  document.querySelectorAll('#pv-tabs .chip').forEach(b=>b.classList.toggle('on',b.dataset.v==='side'));
+  renderPreviewInfo();$('pv-modal').classList.remove('hide');buildPreviewMonths();
+}
+function closePreview(){PV=null;$('pv-modal').classList.add('hide');}
+function renderPreviewInfo(){
+  if(!PV)return;const it=SKINS[PV.key],sn=seasonNow(),cur=PV.key===sn.key,own=SV.inv.skin.includes(PV.key),n=weeklyItems().filter(d=>d.done).length;
+  $('pv-head').textContent=cur?'📅 '+sn.m+'月のウィークリー完走報酬':'📅 '+it.ev+'月の季節限定スキン';
+  $('pv-rar').innerHTML='<span class="rar4">LEGEND</span> ・ 乗り物（季節限定・見た目のみ）';
+  $('pv-name').textContent=it.deco+' '+it.n;
+  $('pv-desc').textContent=cur?(SV.weekly.rw?'今週の完走報酬は受け取り済みです。':'今週のウィークリークエストを5つ全部クリアすると手に入ります（いま '+n+'/5 クリア）。'+(own?'すでに持っているので、今週は代わりに '+WEEK_DUP_COINS+' NC がもらえます。':'')):it.ev+'月になると、ウィークリー完走報酬として登場します。';
+  $('pv-note').textContent=PV.note;$('pv-note').classList.toggle('hide',!PV.note);
+  $('pv-state').textContent=own?'✅ 所持済み':'🔒 まだ持っていません';
+  $('pv-claim').classList.toggle('hide',!(cur&&weeklyAllDone()&&!SV.weekly.rw));
+  const eq=$('pv-equip');eq.classList.toggle('hide',!own);eq.disabled=SV.eq.skin===PV.key;eq.textContent=SV.eq.skin===PV.key?'装備中':'装備する';
+}
+function buildPreviewMonths(){
+  const box=$('pv-months');box.innerHTML='';const sn=seasonNow();
+  SEASON.forEach((S,i)=>{
+    const d=document.createElement('button');d.className='pvm'+(S.key===PV.key?' on':'')+(S.key===sn.key?' now':'');
+    const cv=document.createElement('canvas');cv.width=150;cv.height=96;drawThumb(cv,'skin',S.key,600);d.appendChild(cv);
+    const lb=document.createElement('span');lb.textContent=(i+1)+'月'+(S.key===sn.key?'（今月）':'')+(SV.inv.skin.includes(S.key)?' ✅':'');d.appendChild(lb);
+    d.onclick=()=>{if(AU.ctx)SFX.click();PV.key=S.key;PV.t0=performance.now();renderPreviewInfo();box.querySelectorAll('.pvm').forEach(x=>x.classList.toggle('on',x===d));};
+    box.appendChild(d);
+  });
+  const c=box.querySelector('.pvm.on')||box.querySelector('.pvm.now');if(c)box.scrollLeft=Math.max(0,c.offsetLeft-box.clientWidth/2+c.clientWidth/2);   // 選択中（今月）が見えるようにスクロール
+}
+document.querySelectorAll('#pv-tabs .chip').forEach(b=>b.onclick=()=>{if(!PV)return;if(AU.ctx)SFX.click();PV.view=b.dataset.v;PV.t0=performance.now();document.querySelectorAll('#pv-tabs .chip').forEach(x=>x.classList.toggle('on',x===b));});
+$('pv-close').onclick=closePreview;
+$('pv-modal').addEventListener('click',e=>{if(e.target.id==='pv-modal')closePreview();});
+$('pv-claim').onclick=()=>{if(claimWeekly(true)){renderPreviewInfo();buildPreviewMonths();PV.view='win';PV.t0=performance.now();document.querySelectorAll('#pv-tabs .chip').forEach(x=>x.classList.toggle('on',x.dataset.v==='win'));}};
+$('pv-equip').onclick=()=>{if(!PV||!SV.inv.skin.includes(PV.key))return;equip('skin',PV.key);renderPreviewInfo();toast(SKINS[PV.key].n+' を装備しました');};
+// 走行中のようす（道路を後ろから見下ろす本番と同じ描画）
+function renderPreviewRide(cvs,lk,t){
+  const d=fitCv(cvs),sc=ctx,sW=W,sH=H,sCam=Object.assign({},CAM),sCW=Object.assign({},CAMW),sP=CURP,sParts=parts3,sDec=decals;
+  ctx=cvs.getContext('2d');W=cvs.width/d;H=cvs.height/d;ctx.setTransform(d,0,0,d,0,0);parts3=[];decals=[];
+  const ci=SV.course,e=(t-PV.t0)/1000;useCourse(ci);
+  const z=300+(e*125)%3200,x=Math.sin(e*.9)*34,boost=(e%5)>3.4;
+  CAM.ok=false;setCam(x,z,125,.016,true);
+  const p=Object.assign({x,z,v:boost?190:125,_ph:e*8*(boost?1.5:1),_lean:-Math.cos(e*.9)*.16,boost:boost?1:0},lk);
+  try{renderWorld(ci,{obs:[],P:[p]},t,0,null);}catch(err){console.error(err);}
+  ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;RMz=NaN;parts3=sParts;decals=sDec;
+}
+function drawPreview(t){
+  const cv=$('pv-cv'),lk=myLook();lk.skin=PV.key;
+  if(PV.view==='ride'){renderPreviewRide(cv,lk,t);return;}
+  const d=fitCv(cv),g=cv.getContext('2d'),w=cv.width/d,h=cv.height/d;g.setTransform(d,0,0,d,0,0);
+  if(PV.view==='side'){
+    stageBg(g,w,h,t,COURSES[SV.course],true);
+    g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(w/2,h*.92,w*.34,h*.06,0,0,7);g.fill();
+    drawSide(g,w,h*.97,lk,t,1,{trail:true});
+  }else{
+    const bg=g.createRadialGradient(w/2,h*.55,8,w/2,h*.55,Math.max(w,h)*.7);bg.addColorStop(0,'#5a3fc0');bg.addColorStop(1,'#120c30');g.fillStyle=bg;g.fillRect(0,0,w,h);
+    g.save();g.translate(w/2,h*.6);for(let i=0;i<14;i++){g.rotate(Math.PI/7);g.fillStyle='rgba(255,220,90,.1)';g.beginPath();g.moveTo(0,0);g.lineTo(w,-26);g.lineTo(w,26);g.fill();}g.restore();
+    g.fillStyle='#ffd23f';g.strokeStyle=OUTL;g.lineWidth=3;g.beginPath();g.ellipse(w/2,h*.9,w*.3,h*.06,0,0,7);g.fill();g.stroke();
+    const per=3.2,ph=((t-PV.t0)/1000)%per;drawSide(g,w,h*.97,lk,t,1,{idle:true,emote:{k:(((t-PV.t0)/1000/per)|0)%2?'dance':'gg',t0:t-ph*1000}});
+    drawWfx(g,w,h,SV.eq.wfx||'confetti',t-PV.t0,1);
+  }
+}
 
 /* ===== ホームのプレビュー（選択中コースの空と街並みを背景に） ===== */
 function stageBg(c,w,h,t,T,scroll){
@@ -1937,24 +2089,25 @@ $('rk-modal').addEventListener('click',e=>{if(e.target.id==='rk-modal')$('rk-mod
 $('rank-reload').onclick=loadRanking;
 
 /* =====================================================================
-   フレンド（フレンドID F-XXXX-XXXX で検索・招待。ログインIDとは別）
+   フレンド（ユーザー名で検索・追加。名前を変えても内部キーで追いかける）
    ===================================================================== */
 const FL={online:'🟢 オンライン',waiting:'🟡 ルームで待機中（参加できます）',playing:'🔴 プレイ中',offline:'⚪ オフライン'};
-const fst=f=>(fStatus[f]&&fStatus[f].s)||'offline';
-const fname=f=>(fStatus[f]&&fStatus[f].name)||SV.fnames[f]||'';
-function joinFriend(f){
-  initAudio();const tg=FID_RE.test(f)?{targetFid:f}:{targetId:f};
-  socket.emit('join_friend',Object.assign(tg,payload()),r=>{if(!r||!r.ok){toast((r&&r.err)||'参加できません');pollFriends();}});
+const fst=e=>(fStatus[e.k]&&fStatus[e.k].s)||'offline';
+const fname=e=>(fStatus[e.k]&&fStatus[e.k].name)||e.n||'';
+const isFriend=k=>SV.friends.some(e=>e.k===k);
+function joinFriend(e){
+  initAudio();if(!PK_RE.test(e.k)){toast('この相手が新しいバージョンでログインすると参加できるようになります');return;}
+  socket.emit('join_friend',Object.assign({targetPk:e.k},payload()),r=>{if(!r||!r.ok){toast((r&&r.err)||'参加できません');pollFriends();}});
 }
 function pollFriends(){
   if(!SV.friends.length){fStatus={};renderFriends();return;}
-  socket.emit('friends_status',SV.friends,m=>{
+  socket.emit('friends_status',SV.friends.map(e=>e.k),m=>{
     fStatus=m||{};let changed=false;
-    for(const f of SV.friends.slice()){const st=fStatus[f];if(!st)continue;
-      if(st.name&&SV.fnames[f]!==st.name){SV.fnames[f]=st.name;changed=true;}
-      if(LEGACY_RE.test(f)&&st.fid&&FID_RE.test(st.fid)){   // 旧ID（ログインID）で登録していた相手 → 相手の新しいフレンドIDへ自動で切り替え
-        const i=SV.friends.indexOf(f);if(SV.friends.includes(st.fid)||st.fid===SV.fid)SV.friends.splice(i,1);else SV.friends[i]=st.fid;
-        if(st.name)SV.fnames[st.fid]=st.name;delete SV.fnames[f];fStatus[st.fid]=st;changed=true;}
+    for(const e of SV.friends.slice()){const st=fStatus[e.k];if(!st)continue;
+      if(st.name&&e.n!==st.name){e.n=st.name;changed=true;}             // 相手が名前を変えたら表示も追従
+      if(isLegacyF(e.k)&&st.pk&&PK_RE.test(st.pk)){                    // v6以前のフレンド登録 → 新しい仕組みへ自動移行
+        if(isFriend(st.pk))SV.friends.splice(SV.friends.indexOf(e),1);else{const old=e.k;e.k=st.pk;fStatus[st.pk]=st;delete fStatus[old];}
+        changed=true;}
     }
     if(changed)save();renderFriends();renderQuickFriends();
   });
@@ -1962,76 +2115,80 @@ function pollFriends(){
 setInterval(()=>{if(SV&&!inGame&&!ROOM&&$('lobby').style.display!=='none'&&SV.friends.length)pollFriends();},4000);
 function renderQuickFriends(){
   const qf=$('quick-friends');qf.innerHTML='';
-  SV.friends.filter(f=>fst(f)==='waiting').forEach(f=>{const q=document.createElement('button');q.className='btn green';q.textContent='⚡ '+(fname(f)||f)+' のルームにワンタップ参加';q.onclick=()=>joinFriend(f);qf.appendChild(q);});
+  SV.friends.filter(e=>fst(e)==='waiting'&&PK_RE.test(e.k)).forEach(e=>{const q=document.createElement('button');q.className='btn green';q.textContent='⚡ '+(fname(e)||'フレンド')+' のルームにワンタップ参加';q.onclick=()=>joinFriend(e);qf.appendChild(q);});
 }
-function addFriend(f,name,quiet){
-  f=normFid(f)||f;
-  if(!FID_RE.test(f)){toast('フレンドIDは「F-XXXX-XXXX」の形です');return false;}
-  if(f===SV.fid){toast('自分のフレンドIDです');return false;}
-  if(SV.friends.includes(f)){if(!quiet)toast('すでにフレンドです');return false;}
+function addFriend(pk,name,quiet){
+  if(!PK_RE.test(pk)){toast('このプレイヤーは追加できません');return false;}
+  if(isFriend(pk)){if(!quiet)toast('すでにフレンドです');return false;}
   if(SV.friends.length>=50){toast('フレンドは50人までです');return false;}
-  SV.friends.push(f);if(name)SV.fnames[f]=String(name).slice(0,10);save();
-  if(!quiet)toast((name?name+'（'+f+'）':f)+' をフレンドに追加しました');
+  SV.friends.push({k:pk,n:String(name||'').slice(0,10)});save();
+  if(!quiet)toast((name||'プレイヤー')+' をフレンドに追加しました');
   if(AU.ctx)SFX.pop();pollFriends();questChanged();renderRoomControls();
   return true;
 }
 function renderFriends(){
-  $('my-fid').textContent=SV.fid;
+  $('my-name').textContent=SV.name;$('my-name-st').textContent=SV.nameReg?'✔ 登録済み（ほかの人は使えません）':'⚠ まだ登録されていません';
+  $('invite-name').disabled=!SV.nameReg;
   const box=$('friend-list-container');box.innerHTML='';
-  if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。相手のフレンドIDを入力するか、招待リンクを送ってもらおう。';box.appendChild(p);}
-  SV.friends.forEach(f=>{
-    const st=fst(f),it=document.createElement('div'),nm=fname(f),leg=LEGACY_RE.test(f);it.className='friend-item';
-    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=nm?nm+'　':'';const code=document.createElement('span');code.className='fcode';code.textContent=leg?'旧ID登録':f;b.appendChild(code);
-    const sm=document.createElement('small');sm.textContent=FL[st]+(leg?'（相手が新バージョンでログインすると、フレンドIDに自動で切り替わります）':'');fn.append(b,sm);
-    const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting';j.onclick=()=>joinFriend(f);
+  if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。上の検索で相手のユーザー名を入れて追加しよう。';box.appendChild(p);}
+  SV.friends.forEach(e=>{
+    const st=fst(e),nm=fname(e),leg=isLegacyF(e.k),it=document.createElement('div');it.className='friend-item';
+    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=nm||'（名前を確認中）';
+    const sm=document.createElement('small');sm.textContent=FL[st]+(leg?'　※以前のフレンド登録：相手が新バージョンでログインすると自動で切り替わります':'');fn.append(b,sm);
+    const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting'||leg;j.onclick=()=>joinFriend(e);
     const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';
-    let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}SV.friends=SV.friends.filter(x=>x!==f);delete SV.fnames[f];save();renderFriends();};
+    let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}SV.friends=SV.friends.filter(x=>x!==e);save();renderFriends();};
     it.append(fn,j,del);box.appendChild(it);
   });
   renderQuickFriends();
 }
-$('add-friend-id').addEventListener('input',()=>{$('find-res').textContent='';});
+function friendRow(r){
+  const row=document.createElement('div');row.className='fres';
+  const t=document.createElement('span');t.className='grow';t.textContent=(FL[r.s]||FL.offline).slice(0,2)+' '+r.name+(r.lv?'（Lv'+r.lv+'）':'');row.appendChild(t);
+  const b=document.createElement('button');b.className='btn sm '+(r.me||isFriend(r.pk)?'dark':'green');
+  b.textContent=r.me?'あなた':isFriend(r.pk)?'フレンド':'＋ 追加';b.disabled=r.me||isFriend(r.pk);
+  b.onclick=()=>{if(addFriend(r.pk,r.name)){b.textContent='フレンド';b.disabled=true;b.className='btn sm dark';}};
+  row.appendChild(b);return row;
+}
 $('add-friend-id').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btn-find-friend').onclick();}});
 $('btn-find-friend').onclick=()=>{
-  initAudio();const raw=$('add-friend-id').value.trim(),f=normFid(raw),out=$('find-res');out.innerHTML='';
-  if(LEGACY_RE.test(raw.toUpperCase())){out.textContent='それはログインIDです。フレンド追加には相手の「フレンドID（F-XXXX-XXXX）」を使ってください。';return;}
-  if(!f){out.textContent='フレンドIDは「F-XXXX-XXXX」の形です（ハイフンや小文字は自動で直します）';return;}
-  $('add-friend-id').value=f;
-  if(f===SV.fid){out.textContent='これはあなた自身のフレンドIDです';return;}
+  initAudio();const q=$('add-friend-id').value.normalize('NFKC').trim(),out=$('find-res');out.innerHTML='';
+  if(!q){out.textContent='相手のユーザー名を入力してください';return;}
+  if(!socket.connected){out.textContent=NAME_WHY.offline;return;}
   out.textContent='検索中…';
-  socket.emit('friend_lookup',f,r=>{
-    out.innerHTML='';const sp=document.createElement('span');
-    if(r&&r.found){sp.textContent='🟢 見つかりました：'+r.name+'（Lv'+r.lv+'）'+(SV.friends.includes(f)?'　すでにフレンドです':'');out.appendChild(sp);
-      if(!SV.friends.includes(f)){const b=document.createElement('button');b.className='btn sm green';b.textContent='追加する';b.style.marginLeft='.5em';b.onclick=()=>{if(addFriend(f,r.name)){$('add-friend-id').value='';out.textContent='';}};out.appendChild(b);}}
-    else{sp.textContent='⚪ いまオンラインのプレイヤーには見つかりませんでした（オフラインの可能性があります。追加はできます）';out.appendChild(sp);
-      const b=document.createElement('button');b.className='btn sm';b.textContent='このIDで追加';b.style.marginLeft='.5em';b.onclick=()=>{if(addFriend(f)){$('add-friend-id').value='';out.textContent='';}};out.appendChild(b);}
+  socket.emit('friend_lookup',q,r=>{
+    out.innerHTML='';const list=(r&&r.list)||[];
+    if(!list.length){out.textContent='「'+q+'」というユーザー名は見つかりませんでした（大文字小文字・ひらがなカタカナの違いは気にしなくてOK）';return;}
+    const ex=list.find(x=>nkey(x.name)===nkey(q));
+    const h=document.createElement('div');h.className='muted';h.textContent=ex?'見つかりました：':'「'+q+'」で始まるユーザー名：';out.appendChild(h);
+    list.forEach(x=>out.appendChild(friendRow(x)));
   });
 };
-$('btn-add-friend').onclick=()=>{const raw=$('add-friend-id').value.trim();if(LEGACY_RE.test(raw.toUpperCase())){$('btn-find-friend').onclick();return;}if(addFriend(raw)){$('add-friend-id').value='';$('find-res').textContent='';}};
-$('copy-fid').onclick=()=>copyText(SV.fid,'フレンドIDをコピーしました');
-const inviteUrl=()=>location.origin+location.pathname+'?friend='+encodeURIComponent(SV.fid);
-$('invite-fid').onclick=async()=>{
-  const url=inviteUrl(),text='「なにが目的なん？」で一緒に遊ぼう！ フレンドID：'+SV.fid;
+const inviteUrl=()=>location.origin+location.pathname+'?friend='+encodeURIComponent(SV.name);
+$('invite-name').onclick=async()=>{
+  if(!SV.nameReg){toast('先にユーザー名を登録してください');return;}
+  const url=inviteUrl(),text='「なにが目的なん？」で一緒に遊ぼう！ ユーザー名「'+SV.name+'」で検索してね';
   try{if(navigator.share){await navigator.share({title:'なにが目的なん？ ONLINE',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
   copyText(text+'\n'+url,'招待リンクをコピーしました');
 };
-let reT=0;
-$('reissue-fid').onclick=()=>{
-  if(Date.now()-reT>3000){reT=Date.now();toast('もう一度押すとフレンドIDを再発行します（古いIDでは見つからなくなります）',3000);return;}
-  SV.fid=genFid();saveNow();hello();renderFriends();updateHome();toast('新しいフレンドID：'+SV.fid);
-};
+$('copy-name').onclick=()=>copyText(SV.name,'ユーザー名をコピーしました');
+$('rename-btn').onclick=()=>{initAudio();openNameModal(false);};
 function copyText(s,msg){try{navigator.clipboard.writeText(s).then(()=>toast(msg),()=>toast(s));}catch(e){toast(s);}}
-// 招待リンク（?friend=F-XXXX-XXXX）から開いたらフレンドに追加
+// 招待リンク（?friend=ユーザー名）から開いたら、その人をフレンドに追加
 function handleInvite(){
   let q='';try{q=new URLSearchParams(location.search).get('friend')||'';}catch(e){}
   if(!q)return;try{history.replaceState(null,'',location.pathname);}catch(e){}
-  const f=normFid(q);if(!f||f===SV.fid)return;
-  if(addFriend(f,'',true))toast('招待リンクから '+f+' をフレンドに追加しました！',3200);else if(SV.friends.includes(f))toast('招待してくれた '+f+' はすでにフレンドです');
-  showPage('friends');
+  q=q.normalize('NFKC').trim().slice(0,12);if(!q)return;showPage('friends');
+  socket.emit('friend_lookup',q,r=>{
+    const x=((r&&r.list)||[]).find(y=>nkey(y.name)===nkey(q));
+    if(!x){toast('招待してくれた「'+q+'」が見つかりませんでした',3200);return;}
+    if(x.me)return;
+    if(addFriend(x.pk,x.name,true))toast('招待リンクから「'+x.name+'」をフレンドに追加しました！',3200);else toast('「'+x.name+'」はすでにフレンドです');
+  });
 }
 
 /* ===== 設定メニュー ===== */
-$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-fid').textContent=SV.fid;$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
+$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-name').textContent=SV.name+(SV.nameReg?'':'（未登録）');$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
   ['bgm','se','amb'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
 $('close-menu-btn').onclick=()=>$('side-menu').classList.add('hide');
 $('side-menu').addEventListener('click',e=>{if(e.target.id==='side-menu')$('side-menu').classList.add('hide');});
@@ -2080,8 +2237,8 @@ function renderRoomControls(){
     $('rm-hint').textContent=!op?'相手の参加を待っています…（フレンドはロビーからワンタップで参加できます）':op.ready?'相手の準備ができました！スタートを押そう':'相手の「準備OK」を待っています';}
   else{const r=ROOM.players[1]&&ROOM.players[1].ready;go.textContent=r?'準備を取り消す':'✔ 準備OK';go.disabled=false;go.className='btn big '+(r?'dark':'green');
     $('rm-hint').textContent=r?'ホストのスタートを待っています…':'準備ができたら「準備OK」を押そう';}
-  const af=$('rm-addf'),ofid=op&&op.fid;af.classList.toggle('hide',!ofid||SV.friends.includes(ofid)||ofid===SV.fid);
-  if(ofid)af.onclick=()=>{if(addFriend(ofid,op.name))sysLog((op.name||'相手')+' をフレンドに追加しました');renderRoomControls();};
+  const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));
+  if(opk)af.onclick=()=>{if(addFriend(opk,op.name))sysLog((op.name||'相手')+' をフレンドに追加しました');renderRoomControls();};
   const ph=$('rm-phr');if(!ph.childElementCount)PHRASES.forEach(p=>{const b=document.createElement('button');b.className='phr';b.textContent=p;b.onclick=()=>sendChat('x',p);ph.appendChild(b);});
   renderEmoteBar('rm-emotes',k=>sendChat('e',k));
 }
@@ -3163,11 +3320,16 @@ function drawGame(dt,t){
 /* =====================================================================
    通信
    ===================================================================== */
-function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid,name:SV.name,lv:SV.lv});}
+function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv});}
 socket.on('connect',hello);
 socket.on('disconnect',()=>{if(MM)hideMM();if(inGame&&GAME.ranked&&SV.rkPend&&!(D&&D.s==='match'))rankPenalty('通信が切れたためランクマッチは敗北扱いになりました');if(inGame||ROOM){stopGame();hideRoom();startBGM(SV.eq.bgm,true);$('lobby').style.display='flex';showPage('home');toast('通信が切れました。もう一度お試しください',3000);}});
 socket.on('id_conflict',()=>toast('このログインIDは別の画面で使用中です',3000));
-socket.on('fid_conflict',()=>{SV.fid=genFid();saveNow();hello();if(page==='friends')renderFriends();updateHome();toast('フレンドIDが他の人と重なっていたため、新しいIDを発行しました：'+SV.fid,3500);});
+// ユーザー名の確認結果（接続のたび）。他の人が使っている・未登録なら名前を決めてもらう
+socket.on('name_status',st=>{
+  if(!st||!SV)return;
+  if(st.ok){SV.name=st.name;SV.nameReg=true;save();updateHome();if(NM&&NM.force)closeNameModal();if(page==='friends')renderFriends();}
+  else{SV.nameReg=false;save();updateHome();if(!inGame&&!ROOM)openNameModal(true,st.reason,st.suggest);}
+});
 socket.on('start',d=>enterGame(d));
 socket.on('room',info=>{
   if(!info)return;
@@ -3263,6 +3425,7 @@ function loop(t){
       if(MM)drawMM(t);
       if(page==='home'){prevDraw($('prev'),t,'home');if(((t/250)|0)!==homeTick){homeTick=(t/250)|0;updateRankBtn(t);}}else if(page==='locker')prevDraw($('lk-prev'),t,'lk');else if(page==='gacha')drawGacha(t);
       if(IM)drawItemModal(t);
+      if(PV)drawPreview(t);
     }
   }catch(e){console.error(e);}
 }
@@ -3370,8 +3533,8 @@ function showResult(o){
   const bt=$('res-btns');bt.classList.remove('show');
   $('res-again').textContent=GAME.ranked?'🏆 次のランク戦':'もう一回';$('res-again').disabled=!!(o.oppLeft&&!GAME.ranked);
   $('res-room').classList.toggle('hide',!roomGame);$('res-room').disabled=!!o.oppLeft;
-  const ofid=v&&op.fid&&!op.bot&&!op.cpu?op.fid:'',af=$('res-addf');af.classList.toggle('hide',!ofid||SV.friends.includes(ofid)||ofid===SV.fid);
-  af.onclick=()=>{if(addFriend(ofid,op.name))af.classList.add('hide');};
+  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk));
+  af.onclick=()=>{if(addFriend(opk,op.name))af.classList.add('hide');};
   if(AU.ctx){if(win)(SFX.fan||SFX.win)();else SFX.lose();}
   try{navigator.vibrate&&navigator.vibrate(win?[40,40,80]:60);}catch(e){}
 }
