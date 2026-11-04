@@ -114,6 +114,8 @@ main{position:relative;flex:1;min-height:0}
 .friend-item{display:flex;align-items:center;gap:.5em;background:#1b2353;border:3px solid var(--ln);border-radius:12px;padding:.4em .6em}
 .friend-item .fn{flex:1;min-width:0}
 .friend-item small{display:block;color:var(--mut)}
+.friend-item.req{background:linear-gradient(90deg,#3d5a1e,#1b2353);border-color:#8cf08c}
+.fsec{margin:.35em 0 .1em;font-size:.95em}
 /* モーダル */
 .modal{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(5,8,22,.86);font-size:clamp(12px,1.25vw + 1vh,18px);padding:var(--st) var(--sr) var(--sb) var(--sl)}
 .modal .box{background:linear-gradient(180deg,#2a3577,#161d48);border:4px solid var(--ln);border-radius:22px;padding:.9em 1.2em;display:flex;flex-direction:column;gap:.5em;box-shadow:0 6px 0 var(--ln);max-width:96vw;max-height:94vh;overflow:auto}
@@ -300,6 +302,18 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .codechip:active{transform:translateY(2px)}
 .code-box{align-items:center;text-align:center;width:min(40em,96vw)}
 .big-code{font-family:var(--D);font-size:min(22vh,16vw);line-height:1.05;letter-spacing:.06em;color:#ffe56b;text-shadow:0 .05em 0 var(--ln),.03em .03em 0 var(--ln),-.03em -.03em 0 var(--ln);background:#0b0f24;border:4px solid var(--ln);border-radius:20px;padding:.05em .35em;user-select:text;-webkit-user-select:text;cursor:pointer;white-space:nowrap}
+.coursebtn{display:flex;align-items:center;gap:.55em;width:100%;border:3px solid var(--ln);border-radius:14px;background:linear-gradient(90deg,#1f6f8f,#29347a);color:#fff;padding:.25em .5em .25em .25em;cursor:pointer;text-align:left;box-shadow:0 3px 0 var(--ln)}
+.coursebtn:active{transform:translateY(2px)}
+.coursebtn canvas{width:5.6em;aspect-ratio:16/9;border-radius:9px;border:2px solid var(--ln);flex:0 0 auto;background:#0f1638}
+.coursebtn .cb-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.coursebtn .cb-t b{font-size:1.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coursebtn .cb-t small{font-size:.72em;color:#cfe8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coursebtn .cb-go{background:#ffd23f;color:#2b1d00;border:2px solid var(--ln);border-radius:999px;padding:.1em .6em;font-size:.8em;white-space:nowrap}
+.coursebtn.sm{width:auto;padding:.15em .4em .15em .15em}.coursebtn.sm canvas{width:4.4em}
+.coursebtn.guest .cb-go{background:#56607f;color:#fff}
+#cs-list .card.sel::after{content:"✔ 選択中";position:absolute;top:.5em;left:.5em;background:#22a845;border:2px solid var(--ln);border-radius:999px;padding:.05em .5em;font-size:.8em}
+@keyframes cflash{0%{box-shadow:0 0 0 0 #ffd23f}50%{box-shadow:0 0 0 6px #ffd23f}100%{box-shadow:0 0 0 0 #ffd23f}}
+.coursebtn.flash{animation:cflash .5s 3}
 </style></head><body>
 <canvas id="c"></canvas>
 
@@ -320,7 +334,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <header id="topbar">
     <div id="logo">なにが<br>目的なん？</div>
     <nav id="tabs">
-      <button class="tab on" data-t="home">ロビー</button><button class="tab" data-t="locker">ロッカー</button><button class="tab" data-t="shop">ショップ</button><button class="tab" data-t="gacha">ガチャ</button><button class="tab" data-t="quest">クエスト<span class="dot hide" id="q-dot">0</span></button><button class="tab" data-t="rank">ランキング</button><button class="tab" data-t="course">コース</button><button class="tab" data-t="friends">フレンド</button>
+      <button class="tab on" data-t="home">ロビー</button><button class="tab" data-t="locker">ロッカー</button><button class="tab" data-t="shop">ショップ</button><button class="tab" data-t="gacha">ガチャ</button><button class="tab" data-t="quest">クエスト<span class="dot hide" id="q-dot">0</span></button><button class="tab" data-t="rank">ランキング</button><button class="tab" data-t="course">コース</button><button class="tab" data-t="friends">フレンド<span class="dot hide" id="f-dot">0</span></button>
     </nav>
     <div id="lvbox"><b id="lv-num">Lv1</b><div class="xpbar"><i id="xp-fill"></i></div></div>
     <div id="wallet"><span class="coin">NC</span><b id="disp-coin">0</b></div>
@@ -336,7 +350,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
         <div class="rankwrap"><button id="rankbtn" class="rankbtn"><canvas id="rk-badge" width="120" height="120"></canvas><span class="rk-txt"><b><em>RANKED</em>ランクマッチ</b><small id="rk-sub">ブロンズ III ・ 0 RP</small><span class="rkbar"><i id="rk-fill"></i></span></span></button><button id="rk-info" class="rk-info" aria-label="ランク表">?</button></div>
         <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>練習・XPかせぎ</small></button></div>
         <div class="row"><button id="create" class="btn blue grow">🏠 ルームを作る</button><input id="code" class="tx" style="width:6.4em" maxlength="6" placeholder="6桁コード" inputmode="numeric"><button id="join" class="btn blue">参加</button></div>
-        <div class="course-sel"><button id="cprev" class="btn sm dark">◀</button><b id="cname"></b><button id="cnext" class="btn sm dark">▶</button></div>
+        <button id="course-btn" class="coursebtn"><canvas id="course-th" width="192" height="108"></canvas><span class="cb-t"><small>🗺️ コース（タップで変更）</small><b id="cname"></b><small id="cdesc"></small></span><span class="cb-go">変更 ▶</span></button>
         <button id="wk-banner"></button>
         <div id="quick-friends"></div>
         <div id="st"></div>
@@ -404,6 +418,11 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <div class="muted">この画面を相手に見せるか、コピー・招待リンクで送ってね。相手はロビーの「6桁コード」に入れて「参加」を押すと入れます。</div>
   <div class="row" style="justify-content:center;flex-wrap:wrap"><button id="cm-copy" class="btn big green">📋 コードをコピー</button><button id="cm-share" class="btn big blue">🔗 招待リンクを送る</button><button id="cm-close" class="btn big dark">閉じる</button></div>
 </div></div>
+<div id="course-modal" class="modal hide"><div class="box wide" style="width:min(56em,96vw)">
+  <div class="row"><b class="grow" style="font-size:1.15em">🗺️ コースをえらぶ</b><button id="cs-close" class="btn sm dark">閉じる</button></div>
+  <div class="muted" id="cs-note"></div>
+  <div class="grid" id="cs-list" style="grid-template-columns:repeat(auto-fill,minmax(12em,1fr))"></div>
+</div></div>
 <div id="name-modal" class="modal hide"><div class="box nm-box">
   <b id="nm-title" style="font-size:1.2em">✏️ ユーザー名</b>
   <div class="muted" id="nm-lead"></div>
@@ -455,7 +474,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <header class="rm-top">
     <b>🏠 ルームロビー</b>
     <button id="rm-codebtn" class="codechip" title="タップで大きく表示">コード <b id="rm-code">------</b> 🔍</button><button id="rm-copy" class="btn sm blue">コピー</button>
-    <div class="course-sel grow"><button id="rm-cprev" class="btn sm dark">◀</button><b id="rm-cname"></b><button id="rm-cnext" class="btn sm dark">▶</button></div>
+    <button id="rm-course" class="coursebtn sm grow"><canvas id="rm-cth" width="160" height="90"></canvas><span class="cb-t"><small id="rm-chint">🗺️ コース</small><b id="rm-cname"></b></span><span class="cb-go" id="rm-cgo">変更 ▶</span></button>
     <button id="rm-leave" class="btn sm red">退出</button>
   </header>
   <div class="rm-main">
@@ -464,7 +483,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
       <div id="rm-log"></div>
       <div class="chips" id="rm-phr"></div>
       <div class="row"><input id="rm-text" class="tx grow" maxlength="30" placeholder="メッセージ（30文字まで）"><button id="rm-send" class="btn sm blue">送信</button></div>
-      <button id="rm-addf" class="btn sm green hide">＋ 相手をフレンドに追加</button>
+      <div class="row"><button id="rm-addf" class="btn sm green hide grow">＋ 相手にフレンド申請</button><button id="rm-kick" class="btn sm red hide">🚫 キック</button></div>
       <button id="rm-go" class="btn big green">準備OK</button>
       <span id="rm-hint" class="muted" style="text-align:center"></span>
     </div>
@@ -566,18 +585,18 @@ const SKINS={
  pixel:{n:'ピクセル',c:'#00e676',a:'#1b5e20',str:1,rim:'#00e676',p:140,r:3},sakura24:{n:'夜桜(限定)',c:'#3b1a4a',a:'#ff9ecb',rim:'#ff9ecb',gx:1,g:1,r:4},
  hof:{n:'殿堂チャリ（ランク報酬）',c:'#ffd54f',a:'#ff5a4e',chrome:1,gold:1,rim:'#ff5a4e',rk:6,r:4},
  // ▼ 季節の限定スキン：ウィークリークエストを全部クリアすると、その月のスキンがもらえる（ev=月）
- ev_newyear:{n:'初日の出チャリ',c:'#d32f2f',a:'#ffd23f',rim:'#ffd23f',deco:'🎍',ev:1,r:4},
- ev_valentine:{n:'チョコレートチャリ',c:'#6d3b2a',a:'#ff80ab',rim:'#ff80ab',deco:'💝',ev:2,r:4},
- ev_hina:{n:'ひなまつりチャリ',c:'#f8bbd0',a:'#66bb6a',rim:'#fff59d',str:1,deco:'🎎',ev:3,r:4},
- ev_sakura:{n:'春らんまんチャリ',c:'#ffb7d5',a:'#ffffff',rim:'#ffe4ef',gx:1,deco:'🌸',ev:4,r:4},
- ev_koinobori:{n:'こいのぼりチャリ',c:'#1e88e5',a:'#e53935',str:1,rim:'#ffffff',deco:'🎏',ev:5,r:4},
- ev_ajisai:{n:'あじさいチャリ',c:'#7e57c2',a:'#81d4fa',rim:'#81d4fa',deco:'☔',ev:6,r:4},
- ev_tanabata:{n:'七夕チャリ',c:'#1a237e',a:'#fff59d',rim:'#fff59d',gx:1,deco:'🎋',ev:7,r:4},
- ev_hanabi:{n:'夏祭りチャリ',c:'#0d47a1',a:'#ff7043',rim:'#ffca28',str:1,deco:'🎆',ev:8,r:4},
- ev_tsukimi:{n:'お月見チャリ',c:'#37474f',a:'#ffe082',rim:'#ffe082',deco:'🎑',ev:9,r:4},
- ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4},
- ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4},
- ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4}};
+ ev_newyear:{n:'初日の出チャリ',c:'#d32f2f',a:'#ffd23f',rim:'#ffd23f',deco:'🎍',ev:1,r:4,pf:'✨'},
+ ev_valentine:{n:'チョコレートチャリ',c:'#6d3b2a',a:'#ff80ab',rim:'#ff80ab',deco:'💝',ev:2,r:4,pf:'💕'},
+ ev_hina:{n:'ひなまつりチャリ',c:'#f8bbd0',a:'#66bb6a',rim:'#fff59d',str:1,deco:'🎎',ev:3,r:4,pf:'🌸'},
+ ev_sakura:{n:'春らんまんチャリ',c:'#ffb7d5',a:'#ffffff',rim:'#ffe4ef',gx:1,deco:'🌸',ev:4,r:4,pf:'🌸'},
+ ev_koinobori:{n:'こいのぼりチャリ',c:'#1e88e5',a:'#e53935',str:1,rim:'#ffffff',deco:'🎏',ev:5,r:4,pf:'✨'},
+ ev_ajisai:{n:'あじさいチャリ',c:'#7e57c2',a:'#81d4fa',rim:'#81d4fa',deco:'☔',ev:6,r:4,pf:'💧'},
+ ev_tanabata:{n:'七夕チャリ',c:'#1a237e',a:'#fff59d',rim:'#fff59d',gx:1,deco:'🎋',ev:7,r:4,pf:'⭐'},
+ ev_hanabi:{n:'夏祭りチャリ',c:'#0d47a1',a:'#ff7043',rim:'#ffca28',str:1,deco:'🎆',ev:8,r:4,pf:'🎇'},
+ ev_tsukimi:{n:'お月見チャリ',c:'#37474f',a:'#ffe082',rim:'#ffe082',deco:'🎑',ev:9,r:4,pf:'✨'},
+ ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4,pf:'🦇'},
+ ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4,pf:'🍂'},
+ ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4,pf:'❄️'}};
 const HAIRS={
  default:{n:'ショート',st:'short',c:'#2a221c',p:0,r:1},
  short_b:{n:'ショート(茶)',st:'short',c:'#8d5a3b',p:30,r:1},
@@ -718,7 +737,7 @@ const isLegacyF=k=>FID_RE.test(k)||LEGACY_RE.test(k);
 function validName(v){if(typeof v!=='string')return '';const n=v.normalize('NFKC').trim(),len=[...n].length;if(len<2||len>10)return '';try{if(!/^[\p{L}\p{N}ー・_\-]+$/u.test(n))return '';}catch(e){if(/[\s<>&"'`\\]/.test(n))return '';}return n;}
 const NAME_RULE='2〜10文字。ひらがな・カタカナ・漢字・英数字と「ー・_-」が使えます（スペース・絵文字は不可）';
 const NAME_WHY={invalid:NAME_RULE,taken:'その名前は他のプレイヤーが使っています',reserved:'その名前は使えません',busy:'少し待ってからもう一度どうぞ',nohello:'サーバーに接続中です…',offline:'サーバーに接続できません'};
-function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
+function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,fout:[],created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
   inv:{skin:['default'],hair:['default'],fit:['default'],acc:['none'],trail:['none'],emote:['wave','thumbs','laugh','wheelie'],se:['none','bell'],bgm:['default'],wfx:['confetti']},
   eq:{skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
@@ -746,6 +765,8 @@ function fixSave(s){
     seen.add(e.k);e.n=e.n.slice(0,10);fl.push(e);if(fl.length>=50)break;
   }
   o.friends=fl;delete o.fnames;
+  o.fout=(Array.isArray(o.fout)?o.fout:[]).filter(e=>e&&typeof e==='object'&&PK_RE.test(e.k)&&!seen.has(e.k)).map(e=>({k:e.k,n:String(e.n||'').slice(0,10)})).slice(0,30);   // 申請中
+  o._inboxSeen=isFinite(+o._inboxSeen)?+o._inboxSeen:0;
   if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid='';   // 旧フレンドID：自分を登録してくれていた人の移行用にだけ残す
   o.nameReg=!!o.nameReg;
   o.slots=(Array.isArray(o.slots)?o.slots:d.slots).filter(k=>o.inv.emote.includes(k)).slice(0,4);
@@ -1205,6 +1226,14 @@ function wheelSide(c,x,y,R,ang,sk){
   c.lineWidth=Math.max(.8,R*.025);c.strokeStyle='rgba(220,224,235,.8)';c.beginPath();
   for(let i=0;i<12;i++){const a=ang+i*Math.PI/6;c.moveTo(x,y);c.lineTo(x+Math.cos(a)*R*.8,y+Math.sin(a)*R*.8);}c.stroke();
   blob(c,x,y,R*.13,'#9aa0ad',Math.max(1,R*.04));
+  if(sk.ev){   // 季節限定：光るリム・カラースポーク・金のハブ・回るライト
+    c.save();c.lineCap='round';
+    c.lineWidth=Math.max(1,R*.05);c.beginPath();for(let i=0;i<12;i+=2){const a=ang+i*Math.PI/6;c.moveTo(x,y);c.lineTo(x+Math.cos(a)*R*.8,y+Math.sin(a)*R*.8);}c.strokeStyle=sk.a;c.stroke();
+    c.shadowColor=sk.rim||sk.a;c.shadowBlur=R*.6;c.strokeStyle=sk.rim||sk.a;c.lineWidth=R*.1;c.beginPath();c.arc(x,y,R*.84,0,7);c.stroke();
+    c.shadowBlur=R*.4;for(let i=0;i<4;i++){const a=ang*1.5+i*Math.PI/2;blob(c,x+Math.cos(a)*R*.84,y+Math.sin(a)*R*.84,R*.07,'#ffffff');}
+    c.shadowBlur=0;const g=c.createRadialGradient(x-R*.04,y-R*.04,1,x,y,R*.2);g.addColorStop(0,'#fff8e1');g.addColorStop(1,'#d4a017');blob(c,x,y,R*.18,g,Math.max(1,R*.04));
+    c.restore();
+  }
 }
 function legSide(c,hip,pd,R,col){
   const kn=ik(hip,pd,R*1.0,true);
@@ -1311,9 +1340,9 @@ function accSide(c,hx,hy,r,key,t){
   }
   c.restore();
 }
-function headSide(c,hx,hy,r,lk,t,expr){
+function headSide(c,hx,hy,r,lk,t,expr,noBack){
   const hr=HAIRS[lk.hair]||HAIRS.default;
-  hairSide(c,hx,hy,r,hr,t,false);
+  if(!noBack)hairSide(c,hx,hy,r,hr,t,false);
   blob(c,hx,hy,r,expr==='angry'?'#ffb39a':SKIN_TONE,Math.max(1.4,r*.08));
   blob(c,hx-r*.32,hy+r*.16,r*.19,'#f7b98d',Math.max(1,r*.04));
   c.fillStyle='rgba(255,120,120,.45)';c.beginPath();c.ellipse(hx+r*.38,hy+r*.36,r*.2,r*.11,0,0,7);c.fill();
@@ -1365,9 +1394,17 @@ function drawSide(c,w,h,lk,t,sc,opt){
   const hdA=ta-.15+(ek==='sleep'?.35*ea:0),hd=[sh[0]+Math.cos(hdA)*R*1.08,sh[1]+Math.sin(hdA)*R*1.08];
   const P1=[BB[0]+Math.cos(pa)*R*.42,BB[1]+Math.sin(pa)*R*.42],P2=[BB[0]-Math.cos(pa)*R*.42,BB[1]-Math.sin(pa)*R*.42];
   // 1) 車輪 2) 奥の脚（フレームの向こう側） 3) フレーム 4) 胴体 5) 手前の脚 6) 腕 7) 頭
+  if(sk.ev){   // 季節限定：自転車のまわりのオーラと回る光
+    c.save();c.globalCompositeOperation='lighter';const pul=.5+.5*Math.sin(t/350);
+    const g=c.createRadialGradient(cx,wy-R*.4,R*.3,cx,wy-R*.4,R*3.4);g.addColorStop(0,rgba(sk.a,.32+.15*pul));g.addColorStop(.6,rgba(sk.rim||sk.a,.12));g.addColorStop(1,rgba(sk.a,0));
+    c.fillStyle=g;c.fillRect(cx-R*3.6,wy-R*3.9,R*7.2,R*5);
+    c.translate(cx,wy-R*.3);c.rotate(t/3000);for(let i=0;i<10;i++){c.rotate(Math.PI/5);c.fillStyle=rgba(sk.a,.06+.04*pul);c.beginPath();c.moveTo(0,0);c.lineTo(R*3.4,-R*.28);c.lineTo(R*3.4,R*.28);c.fill();}
+    c.restore();
+  }
   wheelSide(c,x1,wy,R,spin,sk);wheelSide(c,x2,wy,R,spin,sk);
   legSide(c,hip,P2,R,shade(ft.pants,.68));
   limb(c,[BB,P2],R*.1,'#4a4a52');
+  hairSide(c,hd[0],hd[1],hr_,HAIRS[lk.hair]||HAIRS.default,t,false);   // うしろ髪は体より奥に（ロングヘアで腕が隠れないように）
   torsoSide(c,hip,sh,R,ft,t,'back');
   c.lineWidth=R*.22;c.strokeStyle=OUTL;c.beginPath();c.arc(x1,wy,R*1.14,Math.PI*1.08,Math.PI*1.72);c.stroke();c.lineWidth=R*.13;c.strokeStyle=col;c.stroke();
   c.lineWidth=R*.22;c.strokeStyle=OUTL;c.beginPath();c.arc(x2,wy,R*1.14,Math.PI*1.25,Math.PI*1.85);c.stroke();c.lineWidth=R*.13;c.strokeStyle=col;c.stroke();
@@ -1381,6 +1418,21 @@ function drawSide(c,w,h,lk,t,sc,opt){
   limb(c,[[S[0]-R*.38,S[1]-R*.12],[S[0]+R*.32,S[1]-R*.12]],R*.22,'#262630');
   if(sk.basket){c.fillStyle='#d7c39a';c.fillRect(HB[0]+R*.05,HB[1]+R*.05,R*.8,R*.55);c.strokeStyle=OUTL;c.lineWidth=Math.max(1.2,R*.06);c.strokeRect(HB[0]+R*.05,HB[1]+R*.05,R*.8,R*.55);
     c.strokeStyle='rgba(120,90,40,.7)';c.lineWidth=1;c.beginPath();for(let i=1;i<4;i++){c.moveTo(HB[0]+R*.05+i*R*.2,HB[1]+R*.05);c.lineTo(HB[0]+R*.05+i*R*.2,HB[1]+R*.6);}c.stroke();}
+  if(sk.ev){   // 季節限定：金のライン・フレームを走る光・金のカゴ・リボン
+    c.save();const gg=c.createLinearGradient(x1,wy-R*1.6,x2,wy);gg.addColorStop(0,'#fff3b0');gg.addColorStop(.5,'#ffd23f');gg.addColorStop(1,'#c98a00');
+    c.strokeStyle=gg;c.lineWidth=Math.max(1,R*.045);c.lineCap='round';c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(BB[0],BB[1]);c.lineTo(S[0],S[1]);c.lineTo(A[0],A[1]);c.moveTo(S[0],S[1]);c.lineTo(Hd[0],Hd[1]);c.lineTo(BB[0],BB[1]);c.moveTo(Hd[0],Hd[1]);c.lineTo(Fh[0],Fh[1]);c.stroke();
+    const pts=[A,BB,S,Hd,Fh],u=(t/700)%1*(pts.length-1),i0=Math.floor(u),f=u-i0,sp=[lerp(pts[i0][0],pts[i0+1][0],f),lerp(pts[i0][1],pts[i0+1][1],f)];
+    c.globalCompositeOperation='lighter';c.fillStyle='#ffffff';c.beginPath();for(let k=0;k<8;k++){const rr=k%2?R*.06:R*.3,an=k*Math.PI/4+t/300;c.lineTo(sp[0]+Math.cos(an)*rr,sp[1]+Math.sin(an)*rr);}c.fill();
+    c.globalCompositeOperation='source-over';
+    if(!sk.basket){const bx=HB[0]+R*.08,by=HB[1]+R*.08,bg=c.createLinearGradient(bx,by,bx,by+R*.55);bg.addColorStop(0,'#fff3b0');bg.addColorStop(1,'#c98a00');
+      if(sk.deco)emoji(c,sk.deco,bx+R*.42,by-R*.05,R*.6);
+      c.fillStyle=bg;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+R*.85,by);c.lineTo(bx+R*.75,by+R*.55);c.lineTo(bx+R*.1,by+R*.55);c.closePath();c.fill();c.lineWidth=Math.max(1.2,R*.05);c.strokeStyle=OUTL;c.stroke();
+      c.strokeStyle='rgba(140,90,0,.7)';c.lineWidth=Math.max(1,R*.03);c.beginPath();for(let k=1;k<4;k++){c.moveTo(bx+k*R*.21,by);c.lineTo(bx+k*R*.2,by+R*.55);}c.stroke();}
+    for(const [col,off] of [[sk.a,0],[sk.rim||'#ffd23f',1.3]]){   // ハンドルからなびくリボン
+      c.strokeStyle=col;c.lineWidth=R*.1;c.beginPath();c.moveTo(grip[0],grip[1]);
+      for(let k=1;k<=6;k++){const q=k/6;c.lineTo(grip[0]-q*R*1.6,grip[1]+q*R*.25+Math.sin(t/120+q*6+off)*R*.18*q);}c.stroke();}
+    c.restore();
+  }
   // 奥の腕（ポーズによって見える）
   const sleeve=ft.st==='cape'?'#f3e5ab':ft.c,fore=F.sl==='l'?sleeve:SKIN_TONE,upper=F.sl==='n'?SKIN_TONE:sleeve;
   let hand=grip,hand2=null,elbowFront=false;
@@ -1408,12 +1460,20 @@ function drawSide(c,w,h,lk,t,sc,opt){
   if(sk.deco){   // 季節スキンの飾り（うしろの荷台にのせる）
     const dx=x1-R*.2,dy=wy-R*1.28;limb(c,[[x1-R*.75,wy-R*.98],[x1+R*.3,wy-R*.98]],R*.09,'#4a4a52');
     if(opt.flip){c.save();c.translate(dx,dy);c.scale(-1,1);emoji(c,sk.deco,0,0,R*.8);c.restore();}else emoji(c,sk.deco,dx,dy,R*.8);}
+  if(sk.ghost)c.globalAlpha=1;
+  headSide(c,hd[0],hd[1],hr_,lk,t,expr,true);
+  // 手前の腕はいちばん最後に描く（髪や頭に隠れて腕が消えないように）
   const el=ik(sh,hand,R*.72,elbowFront);
   limb(c,[sh,el],R*.26,upper);limb(c,[el,hand],R*.24,fore);
   blob(c,hand[0],hand[1],R*.15,SKIN_TONE,Math.max(1.2,R*.06));
   if(ek==='thumbs'){if(opt.flip){c.save();c.translate(hand[0]+R*.15,hand[1]-R*.35);c.scale(-1,1);emoji(c,'👍',0,0,R*.7);c.restore();}else emoji(c,'👍',hand[0]+R*.15,hand[1]-R*.35,R*.7);}
-  if(sk.ghost)c.globalAlpha=1;
-  headSide(c,hd[0],hd[1],hr_,lk,t,expr);
+  if(sk.ev&&sk.pf){   // 季節限定：まわりを舞う季節のパーティクル
+    for(let i=0;i<9;i++){const q=(t/2200+hsh(i,2))%1,px=cx+(hsh(i,1)-.5)*R*6.2+Math.sin(t/500+i)*R*.25,py=wy+R*.2-q*R*3.8;
+      c.globalAlpha=Math.sin(q*Math.PI)*.95;
+      if(i%3===2){c.fillStyle='#fff8c4';c.beginPath();for(let k=0;k<8;k++){const rr=k%2?R*.04:R*.18,an=k*Math.PI/4;c.lineTo(px+Math.cos(an)*rr,py+Math.sin(an)*rr);}c.fill();}
+      else if(opt.flip){c.save();c.translate(px,py);c.scale(-1,1);emoji(c,sk.pf,0,0,R*.38);c.restore();}else emoji(c,sk.pf,px,py,R*.38);}
+    c.globalAlpha=sk.ghost?.6:1;
+  }
   // エモートの演出（左向きでも文字は反転させない）
   const ET=(t1,x,y,sz,col)=>{if(!opt.flip)return emoText(c,t1,x,y,sz,col);c.save();c.translate(x,y);c.scale(-1,1);emoText(c,t1,0,0,sz,col);c.restore();};
   const EJ=(t1,x,y,sz)=>{if(!opt.flip)return emoji(c,t1,x,y,sz);c.save();c.translate(x,y);c.scale(-1,1);emoji(c,t1,0,0,sz);c.restore();};
@@ -1564,7 +1624,7 @@ function renderEmoteBar(id,onUse){
 }
 function useLobbyEmote(where,k){emoteState[where]={k,t0:performance.now()};if(AU.ctx)SFX.boing();bump('chat');}
 function updateHome(){
-  $('cname').textContent=COURSES[SV.course].n;$('home-best').textContent='ベスト '+SV.best.toLocaleString();
+  courseBtn();$('home-best').textContent='ベスト '+SV.best.toLocaleString();
   const ri=rankInfo(SV.rp);$('rk-sub').textContent=ri.name+' ・ '+SV.rp+' RP'+(SV.rkStreak>1?' ・ 🔥'+SV.rkStreak+'連勝':'');$('rk-fill').style.width=(ri.prog*100)+'%';
   const bc=$('rk-badge'),bg=bc.getContext('2d');bg.setTransform(1,0,0,1,0,0);bg.clearRect(0,0,120,120);drawRankBadge(bg,60,62,96,ri.i,performance.now(),ri.div);
   $('pname').textContent=SV.name;$('disp-id').textContent=SV.nameReg?'✔ ユーザー名 登録済み':'⚠ ユーザー名 未登録';$('disp-id').classList.toggle('warn',!SV.nameReg);
@@ -1612,8 +1672,30 @@ $('nm-ok').onclick=()=>{
 };
 $('nm-cancel').onclick=()=>{if(NM&&!NM.force)closeNameModal();};
 $('pname-edit').onclick=()=>{initAudio();openNameModal(false);};
-function setCourse(i){SV.course=(i+COURSES.length)%COURSES.length;save();$('cname').textContent=COURSES[SV.course].n;if(page==='course')renderCourse();}
-$('cprev').onclick=()=>setCourse(SV.course-1);$('cnext').onclick=()=>setCourse(SV.course+1);
+function setCourse(i){SV.course=(i+COURSES.length)%COURSES.length;save();courseBtn();if(page==='course')renderCourse();}
+/* ===== コース選択（サムネイル付きの一覧から選ぶ） ===== */
+let thumbCache={};
+function courseThumb(cv,i){const k=cv.id+':'+i+':'+SV.eq.skin+SV.eq.hair+SV.eq.fit;if(thumbCache[cv.id]===k)return;thumbCache[cv.id]=k;renderCourseThumb(cv,i);}
+function courseBtn(){const T=COURSES[SV.course];$('cname').textContent=T.n;$('cdesc').textContent=T.d;courseThumb($('course-th'),SV.course);}
+let CSMODE='home';
+function openCourseModal(mode){
+  CSMODE=mode;const cur=mode==='room'?ROOM.course:SV.course,box=$('cs-list');box.innerHTML='';
+  $('cs-note').textContent=mode==='room'?'ホストが選んだコースで対戦します。選ぶと相手の画面にもすぐ反映されます。':'CPU戦・エンドレスラン・ルームを作るときのコースです。';
+  COURSES.forEach((T,i)=>{
+    const d=document.createElement('div');d.className='card'+(i===cur?' sel':'');
+    const cv=document.createElement('canvas');cv.width=320;cv.height=180;d.appendChild(cv);
+    const nm=document.createElement('span');nm.className='nm';nm.innerHTML='<b></b><br><span class="muted"></span>';nm.querySelector('b').textContent=T.n;nm.querySelector('.muted').textContent=T.d;d.appendChild(nm);
+    d.onclick=()=>{initAudio();if(AU.ctx)SFX.click();
+      if(CSMODE==='room'){if(ROOM&&ROOM.me===0)socket.emit('room_course',i);}else setCourse(i);
+      SV.course=CSMODE==='room'?SV.course:i;closeCourseModal();toast('🗺️ コース「'+T.n+'」');};
+    box.appendChild(d);renderCourseThumb(cv,i);
+  });
+  $('course-modal').classList.remove('hide');
+}
+function closeCourseModal(){$('course-modal').classList.add('hide');}
+$('course-btn').onclick=()=>openCourseModal('home');
+$('cs-close').onclick=closeCourseModal;
+$('course-modal').addEventListener('click',e=>{if(e.target.id==='course-modal')closeCourseModal();});
 
 /* ===== XP・クエストの進行 ===== */
 // 記録をデイリー・ウィークリーの両方に進める
@@ -2097,19 +2179,57 @@ function renderQuickFriends(){
   const qf=$('quick-friends');qf.innerHTML='';
   SV.friends.filter(e=>fst(e)==='waiting'&&PK_RE.test(e.k)).forEach(e=>{const q=document.createElement('button');q.className='btn green';q.textContent='⚡ '+(fname(e)||'フレンド')+' のルームにワンタップ参加';q.onclick=()=>joinFriend(e);qf.appendChild(q);});
 }
+/* ===== フレンド申請（承認制）：申請 → 相手が承認すると、両方のフレンドリストに入る ===== */
+let INBOX=[];
+const isPending=k=>SV.fout.some(e=>e.k===k);
+const inInbox=k=>INBOX.some(e=>e.pk===k);
+function makeFriend(pk,name){
+  SV.fout=SV.fout.filter(e=>e.k!==pk);
+  if(!isFriend(pk)&&SV.friends.length<50)SV.friends.push({k:pk,n:String(name||'').slice(0,10)});
+  save();questChanged();pollFriends();renderRoomControls();if(page==='friends')renderFriends();
+}
+// 申請を送る（相手からも申請が来ていれば、その場でフレンド成立）
 function addFriend(pk,name,quiet){
-  if(!PK_RE.test(pk)){toast('このプレイヤーは追加できません');return false;}
+  if(!PK_RE.test(pk)){toast('このプレイヤーには申請できません');return false;}
   if(isFriend(pk)){if(!quiet)toast('すでにフレンドです');return false;}
-  if(SV.friends.length>=50){toast('フレンドは50人までです');return false;}
-  SV.friends.push({k:pk,n:String(name||'').slice(0,10)});save();
-  if(!quiet)toast((name||'プレイヤー')+' をフレンドに追加しました');
-  if(AU.ctx)SFX.pop();pollFriends();questChanged();renderRoomControls();
+  if(inInbox(pk)){answerFriend(pk,true);return true;}
+  if(isPending(pk)){if(!quiet)toast('申請中です。相手の承認を待っています');return false;}
+  if(SV.friends.length+SV.fout.length>=60){toast('フレンドと申請中の合計は60人までです');return false;}
+  if(!socket.connected){toast(NAME_WHY.offline);return false;}
+  SV.fout.push({k:pk,n:String(name||'').slice(0,10)});save();
+  socket.emit('friend_req',pk,r=>{
+    if(!r||!r.ok){SV.fout=SV.fout.filter(e=>e.k!==pk);save();toast((r&&r.err)||'申請できませんでした');if(page==='friends')renderFriends();renderRoomControls();return;}
+    if(r.state==='mutual'){makeFriend(pk,r.name||name);toast('🤝 '+(r.name||name)+' とフレンドになりました！');if(AU.ctx)SFX.claim();}
+    else if(!quiet)toast('📨 '+(r.name||name||'プレイヤー')+' にフレンド申請を送りました（相手が承認するとフレンドになります）',3200);
+    if(page==='friends')renderFriends();
+  });
+  if(AU.ctx)SFX.pop();renderRoomControls();if(page==='friends')renderFriends();
   return true;
 }
+function answerFriend(pk,ok){
+  const it=INBOX.find(e=>e.pk===pk);
+  socket.emit('friend_answer',{pk,ok:!!ok},r=>{
+    INBOX=INBOX.filter(e=>e.pk!==pk);updateFriendDot();
+    if(!r||!r.ok){toast((r&&r.err)||'うまくいきませんでした');if(page==='friends')renderFriends();return;}
+    if(ok){makeFriend(pk,r.name||(it&&it.name));toast('🤝 '+(r.name||(it&&it.name)||'プレイヤー')+' とフレンドになりました！');if(AU.ctx)SFX.claim();}
+    else toast('申請をお断りしました');
+    if(page==='friends')renderFriends();
+  });
+}
+function updateFriendDot(){const n=INBOX.length;$('f-dot').textContent=n;$('f-dot').classList.toggle('hide',!n);}
 function renderFriends(){
   $('my-name').textContent=SV.name;$('my-name-st').textContent=SV.nameReg?'✔ 登録済み（ほかの人は使えません）':'⚠ まだ登録されていません';
   $('invite-name').disabled=!SV.nameReg;
   const box=$('friend-list-container');box.innerHTML='';
+  const sec=t=>{const h=document.createElement('b');h.className='fsec';h.textContent=t;box.appendChild(h);};
+  // 届いた申請
+  if(INBOX.length){sec('📩 届いたフレンド申請（'+INBOX.length+'）');
+    INBOX.forEach(r=>{const it=document.createElement('div');it.className='friend-item req';
+      const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=r.name;const sm=document.createElement('small');sm.textContent=(FL[r.s]||FL.offline)+'　から申請が届いています';fn.append(b,sm);
+      const ok=document.createElement('button');ok.className='btn sm green';ok.textContent='✔ 承認';ok.onclick=()=>{ok.disabled=true;answerFriend(r.pk,true);};
+      const ng=document.createElement('button');ng.className='btn sm dark';ng.textContent='お断り';ng.onclick=()=>{ng.disabled=true;answerFriend(r.pk,false);};
+      it.append(fn,ok,ng);box.appendChild(it);});}
+  sec('🤝 フレンド（'+SV.friends.length+'）');
   if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。上の検索で相手のユーザー名を入れて追加しよう。';box.appendChild(p);}
   SV.friends.forEach(e=>{
     const st=fst(e),nm=fname(e),leg=isLegacyF(e.k),it=document.createElement('div');it.className='friend-item';
@@ -2117,17 +2237,24 @@ function renderFriends(){
     const sm=document.createElement('small');sm.textContent=FL[st]+(leg?'　※以前のフレンド登録：相手が新バージョンでログインすると自動で切り替わります':'');fn.append(b,sm);
     const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting'||leg;j.onclick=()=>joinFriend(e);
     const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';
-    let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}SV.friends=SV.friends.filter(x=>x!==e);save();renderFriends();};
+    let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}if(PK_RE.test(e.k))socket.emit('friend_remove',e.k);SV.friends=SV.friends.filter(x=>x!==e);save();renderFriends();};
     it.append(fn,j,del);box.appendChild(it);
   });
+  // 自分が送った申請
+  if(SV.fout.length){sec('📨 申請中（相手の承認待ち）');
+    SV.fout.forEach(e=>{const it=document.createElement('div');it.className='friend-item';
+      const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=e.n||'プレイヤー';const sm=document.createElement('small');sm.textContent='承認されるとフレンドになります';fn.append(b,sm);
+      const c=document.createElement('button');c.className='btn sm dark';c.textContent='取り消し';c.onclick=()=>{socket.emit('friend_cancel',e.k);SV.fout=SV.fout.filter(x=>x!==e);save();renderFriends();renderRoomControls();};
+      it.append(fn,c);box.appendChild(it);});}
   renderQuickFriends();
 }
 function friendRow(r){
   const row=document.createElement('div');row.className='fres';
   const t=document.createElement('span');t.className='grow';t.textContent=(FL[r.s]||FL.offline).slice(0,2)+' '+r.name+(r.lv?'（Lv'+r.lv+'）':'');row.appendChild(t);
-  const b=document.createElement('button');b.className='btn sm '+(r.me||isFriend(r.pk)?'dark':'green');
-  b.textContent=r.me?'あなた':isFriend(r.pk)?'フレンド':'＋ 追加';b.disabled=r.me||isFriend(r.pk);
-  b.onclick=()=>{if(addFriend(r.pk,r.name)){b.textContent='フレンド';b.disabled=true;b.className='btn sm dark';}};
+  const b=document.createElement('button'),fr=isFriend(r.pk),pend=isPending(r.pk),inb=inInbox(r.pk);
+  b.className='btn sm '+(r.me||fr||pend?'dark':'green');
+  b.textContent=r.me?'あなた':fr?'フレンド':pend?'申請中':inb?'✔ 承認する':'＋ 申請';b.disabled=r.me||fr||pend;
+  b.onclick=()=>{if(addFriend(r.pk,r.name)){b.textContent=inb?'フレンド':'申請中';b.disabled=true;b.className='btn sm dark';}};
   row.appendChild(b);return row;
 }
 $('add-friend-id').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(fsT);$('btn-find-friend').onclick();}});
@@ -2166,7 +2293,8 @@ function handleInvite(){
     const x=((r&&r.list)||[]).find(y=>nkey(y.name)===nkey(q));
     if(!x){toast('招待してくれた「'+q+'」が見つかりませんでした',3200);return;}
     if(x.me)return;
-    if(addFriend(x.pk,x.name,true))toast('招待リンクから「'+x.name+'」をフレンドに追加しました！',3200);else toast('「'+x.name+'」はすでにフレンドです');
+    if(isFriend(x.pk)){toast('「'+x.name+'」はすでにフレンドです');return;}
+    if(addFriend(x.pk,x.name,true))toast('招待リンクから「'+x.name+'」にフレンド申請を送りました（承認されるとフレンドになります）',3500);
   });
 }
 
@@ -2213,15 +2341,17 @@ function showRoom(info){
 function hideRoom(){ROOM=null;$('room').classList.add('hide');$('code-modal').classList.add('hide');}
 function renderRoomControls(){
   if(!ROOM)return;const me=ROOM.me,op=ROOM.players[1-me],host=me===0;
-  $('rm-code').textContent=ROOM.code;$('rm-cname').textContent=COURSES[ROOM.course].n;
-  $('rm-cprev').disabled=!host;$('rm-cnext').disabled=!host;
+  $('rm-code').textContent=ROOM.code;$('rm-cname').textContent=COURSES[ROOM.course].n;courseThumb($('rm-cth'),ROOM.course);
+  $('rm-course').classList.toggle('guest',!host);$('rm-chint').textContent=host?'🗺️ コース（タップで変更）':'🗺️ コース（ホストが選択）';$('rm-cgo').textContent=host?'変更 ▶':'ホスト';
+  const kk=$('rm-kick');kk.classList.toggle('hide',!(host&&op));
   const go=$('rm-go');
   if(host){go.textContent='▶ スタート';go.disabled=!(op&&op.ready);go.className='btn big green';
     $('rm-hint').textContent=!op?'相手の参加を待っています…（フレンドはロビーからワンタップで参加できます）':op.ready?'相手の準備ができました！スタートを押そう':'相手の「準備OK」を待っています';}
   else{const r=ROOM.players[1]&&ROOM.players[1].ready;go.textContent=r?'準備を取り消す':'✔ 準備OK';go.disabled=false;go.className='btn big '+(r?'dark':'green');
     $('rm-hint').textContent=r?'ホストのスタートを待っています…':'準備ができたら「準備OK」を押そう';}
   const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));
-  if(opk)af.onclick=()=>{if(addFriend(opk,op.name))sysLog((op.name||'相手')+' をフレンドに追加しました');renderRoomControls();};
+  af.disabled=!!opk&&isPending(opk);af.textContent=!opk?'':isPending(opk)?'📨 フレンド申請中（承認待ち）':inInbox(opk)?'✔ 相手からの申請を承認する':'＋ 相手にフレンド申請';
+  if(opk)af.onclick=()=>{const was=inInbox(opk);if(addFriend(opk,op.name))sysLog(was?(op.name||'相手')+' とフレンドになりました':(op.name||'相手')+' にフレンド申請を送りました');renderRoomControls();};
   const ph=$('rm-phr');if(!ph.childElementCount)PHRASES.forEach(p=>{const b=document.createElement('button');b.className='phr';b.textContent=p;b.onclick=()=>sendChat('x',p);ph.appendChild(b);});
   renderEmoteBar('rm-emotes',k=>sendChat('e',k));
 }
@@ -2238,8 +2368,11 @@ function onChat(m){
 $('rm-send').onclick=()=>{const v=$('rm-text').value.trim();if(!v)return;sendChat('x',v);$('rm-text').value='';};
 $('rm-text').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('rm-send').onclick();}});
 $('rm-go').onclick=()=>{initAudio();if(!ROOM)return;if(ROOM.me===0)socket.emit('room_start');else socket.emit('room_ready',!(ROOM.players[1]&&ROOM.players[1].ready));};
-$('rm-cprev').onclick=()=>ROOM&&socket.emit('room_course',(ROOM.course+COURSES.length-1)%COURSES.length);
-$('rm-cnext').onclick=()=>ROOM&&socket.emit('room_course',(ROOM.course+1)%COURSES.length);
+$('rm-course').onclick=()=>{if(!ROOM)return;if(ROOM.me!==0){toast('コースはホストが選びます');return;}openCourseModal('room');};
+let kickT=0;
+$('rm-kick').onclick=()=>{if(!ROOM||ROOM.me!==0)return;const op=ROOM.players[1];if(!op)return;
+  if(Date.now()-kickT>2500){kickT=Date.now();$('rm-kick').textContent='本当にキック？';setTimeout(()=>{$('rm-kick').textContent='🚫 キック';},2500);return;}
+  $('rm-kick').textContent='🚫 キック';socket.emit('room_kick');};
 $('rm-copy').onclick=()=>ROOM&&copyText(ROOM.code,'ルームコードをコピーしました');
 /* ===== ルームコードを大きく表示（相手に画面を見せる・コピー・招待リンク） ===== */
 const roomUrl=code=>location.origin+location.pathname+'?room='+code;
@@ -2758,11 +2891,13 @@ function drawRider(p,team,t,name,alpha){
     const sh=curT.shadow||[.4,.15];gEllipse(X+sh[0]*14,Z+sh[1]*14,9,15,'rgba(0,0,0,.3)');
     ctx.lineWidth=2.2*PK;ctx.strokeStyle=COL[team];ctx.globalAlpha=.9;ctx.beginPath();
     for(let i=0;i<=16;i++){const a=i/16*Math.PI*2;pj(X+Math.cos(a)*15,0,Z+Math.sin(a)*17);i?ctx.lineTo(PX,PY):ctx.moveTo(PX,PY);}ctx.stroke();ctx.globalAlpha=sk.ghost?.7:1;
+    if(sk.ev){ctx.save();ctx.globalCompositeOperation='lighter';const pul=.5+.5*Math.sin(t/300);gEllipse(X,Z,13+pul*3,20+pul*4,rgba(sk.a,.28+.12*pul));gEllipse(X,Z,7,12,rgba(sk.rim||sk.a,.35));ctx.restore();}   // 季節限定：足もとが光る
   }
   const rim=sk.gx?'#b388ff':(sk.rim||'#9aa0ad');
   const wheel=cz=>{const pts=[];for(let i=0;i<=14;i++){const a=i/14*Math.PI*2;pts.push(L(0,6+Math.sin(a)*6,cz+Math.cos(a)*6));}
     ctx.beginPath();pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.lineWidth=3.6*pts[0][2];ctx.strokeStyle='#121216';ctx.lineJoin='round';ctx.stroke();
-    ctx.lineWidth=1.1*pts[0][2];ctx.strokeStyle=rim;ctx.stroke();};
+    if(sk.ev){ctx.save();ctx.shadowColor=rim;ctx.shadowBlur=6*pts[0][2];ctx.lineWidth=1.8*pts[0][2];ctx.strokeStyle=rim;ctx.stroke();ctx.restore();}
+    else{ctx.lineWidth=1.1*pts[0][2];ctx.strokeStyle=rim;ctx.stroke();}};
   const sy=29+st*3.5,sz=1+st*2.5-bk*3,hy=18.5+st*5,hz=-5+st*4.5-bk*1.5;
   const FH=L(0,6,8),HT=L(0,15.5,5.5),BB=L(0,6.5,-.5),S=L(0,16.5,-5.5),RH=L(0,6,-8),HB=L(0,19,7.2),GL=L(-8.5,19,6.5),GR=L(8.5,19,6.5);
   wheel(8);
@@ -2781,6 +2916,13 @@ function drawRider(p,team,t,name,alpha){
   const fe=[];for(let i=0;i<=8;i++){const a=Math.PI*(.15+i*.09);fe.push(L(0,6+Math.sin(a)*7.6,-8-Math.cos(a)*7.6));}rigSeg(fe,1.4,col);
   const rl=L(0,12,-14.4);ctx.fillStyle=bk?'#ff3030':'#a01818';ctx.beginPath();ctx.arc(rl[0],rl[1],1.5*rl[2],0,7);ctx.fill();
   if(bk){ctx.globalCompositeOperation='lighter';glow(rl[0],rl[1],12*rl[2],'rgba(255,40,40,.75)');ctx.globalCompositeOperation='source-over';}
+  if(sk.ev&&alpha==null){   // 季節限定：ハンドルからなびくリボンと、まわりを回るきらめき
+    const sw=Math.sin(t/120)*1.5;
+    for(const [s2,col] of [[-1,sk.a],[1,sk.rim||'#ffd23f']]){const a=L(s2*8.5,19,6.5),b=L(s2*(10.5)+sw,17,-3),c3=L(s2*(11.5)-sw,15,-13);ctx.strokeStyle=col;ctx.lineWidth=2*a[2];ctx.lineCap='round';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.quadraticCurveTo(b[0],b[1],c3[0],c3[1]);ctx.stroke();}
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    for(let i=0;i<4;i++){const an=t/500+i*Math.PI/2,q=L(Math.cos(an)*13,8+Math.sin(an*1.3)*5,Math.sin(an)*15);ctx.fillStyle='#fff8c4';ctx.beginPath();for(let k=0;k<8;k++){const rr=k%2?.5*q[2]:2.2*q[2],a2=k*Math.PI/4;ctx.lineTo(q[0]+Math.cos(a2)*rr,q[1]+Math.sin(a2)*rr);}ctx.fill();}
+    ctx.restore();
+  }
   if(sk.deco){const dp=L(0,9.5,-11.5);emoji(ctx,sk.deco,dp[0],dp[1],Math.max(9,8.5*dp[2]));}   // 季節スキンの飾り（荷台）
   rigSeg([L(0,16.9,-7.5),L(0,16.9,-3.6)],2.4,'#262630');
   const SL=[-7.2,sy,sz],SR=[7.2,sy,sz];
@@ -3343,7 +3485,7 @@ socket.on('room',info=>{
   if(!prev&&info.me===1)sysLog('ルーム '+info.code+' に参加しました！');
   if(prev){
     if(!prev.players[o]&&op){sysLog((op.name||'相手')+'（Lv'+(op.lv||1)+'）が参加しました！');if(AU.ctx)SFX.pop();}
-    if(prev.course!==info.course)sysLog('コースが「'+COURSES[info.course].n+'」に変更されました');
+    if(prev.course!==info.course){sysLog('コースが「'+COURSES[info.course].n+'」に変更されました');if(info.me!==0){toast('🗺️ ホストがコースを「'+COURSES[info.course].n+'」に変更しました',3000);}const cb=$('rm-course');cb.classList.remove('flash');void cb.offsetWidth;cb.classList.add('flash');}
     const a=prev.players[1],b=info.players[1];if(a&&b&&a.ready!==b.ready)sysLog((b.name||'ゲスト')+(b.ready?' 準備OK！':' 準備を取り消しました'));
     if(prev.state!=='lobby'&&info.state==='lobby')sysLog('ルームに戻りました。もう一戦する？');
   }
@@ -3353,6 +3495,7 @@ socket.on('room_note',n=>{
   if(n.t==='guest_left'){toast('相手が退出しました。次の相手を待っています',2800);sysLog('相手が退出しました');}
   if(n.t==='need_guest')toast('まだ相手がいません');
   if(n.t==='need_ready')toast('相手の「準備OK」を待ってください');
+  if(n.t==='kicked'){toast((n.name||'相手')+' をキックしました（このルームには再参加できません）',3000);sysLog((n.name||'相手')+' をキックしました');}
 });
 socket.on('chat',m=>{if(m&&(inGame||ROOM))onChat(m);});
 socket.on('left',()=>{
@@ -3392,6 +3535,26 @@ socket.on('prog',p=>{   // サーバーで起きた出来事 → クエスト進
   }
 });
 socket.on('st',onSnap);
+// フレンド申請の受信・お知らせ（承認された／お断り／削除）
+socket.on('friend_inbox',list=>{
+  if(!Array.isArray(list)||!SV)return;
+  const before=new Set(INBOX.map(e=>e.pk)),fresh=list.filter(e=>!before.has(e.pk));
+  INBOX=list;updateFriendDot();
+  if(fresh.length&&!(SV._inboxSeen>=fresh[0].ts)){toast('📩 '+fresh[0].name+(fresh.length>1?' ほか'+(fresh.length-1)+'人':'')+' からフレンド申請が届きました（フレンド画面で承認できます）',3500);if(AU.ctx)SFX.pop();}
+  if(list.length)SV._inboxSeen=Math.max(SV._inboxSeen||0,...list.map(e=>e.ts));
+  if(page==='friends')renderFriends();
+});
+socket.on('friend_notice',list=>{
+  if(!Array.isArray(list)||!SV)return;
+  for(const n of list){
+    if(n.t==='acc'){makeFriend(n.pk,n.name);toast('🤝 '+(n.name||'プレイヤー')+' がフレンド申請を承認しました！',3200);if(AU.ctx)SFX.claim();}
+    else if(n.t==='dec'){SV.fout=SV.fout.filter(e=>e.k!==n.pk);save();}
+    else if(n.t==='rm'){SV.friends=SV.friends.filter(e=>e.k!==n.pk);save();}
+  }
+  if(page==='friends')renderFriends();renderQuickFriends();renderRoomControls();
+});
+// ホストにキックされた
+socket.on('kicked',()=>{hideRoom();$('lobby').style.display='flex';showPage('home');toast('ホストによってルームから退出しました',3200);});
 
 /* ===== ロビーのボタン ===== */
 $('endless').onclick=()=>{initAudio();socket.emit('endless',payload());};
@@ -3536,7 +3699,8 @@ function showResult(o){
   const bt=$('res-btns');bt.classList.remove('show');
   $('res-again').textContent=GAME.ranked?'🏆 次のランク戦':'もう一回';$('res-again').disabled=!!(o.oppLeft&&!GAME.ranked);
   $('res-room').classList.toggle('hide',!roomGame);$('res-room').disabled=!!o.oppLeft;
-  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk));
+  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk)||isPending(opk));
+  af.textContent=opk&&inInbox(opk)?'✔ フレンド承認':'＋ フレンド申請';
   af.onclick=()=>{if(addFriend(opk,op.name))af.classList.add('hide');};
   if(AU.ctx){if(win)(SFX.fan||SFX.win)();else SFX.lose();}
   try{navigator.vibrate&&navigator.vibrate(win?[40,40,80]:60);}catch(e){}
