@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v8 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v9 — Express + Socket.io（サーバー権威型）
+// フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
 'use strict';
@@ -171,6 +172,17 @@ const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
 function loadRp(j) { if (Array.isArray(j)) rpBoard = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.rp)).sort((a, b) => b.rp - a.rp).slice(0, 100); }
 const saveRp = saver('rp', RP_FILE, () => rpBoard);
+/* ===== フレンド申請（承認制）：申請と「承認された／取り消された」のお知らせを保存（相手がオフラインでも届く） ===== */
+const FR_FILE = process.env.FRIENDS_FILE || path.join(__dirname, 'friends.json');
+const freq = new Map();    // 申請先pk -> Map(申請元pk -> ts)
+const fnote = new Map();   // pk -> [{t:'acc'|'dec'|'rm', pk, ts}]  まだ受け取っていないお知らせ
+function loadFriends(j) {
+  if (!j || typeof j !== 'object') return;
+  for (const [to, list] of (Array.isArray(j.req) ? j.req : [])) if (cleanPk(to) && Array.isArray(list)) freq.set(to, new Map(list.filter(x => Array.isArray(x) && cleanPk(x[0])).slice(0, 50)));
+  for (const [pk, list] of (Array.isArray(j.note) ? j.note : [])) if (cleanPk(pk) && Array.isArray(list)) fnote.set(pk, list.filter(n => n && cleanPk(n.pk)).slice(-50));
+}
+const saveFriends = saver('friends', FR_FILE, () => ({ req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] }));
+
 // 保存先が消えた後（ファイル保存で再起動したとき）は、つないできたプレイヤーの端末の記録からランキングを作り直す
 function restoreBoards(id, name, best, rp, lv, ttl) {
   if (!id || !name) return;
@@ -591,6 +603,16 @@ function statusOf(sid) {
   if (!R) return 'online';
   return (R.mode === 'versus' && !R.isCpu && !R.ids[1]) ? 'waiting' : 'playing';
 }
+// フレンド申請まわり
+const inboxOf = pk => [...(freq.get(pk) || new Map())].map(([from, ts]) => ({ pk: from, name: nameOfPk(from) || '（名前なし）', ts, s: statusOf(byPk.get(from)) })).sort((a, b) => b.ts - a.ts);
+function pushInbox(pk) { const sk = sockOf(byPk.get(pk)); if (sk) sk.emit('friend_inbox', inboxOf(pk)); }
+function notify(pk, n) {   // オンラインならすぐ届ける。オフラインなら保存して次の接続で届ける
+  n.name = nameOfPk(n.pk) || ''; n.ts = Date.now();
+  const sk = sockOf(byPk.get(pk));
+  if (sk) sk.emit('friend_notice', [n]);
+  else { const a = fnote.get(pk) || []; a.push(n); fnote.set(pk, a.slice(-50)); saveFriends(); }
+}
+function delReq(to, from) { const m = freq.get(to); if (m && m.delete(from)) { if (!m.size) freq.delete(to); saveFriends(); return true; } return false; }
 function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.pks[i] = L.pk; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
 function newRoom(code, socket, d, extra) {
   const R = Object.assign({
@@ -638,6 +660,7 @@ function joinRoom(socket, R, d, reply) {
   if (R.mode !== 'versus' || R.ids[1] || R.isCpu) return reply({ ok: false, err: 'ルームに参加できません' });
   if (R.state !== 'lobby') return reply({ ok: false, err: 'ルームは対戦中です' });
   if (R.ids[0] === socket.id) return reply({ ok: false, err: '自分のルームには参加できません' });
+  if (R.banned && socket.nmPk && R.banned.has(socket.nmPk)) return reply({ ok: false, err: 'このルームにはホストの判断で参加できません' });
   leaveRoom(socket);
   R.ids[1] = socket.id; R.ready = [false, false];
   setLook(R, 1, lookS(socket, d, 'プレイヤー2'));
@@ -726,6 +749,8 @@ io.on('connection', socket => {
     const n = validName(d && d.name), why = nameProblem(n, uid);
     if (!why) {
       claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n });
+      socket.emit('friend_inbox', inboxOf(pk));
+      const nt = fnote.get(pk); if (nt && nt.length) { nt.forEach(x => { x.name = nameOfPk(x.pk) || x.name || ''; }); socket.emit('friend_notice', nt); fnote.delete(pk); saveFriends(); }
       restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'));
     }
     else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
@@ -823,6 +848,44 @@ io.on('connection', socket => {
     joinRoom(socket, R, d, rp(cb));
   });
   socket.on('room_ready', v => { const R = myRoom(); if (!R || R.state !== 'lobby' || socket.data.slot !== 1) return; R.ready[1] = !!v; sendRoom(R); });
+  // ===== フレンド申請（承認制） =====
+  socket.on('friend_req', (to, cb) => {
+    const me = socket.nmPk; to = cleanPk(to);
+    if (!me || !socket.nmRegName) return rp(cb)({ ok: false, err: 'ユーザー名を登録してから申請してください' });
+    if (!to || to === me) return rp(cb)({ ok: false, err: 'このプレイヤーには申請できません' });
+    if (!nameOfPk(to)) return rp(cb)({ ok: false, err: 'プレイヤーが見つかりません' });
+    if (delReq(me, to)) {   // 相手からも申請が来ていた → その場で成立
+      notify(to, { t: 'acc', pk: me }); pushInbox(me);
+      return rp(cb)({ ok: true, state: 'mutual', name: nameOfPk(to) });
+    }
+    const m = freq.get(to) || new Map();
+    if (!m.has(me) && m.size >= 50) return rp(cb)({ ok: false, err: '相手の申請がいっぱいです' });
+    m.set(me, Date.now()); freq.set(to, m); saveFriends(); pushInbox(to);
+    rp(cb)({ ok: true, state: 'sent', name: nameOfPk(to) });
+  });
+  socket.on('friend_inbox', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)(socket.nmPk ? inboxOf(socket.nmPk) : []); });
+  socket.on('friend_answer', (d, cb) => {
+    const me = socket.nmPk, from = cleanPk(d && d.pk);
+    if (!me || !from || !delReq(me, from)) return rp(cb)({ ok: false, err: '申請が見つかりません（取り消された可能性があります）' });
+    notify(from, { t: d.ok ? 'acc' : 'dec', pk: me });
+    rp(cb)({ ok: true, name: nameOfPk(from) });
+  });
+  socket.on('friend_cancel', to => { const me = socket.nmPk; to = cleanPk(to); if (me && to && delReq(to, me)) pushInbox(to); });
+  socket.on('friend_remove', to => {   // 片方が削除したら、相手のリストからも消える
+    const me = socket.nmPk; to = cleanPk(to); if (!me || !to) return;
+    delReq(to, me); delReq(me, to); notify(to, { t: 'rm', pk: me });
+  });
+  // ホストがゲストをキック（そのルームには再参加できない）
+  socket.on('room_kick', () => {
+    const R = myRoom(); if (!R || R.state !== 'lobby' || socket.data.slot !== 0 || !R.ids[1]) return;
+    const gs = sockOf(R.ids[1]);
+    R.banned = R.banned || new Set(); if (R.pks[1]) R.banned.add(R.pks[1]);
+    const name = R.names[1];
+    R.ids[1] = null; R.ready = [false, false]; R.names[1] = 'プレイヤー2'; R.pks[1] = '';
+    if (gs) { gs.data = {}; gs.emit('kicked', { code: R.code }); }
+    socket.emit('room_note', { t: 'kicked', name });
+    sendRoom(R);
+  });
   socket.on('room_course', v => { const R = myRoom(); if (!R || R.state !== 'lobby' || socket.data.slot !== 0) return; R.course = cleanCourse(v); sendRoom(R); });
   socket.on('room_look', d => { const R = myRoom(); if (!R || R.state !== 'lobby') return; setLook(R, socket.data.slot, lookS(socket, d, R.names[socket.data.slot])); sendRoom(R); });
   socket.on('room_start', () => {
@@ -880,7 +943,7 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000;
 // 保存データを読み込んでから受付開始
 (async () => {
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
