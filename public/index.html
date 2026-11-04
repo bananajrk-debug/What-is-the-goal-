@@ -296,6 +296,10 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 #qw-fill{background:linear-gradient(90deg,#ffe56b,#ff9f1a)}
 #wk-banner{display:flex;align-items:center;gap:.5em;border:3px solid var(--ln);border-radius:12px;background:linear-gradient(90deg,#4a2a9a,#29347a);color:#fff;padding:.3em .6em;font-size:.86em;cursor:pointer;box-shadow:0 3px 0 var(--ln);text-align:left}
 #wk-banner span:first-child{font-size:1.4em}
+.codechip{display:inline-flex;align-items:center;gap:.35em;border:3px solid var(--ln);border-radius:12px;background:rgba(0,0,0,.35);color:#fff;padding:.15em .6em;cursor:pointer;font-weight:900;font-size:1em}
+.codechip:active{transform:translateY(2px)}
+.code-box{align-items:center;text-align:center;width:min(40em,96vw)}
+.big-code{font-family:var(--D);font-size:min(22vh,16vw);line-height:1.05;letter-spacing:.06em;color:#ffe56b;text-shadow:0 .05em 0 var(--ln),.03em .03em 0 var(--ln),-.03em -.03em 0 var(--ln);background:#0b0f24;border:4px solid var(--ln);border-radius:20px;padding:.05em .35em;user-select:text;-webkit-user-select:text;cursor:pointer;white-space:nowrap}
 </style></head><body>
 <canvas id="c"></canvas>
 
@@ -394,6 +398,12 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
 </div></div>
+<div id="code-modal" class="modal hide"><div class="box code-box">
+  <b style="font-size:1.1em">🏠 ルームコード</b>
+  <div id="cm-code" class="big-code">000 000</div>
+  <div class="muted">この画面を相手に見せるか、コピー・招待リンクで送ってね。相手はロビーの「6桁コード」に入れて「参加」を押すと入れます。</div>
+  <div class="row" style="justify-content:center;flex-wrap:wrap"><button id="cm-copy" class="btn big green">📋 コードをコピー</button><button id="cm-share" class="btn big blue">🔗 招待リンクを送る</button><button id="cm-close" class="btn big dark">閉じる</button></div>
+</div></div>
 <div id="name-modal" class="modal hide"><div class="box nm-box">
   <b id="nm-title" style="font-size:1.2em">✏️ ユーザー名</b>
   <div class="muted" id="nm-lead"></div>
@@ -444,7 +454,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 <div id="room" class="hide">
   <header class="rm-top">
     <b>🏠 ルームロビー</b>
-    <span>コード <b id="rm-code">------</b></span><button id="rm-copy" class="btn sm blue">コピー</button>
+    <button id="rm-codebtn" class="codechip" title="タップで大きく表示">コード <b id="rm-code">------</b> 🔍</button><button id="rm-copy" class="btn sm blue">コピー</button>
     <div class="course-sel grow"><button id="rm-cprev" class="btn sm dark">◀</button><b id="rm-cname"></b><button id="rm-cnext" class="btn sm dark">▶</button></div>
     <button id="rm-leave" class="btn sm red">退出</button>
   </header>
@@ -467,7 +477,6 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
   <div class="sm-sec">
     <label>BGM <input type="range" id="vol-bgm" min="0" max="1" step="0.05"></label>
     <label>効果音 <input type="range" id="vol-se" min="0" max="1" step="0.05"></label>
-    <label>環境音 <input type="range" id="vol-amb" min="0" max="1" step="0.05"></label>
     <label>操作の感度 <input type="range" id="sens" min="0.6" max="1.6" step="0.05"></label>
   </div>
   <button id="btn-fs" class="btn blue">⛶ 全画面にする（横向き固定）</button>
@@ -484,7 +493,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
     <input type="file" id="audio-file-input" accept="audio/*">
     <span id="audio-file-info" class="muted">現在の音声: マイ録音.m4a</span>
   </div>
-  <div class="muted">サウンド：Web Audio APIによるリアルタイム生成。public/sounds/ にフリー素材を置くと自動で差し替わります。</div>
+  <div class="muted">サウンド：Web Audio APIによるリアルタイム生成（環境音はなし）。public/sounds/ にフリー素材を置くと自動で差し替わります。</div>
 </div></div>
 
 <div id="lvup" class="hide"><div class="lvup-in"><b>LEVEL UP!</b><span id="lvup-n"></span><span id="lvup-r" class="muted"></span><span id="lvup-u" style="color:#8cf08c;font-size:.85em;text-align:center"></span></div></div>
@@ -714,7 +723,7 @@ function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,c
   eq:{skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
   slots:['wave','thumbs','laugh','wheelie'],friends:[],course:0,best:0,sens:1,
-  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},weekly:{wk:'',ids:[],prog:{},claimed:{},rw:false,rwKey:''},ach:{},vol:{bgm:.6,se:.85,amb:.6},ts:Date.now()};}
+  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},weekly:{wk:'',ids:[],prog:{},claimed:{},rw:false,rwKey:''},ach:{},vol:{bgm:.6,se:.85},ts:Date.now()};}
 function fixSave(s){
   const d=newSave(s&&typeof s.id==='string'?s.id:undefined);
   if(!s||typeof s!=='object')return d;
@@ -903,10 +912,10 @@ function grantUnlocks(){
 }
 /* =====================================================================
    サウンドエンジン（Web Audio API）
-   - BGM・街の環境音・効果音はすべてリアルタイム生成
+   - BGM・効果音はすべてリアルタイム生成（環境音は廃止）
    - public/sounds/ に同名ファイル（例: crash.mp3）を置くとそちらを優先再生
    ===================================================================== */
-const AU={ctx:null,master:null,bgmG:null,seG:null,ambG:null,noise:null,brown:null,dist:null,files:{}};
+const AU={ctx:null,master:null,bgmG:null,seG:null,noise:null,brown:null,dist:null,files:{}};
 function initAudio(){
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)return;
@@ -914,8 +923,8 @@ function initAudio(){
     const c=AU.ctx=new AC();
     const comp=c.createDynamicsCompressor();comp.threshold.value=-12;comp.ratio.value=4;comp.connect(c.destination);
     AU.master=c.createGain();AU.master.gain.value=.9;AU.master.connect(comp);
-    AU.bgmG=c.createGain();AU.seG=c.createGain();AU.ambG=c.createGain();
-    [AU.bgmG,AU.seG,AU.ambG].forEach(g=>g.connect(AU.master));
+    AU.bgmG=c.createGain();AU.seG=c.createGain();
+    [AU.bgmG,AU.seG].forEach(g=>g.connect(AU.master));
     const n=c.sampleRate*2;
     AU.noise=c.createBuffer(1,n,c.sampleRate);
     const wd=AU.noise.getChannelData(0);for(let i=0;i<n;i++)wd[i]=Math.random()*2-1;
@@ -933,7 +942,6 @@ function applyVol(){
   if(!AU.ctx)return;
   AU.bgmG.gain.value=SV.vol.bgm*.5*(BG.lobby?.7:1);
   AU.seG.gain.value=SV.vol.se;
-  AU.ambG.gain.value=SV.vol.amb*.9;
 }
 async function loadSoundFiles(){
   try{
@@ -946,7 +954,6 @@ async function loadSoundFiles(){
       }catch(e){}
     }
     if(BG.id&&!BG.src&&AU.files[bgmFileKey(BG.id)]){const id=BG.id,l=BG.lobby;stopBGM();startBGM(id,l);}
-    if(AMB.on){const th=AMB.theme;ambStop();ambStart(th);}
   }catch(e){}
 }
 function playFile(k,vol,dest,loop){
@@ -1053,34 +1060,6 @@ function sirenStop(){
   s.g.gain.setTargetAtTime(0,now(),.04);
   setTimeout(()=>{try{s.o&&s.o.stop();s.l&&s.l.stop();s.f&&s.f.s.stop();s.g.disconnect();}catch(e){}},300);
   SIREN.o=SIREN.g=SIREN.p=SIREN.l=SIREN.f=null;
-}
-
-/* ===== 街の環境音（走行中の風切り音＋遠くの車・鳥・カモメ…） ===== */
-const AMB={on:false,theme:0,nodes:[],windG:null,windF:null,timer:null};
-function ambStart(ti){
-  initAudio();if(!AU.ctx)return;ambStop();
-  const c=AU.ctx,T=COURSES[ti]||COURSES[0];AMB.on=true;AMB.theme=ti;
-  const loop=(buf,ft,f,vol)=>{const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=buf;s.loop=true;fl.type=ft;fl.frequency.value=f;g.gain.value=vol;s.connect(fl);fl.connect(g);g.connect(AU.ambG);s.start();AMB.nodes.push(s);return {g,fl};};
-  const f=playFile('ambient',.8,AU.ambG,true);
-  if(f)AMB.nodes.push(f.s);
-  else{loop(AU.brown,'lowpass',260,T.night?.35:.5);loop(AU.noise,'highpass',6000,.012);if(T.sea)AMB.sea=loop(AU.brown,'lowpass',700,.18);}
-  const w=loop(AU.noise,'bandpass',800,0);w.fl.Q.value=.6;AMB.windG=w.g;AMB.windF=w.fl;
-  AMB.timer=setInterval(()=>{
-    if(!AU.ctx||AU.ctx.state!=='running')return;
-    const t=now(),r=Math.random(),pan=c.createStereoPanner?c.createStereoPanner():null,dest=c.createGain();
-    dest.gain.value=1;if(pan){pan.pan.value=Math.random()*1.6-.8;dest.connect(pan);pan.connect(AU.ambG);}else dest.connect(AU.ambG);
-    if(r<.09){[370,440].forEach(fr=>tone('sawtooth',fr,t,.35,.025,dest,{a:.02,lp:900}));}
-    else if(r<(T.mountain?.32:.2)&&!T.night&&!T.sea){for(let i=0;i<3;i++)tone('sine',3200+Math.random()*900,t+i*.11,.08,.02,dest,{to:4300});}
-    else if(r<.3&&T.sea){tone('triangle',1500,t,.35,.03,dest,{to:950});tone('triangle',1400,t+.4,.3,.025,dest,{to:900});}
-    else if(r<.26&&T.shita){tone('sine',2400+Math.random()*600,t,1.6,.02,dest);}
-    else if(r<.32&&T.night){for(let i=0;i<4;i++)tone('sine',90,t+i*.45,.18,.05,dest,{to:45});}
-    setTimeout(()=>{try{dest.disconnect();}catch(e){}},3000);
-  },900);
-}
-function ambWind(v){if(AMB.windG&&AU.ctx){AMB.windG.gain.setTargetAtTime(clamp((v-80)/320,0,1)*.32,now(),.25);AMB.windF.frequency.setTargetAtTime(450+v*4,now(),.25);}}
-function ambStop(){
-  AMB.nodes.forEach(n=>{try{n.stop();}catch(e){}});AMB.nodes=[];AMB.windG=null;AMB.windF=null;AMB.sea=null;AMB.on=false;
-  if(AMB.timer){clearInterval(AMB.timer);AMB.timer=null;}
 }
 
 /* ===== BGM（4曲。先読みスケジューラで正確なテンポ） ===== */
@@ -2151,15 +2130,18 @@ function friendRow(r){
   b.onclick=()=>{if(addFriend(r.pk,r.name)){b.textContent='フレンド';b.disabled=true;b.className='btn sm dark';}};
   row.appendChild(b);return row;
 }
-$('add-friend-id').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btn-find-friend').onclick();}});
+$('add-friend-id').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(fsT);$('btn-find-friend').onclick();}});
+let fsT=null;   // 打つたびに自動で検索（1文字から）
+$('add-friend-id').addEventListener('input',()=>{clearTimeout(fsT);const q=$('add-friend-id').value.trim();if(!q){$('find-res').innerHTML='';return;}fsT=setTimeout(()=>$('btn-find-friend').onclick(),350);});
 $('btn-find-friend').onclick=()=>{
-  initAudio();const q=$('add-friend-id').value.normalize('NFKC').trim(),out=$('find-res');out.innerHTML='';
+  initAudio();const q=$('add-friend-id').value.normalize('NFKC').trim(),out=$('find-res');if(!out.querySelector('.fres'))out.innerHTML='';
   if(!q){out.textContent='相手のユーザー名を入力してください';return;}
   if(!socket.connected){out.textContent=NAME_WHY.offline;return;}
-  out.textContent='検索中…';
+  if(!out.querySelector('.fres'))out.textContent='検索中…';
   socket.emit('friend_lookup',q,r=>{
     out.innerHTML='';const list=(r&&r.list)||[];
-    if(!list.length){out.textContent='「'+q+'」というユーザー名は見つかりませんでした（大文字小文字・ひらがなカタカナの違いは気にしなくてOK）';return;}
+    if($('add-friend-id').value.normalize('NFKC').trim()!==q)return;   // 入力が変わっていたら古い結果は出さない
+    if(!list.length){out.textContent='「'+q+'」で始まるユーザー名は見つかりませんでした。相手のロビー画面に出ている名前を、そのまま入れてみてください（ひらがな/カタカナ・大文字/小文字の違いはOK）';return;}
     const ex=list.find(x=>nkey(x.name)===nkey(q));
     const h=document.createElement('div');h.className='muted';h.textContent=ex?'見つかりました：':'「'+q+'」で始まるユーザー名：';out.appendChild(h);
     list.forEach(x=>out.appendChild(friendRow(x)));
@@ -2190,10 +2172,10 @@ function handleInvite(){
 
 /* ===== 設定メニュー ===== */
 $('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-name').textContent=SV.name+(SV.nameReg?'':'（未登録）');$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
-  ['bgm','se','amb'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
+  ['bgm','se'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
 $('close-menu-btn').onclick=()=>$('side-menu').classList.add('hide');
 $('side-menu').addEventListener('click',e=>{if(e.target.id==='side-menu')$('side-menu').classList.add('hide');});
-['bgm','se','amb'].forEach(k=>{$('vol-'+k).oninput=()=>{SV.vol[k]=+$('vol-'+k).value;save();initAudio();applyVol();};});
+['bgm','se'].forEach(k=>{$('vol-'+k).oninput=()=>{SV.vol[k]=+$('vol-'+k).value;save();initAudio();applyVol();};});
 $('sens').oninput=()=>{SV.sens=+$('sens').value;save();};
 async function goFull(){
   try{
@@ -2223,12 +2205,12 @@ $('btn-import').onclick=()=>{
 let ROOM=null;const roomEmo=[null,null],roomBub=[null,null];
 function showRoom(info){
   const first=!ROOM;ROOM=info;
-  if(inGame){inGame=false;S=D=null;END=null;sirenStop();ambStop();$('hud').classList.add('hide');startBGM(SV.eq.bgm,true);}
+  if(inGame){inGame=false;S=D=null;END=null;sirenStop();$('hud').classList.add('hide');startBGM(SV.eq.bgm,true);}
   $('lobby').style.display='none';$('room').classList.remove('hide');
   if(first){$('rm-log').innerHTML='';sysLog('ルームを開きました。相手が来たらチャットやエモートであいさつしよう！');renderRoomControls();}
   renderRoomControls();
 }
-function hideRoom(){ROOM=null;$('room').classList.add('hide');}
+function hideRoom(){ROOM=null;$('room').classList.add('hide');$('code-modal').classList.add('hide');}
 function renderRoomControls(){
   if(!ROOM)return;const me=ROOM.me,op=ROOM.players[1-me],host=me===0;
   $('rm-code').textContent=ROOM.code;$('rm-cname').textContent=COURSES[ROOM.course].n;
@@ -2259,7 +2241,28 @@ $('rm-go').onclick=()=>{initAudio();if(!ROOM)return;if(ROOM.me===0)socket.emit('
 $('rm-cprev').onclick=()=>ROOM&&socket.emit('room_course',(ROOM.course+COURSES.length-1)%COURSES.length);
 $('rm-cnext').onclick=()=>ROOM&&socket.emit('room_course',(ROOM.course+1)%COURSES.length);
 $('rm-copy').onclick=()=>ROOM&&copyText(ROOM.code,'ルームコードをコピーしました');
-$('rm-leave').onclick=()=>{socket.emit('leave');hideRoom();$('lobby').style.display='flex';showPage('home');};
+/* ===== ルームコードを大きく表示（相手に画面を見せる・コピー・招待リンク） ===== */
+const roomUrl=code=>location.origin+location.pathname+'?room='+code;
+function openCodeModal(){if(!ROOM)return;initAudio();if(AU.ctx)SFX.click();$('cm-code').textContent=ROOM.code.slice(0,3)+' '+ROOM.code.slice(3);$('code-modal').classList.remove('hide');}
+$('rm-codebtn').onclick=openCodeModal;
+$('cm-code').onclick=()=>ROOM&&copyText(ROOM.code,'ルームコード '+ROOM.code+' をコピーしました');
+$('cm-copy').onclick=()=>ROOM&&copyText(ROOM.code,'ルームコード '+ROOM.code+' をコピーしました');
+$('cm-share').onclick=async()=>{
+  if(!ROOM)return;const url=roomUrl(ROOM.code),text='「なにが目的なん？」で対戦しよう！ ルームコード：'+ROOM.code+'（リンクを開くとそのまま参加できます）';
+  try{if(navigator.share){await navigator.share({title:'なにが目的なん？ ONLINE',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  copyText(text+'\n'+url,'招待リンクをコピーしました');
+};
+$('cm-close').onclick=()=>$('code-modal').classList.add('hide');
+$('code-modal').addEventListener('click',e=>{if(e.target.id==='code-modal')$('code-modal').classList.add('hide');});
+// 招待リンク（?room=123456）から開いたら、そのルームに参加
+function handleRoomLink(){
+  let q='';try{q=new URLSearchParams(location.search).get('room')||'';}catch(e){}
+  if(!/^\d{6}$/.test(q))return;try{history.replaceState(null,'',location.pathname);}catch(e){}
+  $('code').value=q;
+  const go=()=>socket.emit('join',Object.assign({code:q},payload()),r=>{if(!r||!r.ok)toast((r&&r.err)||'ルームに参加できませんでした',3200);});
+  if(socket.connected)go();else socket.once('connect',()=>setTimeout(go,200));
+}
+$('rm-leave').onclick=()=>{$('code-modal').classList.add('hide');socket.emit('leave');hideRoom();$('lobby').style.display='flex';showPage('home');};
 function speech(c,x,y,s,size){
   c.font='900 '+(size|0)+'px '+FONT;const tw=Math.min(c.measureText(s).width,size*14),pw=tw+size*1.2,ph=size*1.7;
   c.fillStyle='#ffffff';c.strokeStyle=OUTL;c.lineWidth=3;c.beginPath();c.moveTo(x-pw/2+10,y-ph);c.lineTo(x+pw/2-10,y-ph);c.quadraticCurveTo(x+pw/2,y-ph,x+pw/2,y-ph+10);c.lineTo(x+pw/2,y-10);c.quadraticCurveTo(x+pw/2,y,x+pw/2-10,y);
@@ -2926,11 +2929,11 @@ function enterGame(d){
   $('b-chat').classList.toggle('hide',mode==='endless');$('b-room').classList.toggle('hide',!roomGame);
   $('b-again').textContent=roomGame?'もう一回（再戦）':'もう一回';
   CAM.ok=false;resize();setupButtons();padReset();lastS=null;sendInp(true);buildChatPop();
-  startBGM(SV.eq.bgm,false);ambStart(d.course||0);
+  startBGM(SV.eq.bgm,false);
 }
 function stopGame(){
   $('hud').classList.remove('vsdim');inGame=false;S=D=null;END=null;PRED.ok=false;VS=null;hideResult();GAME.ranked=false;
-  sirenStop();ambStop();padReset();
+  sirenStop();padReset();
   $('hud').classList.add('hide');$('chatpop').classList.add('hide');$('endbar').classList.add('hide');
 }
 // ランクマッチを途中で抜けた／切断した → 敗北扱い（タブを閉じた場合も次回起動時に反映）
@@ -3189,7 +3192,6 @@ function fxOverlay(T,me,t,dt){
       ctx.fillStyle=f?'#ff3b30':'#ffffff';ctx.beginPath();ctx.moveTo(ax,H-70);ctx.lineTo(ax-16,H-44);ctx.lineTo(ax+16,H-44);ctx.closePath();ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();
     }
   }else sirenUpdate(0,0);
-  ambWind(play?me.v:0);
   const v=ctx.createRadialGradient(W/2,H*.55,H*.35,W/2,H*.55,Math.max(W,H)*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,10,'+(T.night?.55:.32)+')');ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
   if(flash>0){ctx.fillStyle='rgba(255,255,255,'+flash+')';ctx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*1.6);}
 }
@@ -3321,7 +3323,7 @@ function drawGame(dt,t){
 /* =====================================================================
    通信
    ===================================================================== */
-function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv});}
+function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv,best:SV.best,rp:SV.rp,ttl:myTitle()});}
 socket.on('connect',hello);
 socket.on('disconnect',()=>{if(MM)hideMM();if(inGame&&GAME.ranked&&SV.rkPend&&!(D&&D.s==='match'))rankPenalty('通信が切れたためランクマッチは敗北扱いになりました');if(inGame||ROOM){stopGame();hideRoom();startBGM(SV.eq.bgm,true);$('lobby').style.display='flex';showPage('home');toast('通信が切れました。もう一度お試しください',3000);}});
 socket.on('id_conflict',()=>toast('このログインIDは別の画面で使用中です',3000));
@@ -3439,7 +3441,7 @@ function loop(t){
   resize();showPage('home');updateTop();
   $('boot').classList.add('hide');
   if(socket.connected)hello();
-  handleInvite();
+  handleInvite();handleRoomLink();
   requestAnimationFrame(loop);
 })();
 
