@@ -1,4 +1,4 @@
-// なにが目的なん？ ONLINE v7 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v8 — Express + Socket.io（サーバー権威型）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
 'use strict';
@@ -82,6 +82,33 @@ const lookS = (sock, d, defName) => {
 };
 
 /* =====================================================================
+   データの保存先
+   - 環境変数 UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN があれば Upstash Redis（無料枠あり）に保存
+     → Render 無料プランのようにサーバーが再起動・スリープしても、名簿とランキングが消えない
+   - なければ従来どおり JSON ファイル（再起動で消える環境では消えます）
+   ===================================================================== */
+const KV_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/+$/, ''), KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const useKV = !!(KV_URL && KV_TOKEN);
+const STORE = {
+  async load(key, file) {
+    if (useKV) {
+      const r = await fetch(KV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(['GET', 'nm:' + key]) });
+      const j = await r.json(); if (j.error) throw new Error(j.error);
+      return j.result ? JSON.parse(j.result) : null;
+    }
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return null; }
+  },
+  save(key, file, data) {
+    const body = JSON.stringify(data);
+    if (useKV) {
+      fetch(KV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(['SET', 'nm:' + key, body]) })
+        .then(r => r.json()).then(j => { if (j.error) console.warn('保存エラー(' + key + '):', j.error); }).catch(e => console.warn('保存エラー(' + key + '):', e.message));
+    } else fs.writeFile(file, body, err => { if (err) console.warn('保存エラー(' + key + '):', err.message); });
+  }
+};
+const saver = (key, file, get, ms) => { let t = null; return () => { if (t) return; t = setTimeout(() => { t = null; STORE.save(key, file, get()); }, ms || 3000); }; };
+
+/* =====================================================================
    ユーザー名の名簿（重複禁止）：正規化したキー → { name, pk, uid }
    全角/半角・大文字/小文字・ひらがな/カタカナの違いは同じ名前として扱う
    ===================================================================== */
@@ -97,12 +124,8 @@ function validName(v) {
   return n;
 }
 const RESERVED = new Set(['CPU', 'プレイヤー', 'プレイヤー2', 'ゲスト', '運営', '管理者', '公式', 'admin', 'administrator', 'system', 'システム', 'moderator', 'GM', 'なにが目的なん'].concat(BOT_NAMES).map(nkey));
-try {
-  const j = JSON.parse(fs.readFileSync(NAMES_FILE, 'utf8'));
-  if (Array.isArray(j)) for (const e of j) if (e && validName(e.name) && cleanPk(e.pk) && cleanUid(e.uid)) { const k = nkey(e.name); nameReg.set(k, e); pkKey.set(e.pk, k); }
-} catch (e) { /* 初回 */ }
-let namesTimer = null;
-function saveNames() { if (namesTimer) return; namesTimer = setTimeout(() => { namesTimer = null; fs.writeFile(NAMES_FILE, JSON.stringify([...nameReg.values()]), () => {}); }, 1500); }
+function loadNames(j) { if (Array.isArray(j)) for (const e of j) if (e && validName(e.name) && cleanPk(e.pk) && cleanUid(e.uid)) { const k = nkey(e.name); if (!nameReg.has(k)) { nameReg.set(k, e); pkKey.set(e.pk, k); } } }
+const saveNames = saver('names', NAMES_FILE, () => [...nameReg.values()]);
 function nameProblem(n, uid) {            // 使えない理由（使えるなら空文字）
   if (!n) return 'invalid';
   const k = nkey(n);
@@ -126,18 +149,8 @@ const nameOfPk = pk => { const k = pkKey.get(pk), e = k && nameReg.get(k); retur
 /* ===== ランキング（ranking.json に保存） ===== */
 const RANK_FILE = process.env.RANK_FILE || path.join(__dirname, 'ranking.json');
 let ranking = [];
-try {
-  const j = JSON.parse(fs.readFileSync(RANK_FILE, 'utf8'));
-  if (Array.isArray(j)) ranking = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.score)).slice(0, 100);
-} catch (e) { /* 初回はファイルなし */ }
-let saveTimer = null;
-function saveRanking() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    fs.writeFile(RANK_FILE, JSON.stringify(ranking), err => { if (err) console.warn('ranking save failed:', err.message); });
-  }, 1500);
-}
+function loadRanking(j) { if (Array.isArray(j)) ranking = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.score)).sort((a, b) => b.score - a.score).slice(0, 100); }
+const saveRanking = saver('ranking', RANK_FILE, () => ranking);
 function submitScore(id, name, score, lv) {
   if (!id) return { best: score, rank: 0, improved: false };
   const i = ranking.findIndex(r => r.id === id);
@@ -156,9 +169,22 @@ const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.s
 // チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
-try { const j = JSON.parse(fs.readFileSync(RP_FILE, 'utf8')); if (Array.isArray(j)) rpBoard = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.rp)).slice(0, 100); } catch (e) { /* 初回 */ }
-let rpTimer = null;
-function saveRp() { if (rpTimer) return; rpTimer = setTimeout(() => { rpTimer = null; fs.writeFile(RP_FILE, JSON.stringify(rpBoard), () => {}); }, 1500); }
+function loadRp(j) { if (Array.isArray(j)) rpBoard = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.rp)).sort((a, b) => b.rp - a.rp).slice(0, 100); }
+const saveRp = saver('rp', RP_FILE, () => rpBoard);
+// 保存先が消えた後（ファイル保存で再起動したとき）は、つないできたプレイヤーの端末の記録からランキングを作り直す
+function restoreBoards(id, name, best, rp, lv, ttl) {
+  if (!id || !name) return;
+  let ch = false;
+  const r = ranking.find(x => x.id === id);
+  if (r) { if (r.name !== name) { r.name = name; ch = true; } }
+  else if (!useKV && best > 0 && (ranking.length < 100 || best > ranking[ranking.length - 1].score)) { ranking.push({ id, name, score: best, lv, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); ch = true; }
+  if (ch) saveRanking();
+  let ch2 = false;
+  const q = rpBoard.find(x => x.id === id);
+  if (q) { if (q.name !== name) { q.name = name; ch2 = true; } }
+  else if (!useKV && rp > 0 && (rpBoard.length < 100 || rp > rpBoard[rpBoard.length - 1].rp)) { rpBoard.push({ id, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); ch2 = true; }
+  if (ch2) saveRp();
+}
 function submitRp(id, name, rp, lv, ttl) {
   const i = rpBoard.findIndex(r => r.id === id);
   if (i >= 0) { rp = Math.min(rp, rpBoard[i].rp + 60); rpBoard[i] = { id, name, rp, lv, ttl, ts: Date.now() }; }
@@ -698,7 +724,10 @@ io.on('connection', socket => {
     socket.nmLv = clamp(parseInt(d && d.lv, 10) || 1, 1, 99);
     const lf = cleanFid(d && d.fid); if (lf) { socket.nmFid = lf; byFid.set(lf, socket.id); }
     const n = validName(d && d.name), why = nameProblem(n, uid);
-    if (!why) { claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n }); }
+    if (!why) {
+      claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n });
+      restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'));
+    }
     else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
   });
   // ユーザー名：入力中の空きチェック／登録（変更）／おまかせ候補
@@ -710,6 +739,7 @@ io.on('connection', socket => {
     const n = validName(v), why = nameProblem(n, socket.nmUid);
     if (why) return rp(cb)({ ok: false, reason: why, suggest: suggestName() });
     claimName(n, socket.nmUid, socket.nmPk); socket.nmRegName = n;
+    restoreBoards(socket.nmId, n, 0, 0, socket.nmLv, 'rookie');   // ランキングの表示名も新しい名前に
     const R = myRoom(); if (R && R.state === 'lobby' && socket.data.slot != null) { R.names[socket.data.slot] = n; sendRoom(R); }
     rp(cb)({ ok: true, name: n });
   });
@@ -848,4 +878,11 @@ io.on('connection', socket => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log('listening on ' + PORT));
+// 保存データを読み込んでから受付開始
+(async () => {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp]]) {
+    try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
+  }
+  console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
+  server.listen(PORT, () => console.log('listening on ' + PORT));
+})();
