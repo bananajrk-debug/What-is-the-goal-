@@ -7,15 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1226">
 <meta name="google-site-verification" content="jd3enhWTkhZqJ7XFm9us-cS4NOilaq6dSceClpfOu5o" />
-<title>なにが目的なん？ ONLINE｜無料で遊べる2人対戦 自転車追いかけっこゲーム</title>
-<meta name="description" content="ブラウザですぐ遊べる無料の自転車対戦ゲーム。急ブレーキで妨害するか、立ち漕ぎで追い抜くか！ランクマッチ・エンドレスラン・友達とのルーム対戦。スマホ・PC対応、インストール不要。">
-<link rel="canonical" href="https://what-is-the-goal.onrender.com/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="なにが目的なん？ ONLINE｜2人対戦 自転車ゲーム">
-<meta property="og:description" content="ブラウザですぐ遊べる無料の自転車対戦ゲーム。急ブレーキで妨害か、立ち漕ぎで追い抜くか！">
-<meta property="og:url" content="https://what-is-the-goal.onrender.com/">
-<meta property="og:image" content="https://what-is-the-goal.onrender.com/ogp.png">
-<meta name="twitter:card" content="summary_large_image">
+<title>なにが目的なん？ ONLINE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -294,6 +286,14 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .pvm.now{border-color:#ffd23f}
 .pvm.on{outline:3px solid #8cf08c;outline-offset:-1px;background:#2d3b8a}
 .wreward{cursor:pointer}
+#cs-list .card,#co-list .card{position:relative}
+.ctag{position:absolute;top:.45em;right:.45em;background:linear-gradient(180deg,#ff9f43,#e8590c);color:#fff;font-weight:900;font-size:.78em;padding:.15em .55em;border:2px solid var(--ln);border-radius:999px;box-shadow:0 2px 0 var(--ln);text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.qall{display:flex;align-items:center;gap:.6em;position:sticky;top:0;z-index:4;background:linear-gradient(90deg,#1d7a3c,#35a85a);border:3px solid var(--ln);border-radius:14px;padding:.4em .7em;color:#fff;box-shadow:0 3px 0 var(--ln)}
+.qall.off{background:linear-gradient(90deg,#2b3263,#222a55)}
+.qall b{font-size:1.02em}.qall small{display:block;opacity:.9;font-weight:700}
+.qall .btn{flex:0 0 auto}
+@keyframes qallp{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.qall:not(.off) .btn{animation:qallp 1.1s ease-in-out infinite}
 .qrw{cursor:pointer;border-bottom:2px dotted rgba(255,255,255,.4)}
 @media (max-aspect-ratio:1/1){#pv-body{flex-direction:column}}
 #find-res{min-height:1.4em;display:flex;align-items:center;flex-wrap:wrap;gap:.3em}
@@ -389,6 +389,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
       </div>
     </section>
     <section id="pg-quest" class="pg">
+      <div id="q-all" class="qall off"><span style="font-size:1.6em">🎁</span><div class="grow"><b id="q-all-t">受け取れる報酬はありません</b><small id="q-all-s">クエストをクリアするとここからまとめて受け取れます</small></div><button id="q-all-btn" class="btn dark" disabled>まとめて受け取る</button></div>
       <div class="row"><b class="grow">📅 デイリークエスト</b><span class="muted" id="q-timer"></span></div>
       <div id="q-daily" style="display:flex;flex-direction:column;gap:.45em"></div>
       <div class="row" style="margin-top:.3em"><b class="grow">📆 ウィークリークエスト</b><span class="muted" id="qw-timer"></span></div>
@@ -716,7 +717,25 @@ const PATHS=[
  [[900,0],[1000,40],[500,0],[1000,-70],[400,0],[900,50],[600,0],[900,-20]],
  [[1200,0],[1300,90],[900,0],[1300,-90],[700,0]],
  [[700,0],[500,-30],[300,0],[500,30],[900,0],[600,35],[300,0],[600,-35]],
- [[600,0],[650,75],[200,0],[650,-75],[300,0],[500,-60],[150,0],[500,60],[400,0],[700,90],[250,0],[700,-90]]];
+ [[600,0],[650,75],[200,0],[650,-75],[300,0],[500,-60],[150,0],[500,60],[400,0],[700,90],[250,0],[700,-90]],
+ [[700,0],[600,35],[500,0],[600,-35],[800,0],[500,-25],[600,0],[500,25]],
+ [[600,0],[600,60],[300,0],[600,-60],[500,0],[700,80],[300,0],[700,-80]],
+ [[800,0],[900,90],[600,0],[900,-90],[500,0]]];
+/* ===== 坂道（サーバーと共通。[開始位置, 上り長さ, 頂上の長さ, 下り長さ, 高さ]）
+   上り坂はブーストしないと遅くなる（ブーストすれば少しの減速ですむ）。下り坂は少し速くなる ===== */
+const HILLS=[[],[],[],[],[[1200,600,300,600,70]],
+ [[600,450,500,450,55],[2900,400,300,500,70]],
+ [[400,700,300,600,90],[2500,600,400,700,110]],
+ [[300,450,300,450,60],[2200,500,250,400,75]]];
+const PATHLEN=PATHS.map(d=>d.reduce((a,p)=>a+p[0],0));
+function elevAt(ci,s){
+  const hs=HILLS[ci];if(!hs||!hs.length)return 0;
+  const L=PATHLEN[ci];let r=s%L;if(r<0)r+=L;let e=0;
+  for(const [s0,up,top,dn,h] of hs){const u=r-s0;if(u<0||u>up+top+dn)continue;
+    if(u<up)e+=h*(1-Math.cos(Math.PI*u/up))/2;else if(u<up+top)e+=h;else e+=h*(1+Math.cos(Math.PI*(u-up-top)/dn))/2;}
+  return e;
+}
+const gradeAt=(ci,s)=>(elevAt(ci,s+6)-elevAt(ci,s-6))/12;
 const COURSES=[
  {n:'ダウンタウン',d:'昼のオフィス街・ゆるやかなカーブ',seed:11,sky:['#8fd0ff','#dff3ff'],fog:'#cfe6f5',fogA:.9,gnd:'#8e959c',walk:'#cfc8bc',walk2:'#b9b1a3',road:'#4a4e56',road2:'#53575f',line:'#f2f2f2',center:'#ffc93a',curb:'#e9e4da',
   bld:['#86b6d8','#aac7df','#d9d2c4','#c9b393','#93a6b8','#e2d8c3','#b9c4cc'],win:'#3e5b7c',roof:'#8b9099',tree:'round',shadow:[.5,.2],signs:['CAFE','NM銀行','SALE','HOTEL','NEWS','BOOKS','PIZZA','ジム']},
@@ -726,8 +745,14 @@ const COURSES=[
   bld:['#262a4a','#2d2545','#1f2b3d','#33284a','#2a2f3f'],win:'#131726',winLit:['#ffd27a','#9fe8ff','#ff9de2','#fff1c1'],neon:['#00e5ff','#ff2bd6','#ffe14d','#76ff03','#ff6b3d'],roof:'#1a1d2c',tree:'none',signs:['BAR','HOTEL','GAME','カラオケ','24H','CLUB','居酒屋','ラーメン','パチンコ']},
  {n:'下町商店街',d:'S字カーブの昭和レトロ商店街',seed:51,sky:['#9fd6ff','#fff3d9'],fog:'#eadfc9',fogA:.9,gnd:'#a1988a',walk:'#cfc2a9',walk2:'#bcae93',road:'#585652',road2:'#615f5a',line:'#f2efe6',center:'#ffc93a',curb:'#ddd3bf',
   bld:['#c9a97e','#b98b5e','#e3d3b4','#a37a5c','#d9c09a','#9c8f80'],win:'#4b4036',roof:'#6d5a4a',tree:'sakura',poles:1,lantern:1,shita:1,shadow:[.45,.2],signs:['ラーメン','本屋','薬局','銭湯','寿司','喫茶','肉屋','八百屋','酒','団子','理容','たばこ']},
- {n:'ワインディング峠',d:'急カーブだらけの山道',seed:67,mountain:1,sky:['#8fd0ff','#e6f7ff'],fog:'#d5e9ee',fogA:.92,gnd:'#5e9a4a',walk:'#9c9585',walk2:'#8a8475',road:'#4b4d52',road2:'#55575c',line:'#f2f2f2',center:'#ffc93a',curb:'#e9e4da',
-  bld:['#888888'],win:'#333333',roof:'#777777',tree:'pine',shadow:[.5,.2],signs:[]}];
+ {n:'ワインディング峠',d:'急カーブと峠越えの山道',seed:67,mountain:1,hills:1,sky:['#8fd0ff','#e6f7ff'],fog:'#d5e9ee',fogA:.92,gnd:'#5e9a4a',walk:'#9c9585',walk2:'#8a8475',road:'#4b4d52',road2:'#55575c',line:'#f2f2f2',center:'#ffc93a',curb:'#e9e4da',
+  bld:['#888888'],win:'#333333',roof:'#777777',tree:'pine',shadow:[.5,.2],signs:[]},
+ {n:'住宅街の坂道',d:'坂の多いのんびり住宅街',seed:79,hills:1,homes:1,sky:['#a8dcff','#f2fbff'],fog:'#dcebf2',fogA:.9,gnd:'#9aa08f',walk:'#d3cdbf',walk2:'#bfb8a8',road:'#55585e',road2:'#5e6167',line:'#f2f2f2',center:'#ffc93a',curb:'#e6e1d6',
+  bld:['#f3e6cf','#e8d5b5','#dfe9ef','#f6d7c8','#d8e6cf','#ffffff','#e9dcf0'],win:'#5a7590',roof:'#b5543c',roofs:['#b5543c','#4a5d7a','#6b4f3a','#3f6b4f','#8a3b3b'],tree:'round',shadow:[.45,.2],signs:['パン','花屋','クリーニング','コンビニ','歯科','塾']},
+ {n:'雪山ヒルクライム',d:'急な坂を登る雪の峠道',seed:83,mountain:1,snow:1,hills:1,sky:['#c9e3f5','#f4fbff'],fog:'#e9f1f7',fogA:.94,gnd:'#eef3f7',walk:'#c9ced6',walk2:'#b8bec7',road:'#4a4d55',road2:'#53565e',line:'#f2f2f2',center:'#ffc93a',curb:'#f4f6f8',
+  bld:['#888888'],win:'#333333',roof:'#777777',tree:'pine',shadow:[.5,.2],signs:[]},
+ {n:'坂の街ナイト',d:'夜景の坂道と直角コーナー',seed:97,night:1,hills:1,sky:['#0b0a24','#2b1b55'],fog:'#16112f',fogA:.95,gnd:'#1c1e2e',walk:'#2e3046',walk2:'#26283c',road:'#17181f',road2:'#1d1e28',line:'#cfd2de',center:'#ffcf3a',curb:'#3d3f58',
+  bld:['#2a2d4c','#30284a','#223042','#372b4d','#2c3142'],win:'#141828',winLit:['#ffd27a','#9fe8ff','#ffb3e6','#fff1c1'],neon:['#00e5ff','#ff2bd6','#ffe14d','#76ff03','#ff6b3d'],roof:'#1b1e2e',tree:'none',signs:['BAR','HOTEL','カフェ','夜景','24H','ラーメン','居酒屋','JAZZ']}];
 
 /* =====================================================================
    端末専用アカウント（自動作成・localStorage と IndexedDB に二重保存）
@@ -1033,6 +1058,7 @@ const SFX={
     o.connect(g);g.connect(AU.seG);o.start(t);l.start(t);o.stop(t+.75);l.stop(t+.75);},
   near(){const t=now();noiseHit(t,.32,.35,'bandpass',1400,1.4,null,380);tone('triangle',1320,t+.03,.16,.1);tone('triangle',1760,t+.1,.22,.09);},
   beep(hi){const t=now();tone('square',hi?1568:784,t,hi?.45:.15,.09,null,{lp:3000});},
+  splat(){const t=now();noiseHit(t,.35,.5,'lowpass',700,1,null,160);tone('sine',120,t,.3,.25,null,{to:55});noiseHit(t+.08,.2,.18,'bandpass',420,2);},
   coin(){if(playFile('coin'))return;const t=now();tone('square',1319,t,.09,.06,null,{lp:4000});tone('square',1976,t+.07,.3,.06,null,{lp:4000});},
   click(){const t=now();tone('triangle',880,t,.06,.05);},
   ratchet(){const t=now();noiseHit(t,.03,.18,'highpass',3500,1);tone('square',1900,t,.02,.025);},
@@ -1429,7 +1455,7 @@ function drawSide(c,w,h,lk,t,sc,opt){
   if(sk.ev){   // 季節限定：金のライン・フレームを走る光・金のカゴ・リボン
     c.save();const gg=c.createLinearGradient(x1,wy-R*1.6,x2,wy);gg.addColorStop(0,'#fff3b0');gg.addColorStop(.5,'#ffd23f');gg.addColorStop(1,'#c98a00');
     c.strokeStyle=gg;c.lineWidth=Math.max(1,R*.045);c.lineCap='round';c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(BB[0],BB[1]);c.lineTo(S[0],S[1]);c.lineTo(A[0],A[1]);c.moveTo(S[0],S[1]);c.lineTo(Hd[0],Hd[1]);c.lineTo(BB[0],BB[1]);c.moveTo(Hd[0],Hd[1]);c.lineTo(Fh[0],Fh[1]);c.stroke();
-    const pts=[A,BB,S,Hd,Fh],u=(t/700)%1*(pts.length-1),i0=Math.floor(u),f=u-i0,sp=[lerp(pts[i0][0],pts[i0+1][0],f),lerp(pts[i0][1],pts[i0+1][1 ],f)];
+    const pts=[A,BB,S,Hd,Fh],u=(t/700)%1*(pts.length-1),i0=Math.floor(u),f=u-i0,sp=[lerp(pts[i0][0],pts[i0+1][0],f),lerp(pts[i0][1],pts[i0+1][1],f)];
     c.globalCompositeOperation='lighter';c.fillStyle='#ffffff';c.beginPath();for(let k=0;k<8;k++){const rr=k%2?R*.06:R*.3,an=k*Math.PI/4+t/300;c.lineTo(sp[0]+Math.cos(an)*rr,sp[1]+Math.sin(an)*rr);}c.fill();
     c.globalCompositeOperation='source-over';
     if(!sk.basket){const bx=HB[0]+R*.08,by=HB[1]+R*.08,bg=c.createLinearGradient(bx,by,bx,by+R*.55);bg.addColorStop(0,'#fff3b0');bg.addColorStop(1,'#c98a00');
@@ -1693,6 +1719,7 @@ function openCourseModal(mode){
     const d=document.createElement('div');d.className='card'+(i===cur?' sel':'');
     const cv=document.createElement('canvas');cv.width=320;cv.height=180;d.appendChild(cv);
     const nm=document.createElement('span');nm.className='nm';nm.innerHTML='<b></b><br><span class="muted"></span>';nm.querySelector('b').textContent=T.n;nm.querySelector('.muted').textContent=T.d;d.appendChild(nm);
+    if(T.hills){const tg=document.createElement('span');tg.className='ctag';tg.textContent=(i>=5?'NEW・':'')+'⛰️坂道あり';d.appendChild(tg);}
     d.onclick=()=>{initAudio();if(AU.ctx)SFX.click();
       if(CSMODE==='room'){if(ROOM&&ROOM.me===0)socket.emit('room_course',i);}else setCourse(i);
       SV.course=CSMODE==='room'?SV.course:i;closeCourseModal();toast('🗺️ コース「'+T.n+'」');};
@@ -1861,7 +1888,7 @@ function renderCourse(){
   COURSES.forEach((T,i)=>{
     const d=document.createElement('div');d.className='card'+(i===SV.course?' sel':'');
     const cv=document.createElement('canvas');cv.width=320;cv.height=200;d.appendChild(cv);
-    const nm=document.createElement('span');nm.className='nm';nm.innerHTML='<b>'+esc(T.n)+'</b><br><span class="muted">'+esc(T.d)+'</span>';d.appendChild(nm);
+    const nm=document.createElement('span');nm.className='nm';nm.innerHTML='<b>'+esc(T.n)+'</b><br><span class="muted">'+esc(T.d)+'</span>';d.appendChild(nm);if(T.hills){const tg=document.createElement('span');tg.className='ctag';tg.textContent='⛰️坂道あり';d.appendChild(tg);}
     d.onclick=()=>setCourse(i);box.appendChild(d);
     renderCourseThumb(cv,i);
   });
@@ -2003,8 +2030,39 @@ function renderQuests(){
     b.onclick=()=>{SV.ach[a.id]=t+1;SV.coins+=a.c[t];if(AU.ctx)SFX.claim();toast('+'+a.c[t]+' NC を受け取りました');save();updateTop();renderQuests();};
     el.querySelector('.qr').appendChild(b);ab.appendChild(el);
   });
+  renderClaimAll();
   updateTop();lastClaimable=claimable();
 }
+/* ===== 報酬の一括受け取り（デイリー・ウィークリー・完走報酬・アチーブメント） ===== */
+function claimAllInfo(){
+  let nc=0,xp=0,n=0;
+  for(const d of dailyItems())if(d.done&&!d.claimed){nc+=d.q.c;xp+=d.q.xp;n++;}
+  for(const d of weeklyItems())if(d.done&&!d.claimed){nc+=d.q.c;xp+=d.q.xp;n++;}
+  for(const a of achItems())if(a.done){nc+=a.a.c[a.t];n++;}
+  const wk=weeklyAllDone()&&!SV.weekly.rw;if(wk)n++;
+  return {nc,xp,n,wk};
+}
+function renderClaimAll(){
+  const I=claimAllInfo(),bar=$('q-all'),b=$('q-all-btn');
+  bar.classList.toggle('off',!I.n);b.disabled=!I.n;b.className=I.n?'btn':'btn dark';
+  if(!I.n){$('q-all-t').textContent='受け取れる報酬はありません';$('q-all-s').textContent='クエストをクリアすると、ここからまとめて受け取れます';return;}
+  $('q-all-t').textContent='受け取れる報酬が '+I.n+' 件あります！';
+  $('q-all-s').textContent='合計 '+I.nc.toLocaleString()+' NC'+(I.xp?'・+'+I.xp.toLocaleString()+' XP':'')+(I.wk?'・🎁 '+SKINS[seasonNow().key].n:'');
+}
+function claimAll(){
+  initAudio();const I=claimAllInfo();if(!I.n)return;
+  let nc=0,xp=0,cnt=0;
+  for(const d of dailyItems())if(d.done&&!d.claimed){SV.daily.claimed[d.q.id]=true;nc+=d.q.c;xp+=d.q.xp;cnt++;}
+  for(const d of weeklyItems())if(d.done&&!d.claimed){SV.weekly.claimed[d.q.id]=true;nc+=d.q.c;xp+=d.q.xp;cnt++;}
+  for(let guard=0;guard<40;guard++){const list=achItems().filter(a=>a.done);if(!list.length)break;for(const a of list){SV.ach[a.a.id]=a.t+1;nc+=a.a.c[a.t];cnt++;}}
+  SV.coins+=nc;if(xp)addXP(xp);save();
+  let extra='';
+  if(I.wk){const k=seasonNow().key,had=SV.inv.skin.includes(k);if(claimWeekly(true)){cnt++;extra=had?'・ウィークリー完走 +'+WEEK_DUP_COINS+' NC':'・限定スキン「'+SKINS[k].n+'」';}}
+  if(AU.ctx)(I.wk?(SFX.fan||SFX.win):SFX.claim)();
+  toast('🎁 '+cnt+'件まとめて受け取り！ +'+nc.toLocaleString()+' NC'+(xp?'・+'+xp.toLocaleString()+' XP':'')+extra,3600);
+  renderQuests();updateTop();questChanged();
+}
+$('q-all-btn').onclick=claimAll;
 
 /* ===== ウィークリー完走報酬（その月の季節限定スキン） ===== */
 function renderWeekReward(){
@@ -2068,14 +2126,14 @@ $('pv-claim').onclick=()=>{if(claimWeekly(true)){renderPreviewInfo();buildPrevie
 $('pv-equip').onclick=()=>{if(!PV||!SV.inv.skin.includes(PV.key))return;equip('skin',PV.key);renderPreviewInfo();toast(SKINS[PV.key].n+' を装備しました');};
 // 走行中のようす（道路を後ろから見下ろす本番と同じ描画）
 function renderPreviewRide(cvs,lk,t){
-  const d=fitCv(cvs),sc=ctx,sW=W,sH=H,sCam=Object.assign({},CAM),sCW=Object.assign({},CAMW),sP=CURP,sParts=parts3,sDec=decals;
+  const d=fitCv(cvs),sc=ctx,sW=W,sH=H,sCam=Object.assign({},CAM),sCW=Object.assign({},CAMW),sP=CURP,sCI=CURCI,sParts=parts3,sDec=decals;
   ctx=cvs.getContext('2d');W=cvs.width/d;H=cvs.height/d;ctx.setTransform(d,0,0,d,0,0);parts3=[];decals=[];
   const ci=SV.course,e=(t-PV.t0)/1000;useCourse(ci);
   const z=300+(e*125)%3200,x=Math.sin(e*.9)*34,boost=(e%5)>3.4;
   CAM.ok=false;setCam(x,z,125,.016,true);
   const p=Object.assign({x,z,v:boost?190:125,_ph:e*8*(boost?1.5:1),_lean:-Math.cos(e*.9)*.16,boost:boost?1:0},lk);
   try{renderWorld(ci,{obs:[],P:[p]},t,0,null);}catch(err){console.error(err);}
-  ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;RMz=NaN;parts3=sParts;decals=sDec;
+  ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;CURCI=sCI;RMz=NaN;parts3=sParts;decals=sDec;
 }
 function drawPreview(t){
   const cv=$('pv-cv'),lk=myLook();lk.skin=PV.key;
@@ -2136,6 +2194,7 @@ function loadRanking(){
       const sc=document.createElement('span');sc.className='scv';sc.textContent=rp?rankInfo(e.rp).name+'　'+e.rp+' RP':Number(e.score).toLocaleString();
       li.append(rk,nm,sc);ol.appendChild(li);
     });
+    rankBackup();   // 見たランキングを端末にもバックアップ
   });
 }
 /* ===== チャリランク表 ===== */
@@ -2446,34 +2505,36 @@ window.addEventListener('resize',resize);window.addEventListener('orientationcha
 resize();
 
 /* ===== コースの形（カーブ）：中心線を4単位ごとに積分した表 ===== */
-const PATHB=PATHS.map(def=>{
+const PATHB=PATHS.map((def,ci)=>{
   const STEP=4,pieces=[];let L=0;for(const [len,deg] of def){pieces.push({s0:L,len,k:deg*Math.PI/180/len});L+=len;}
   const kAt=s=>{for(const p of pieces)if(s<p.s0+p.len)return p.k;return 0;};
   const n=L/STEP+1,X=new Float64Array(n),Z=new Float64Array(n),Hd=new Float64Array(n);
   let x=0,z=0,h=0;
-  for(let i=0;i<n;i++){X[i]=x;Z[i]=z;Hd[i]=h;const k=kAt(i*STEP+STEP/2),hm=h+k*STEP/2;x+=Math.sin(hm)*STEP;z+=Math.cos(hm)*STEP;h+=k*STEP;}
-  return {L,STEP,X,Z,H:Hd,DX:X[n-1],DZ:Z[n-1],P:pieces,kAt};
+  const E=new Float64Array(n);   // 坂道の高さ
+  for(let i=0;i<n;i++){X[i]=x;Z[i]=z;Hd[i]=h;E[i]=elevAt(ci,i*STEP);const k=kAt(i*STEP+STEP/2),hm=h+k*STEP/2;x+=Math.sin(hm)*STEP;z+=Math.cos(hm)*STEP;h+=k*STEP;}
+  return {L,STEP,X,Z,H:Hd,E,hills:(HILLS[ci]||[]).length>0,DX:X[n-1],DZ:Z[n-1],P:pieces,kAt};
 });
-let CURP=PATHB[0],MX=0,MZ=0,RMz=NaN,RMx0=0,RMz0=0,RMc=1,RMs=0,RMh=0;
-function useCourse(ci){CURP=PATHB[ci]||PATHB[0];RMz=NaN;}
+let CURCI=0,CURP=PATHB[0],MX=0,MZ=0,RMz=NaN,RMx0=0,RMz0=0,RMc=1,RMs=0,RMh=0,RMe=0;
+function useCourse(ci){CURCI=PATHB[ci]?ci:0;CURP=PATHB[CURCI];RMz=NaN;}
 // 道路座標（x=中心からの横位置, z=道のりに沿った距離）→ 世界座標
 function roadMap(x,z){
   if(z!==RMz){
     RMz=z;const P=CURP,n=Math.floor(z/P.L),r=z-n*P.L,fi=r/P.STEP,i=fi|0,f=fi-i;
-    RMh=P.H[i]+(P.H[i+1]-P.H[i])*f;RMx0=P.X[i]+(P.X[i+1]-P.X[i])*f+n*P.DX;RMz0=P.Z[i]+(P.Z[i+1]-P.Z[i])*f+n*P.DZ;
+    RMh=P.H[i]+(P.H[i+1]-P.H[i])*f;RMe=P.E[i]+(P.E[i+1]-P.E[i])*f;RMx0=P.X[i]+(P.X[i+1]-P.X[i])*f+n*P.DX;RMz0=P.Z[i]+(P.Z[i+1]-P.Z[i])*f+n*P.DZ;
     RMc=Math.cos(RMh);RMs=Math.sin(RMh);
   }
   MX=RMx0+x*RMc;MZ=RMz0-x*RMs;
 }
 const headingAt=z=>{roadMap(0,z);return RMh;};
+const elevZ=z=>{roadMap(0,z);return RMe;};
 const curvAt=z=>{const P=CURP;let r=z%P.L;if(r<0)r+=P.L;return P.kAt(r);};
 
 /* ===== カメラ（高い位置から斜めに見下ろす 3/4 ビュー。カーブに合わせて向きを変える） ===== */
 const CFG={h:320,pitch:.66,back:250,fk:1.5,cy:.4,backS:60,view:1250};
-const CAM={x:0,z:0,h:320,cs:0,cc:0,F:800,cy:216,ok:false,sf:0,yaw:0,cyw:1,syw:0},CAMW={x:0,z:0};
+const CAM={x:0,z:0,h:320,e:0,cs:0,cc:0,F:800,cy:216,ok:false,sf:0,yaw:0,cyw:1,syw:0},CAMW={x:0,z:0};
 let PX=0,PY=0,PK=1;
 function pj(x,y,z){
-  roadMap(x,z);const dx=MX-CAMW.x,dz=MZ-CAMW.z,lx=dx*CAM.cyw-dz*CAM.syw,fz=dx*CAM.syw+dz*CAM.cyw,dy=y-CAM.h;
+  roadMap(x,z);const dx=MX-CAMW.x,dz=MZ-CAMW.z,lx=dx*CAM.cyw-dz*CAM.syw,fz=dx*CAM.syw+dz*CAM.cyw,dy=y+RMe-CAM.h-CAM.e;
   let d=fz*CAM.cc-dy*CAM.cs;if(d<2)d=2;PK=CAM.F/d;PX=W/2+lx*PK;PY=CAM.cy-(dy*CAM.cc+fz*CAM.cs)*PK;
 }
 const angDiff=(a,b)=>{let d=a-b;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;};
@@ -2482,7 +2543,8 @@ function setCam(mx,mz,v,dt,snap){
   CAM.cs=Math.sin(CFG.pitch);CAM.cc=Math.cos(CFG.pitch);CAM.h=CFG.h;
   const back=CFG.back+CAM.sf*CFG.backS;CAM.z=mz-back;
   const tx=mx*.55,ty=headingAt(mz+55);
-  if(snap||!CAM.ok){CAM.x=tx;CAM.yaw=ty;}else{CAM.x+=(tx-CAM.x)*Math.min(1,dt*5);CAM.yaw+=angDiff(ty,CAM.yaw)*Math.min(1,dt*3.5);}
+  const te=CURP.hills?elevZ(mz)*.85+elevZ(mz-back*.6)*.15:0;   // 坂道ではカメラも一緒に上り下り
+  if(snap||!CAM.ok){CAM.x=tx;CAM.yaw=ty;CAM.e=te;}else{CAM.x+=(tx-CAM.x)*Math.min(1,dt*5);CAM.yaw+=angDiff(ty,CAM.yaw)*Math.min(1,dt*3.5);CAM.e+=(te-CAM.e)*Math.min(1,dt*6);}
   CAM.ok=true;CAM.cyw=Math.cos(CAM.yaw);CAM.syw=Math.sin(CAM.yaw);
   roadMap(CAM.x,mz);CAMW.x=MX-back*CAM.syw;CAMW.z=MZ-back*CAM.cyw;
   CAM.F=H*CFG.fk*(1-CAM.sf*.08);CAM.cy=H*CFG.cy;
@@ -2492,7 +2554,7 @@ function groundZAtY(sy){
   if(ry>=-1e-3)return Infinity;return CAM.z+CAM.h/(-ry)*rz;
 }
 // 面がカメラの方を向いているか（道路座標の点と法線で判定）
-function vis(x,y,z,nx,ny,nz){roadMap(x,z);const wx=nx*RMc+nz*RMs,wz=-nx*RMs+nz*RMc;return wx*(CAMW.x-MX)+ny*(CAM.h-y)+wz*(CAMW.z-MZ)>0;}
+function vis(x,y,z,nx,ny,nz){roadMap(x,z);const wx=nx*RMc+nz*RMs,wz=-nx*RMs+nz*RMc;return wx*(CAMW.x-MX)+ny*(CAM.h+CAM.e-y-RMe)+wz*(CAMW.z-MZ)>0;}
 function path3(a){ctx.beginPath();for(let i=0;i<a.length;i+=3){pj(a[i],a[i+1],a[i+2]);if(i)ctx.lineTo(PX,PY);else ctx.moveTo(PX,PY);}ctx.closePath();}
 function fill3(a,c){path3(a);ctx.fillStyle=c;ctx.fill();}
 function gq(x0,x1,z0,z1,c,y){ // 地面の四角形（長いものはカーブに沿って分割）
@@ -2525,9 +2587,12 @@ function hh(i,j,s){let h=(i*73856093)^(j*19349663)^(s*83492791);h=Math.imul(h^(h
 let isCross=i=>((i%7)+7)%7===3;
 function bldOf(T,i,s){
   const r=hh(i,s,T.seed),r2=hh(i,s+5,T.seed+1),r3=hh(i,s+9,T.seed+2);
-  const gap=4+r3*12,z0=i*SEG+gap,z1=(i+1)*SEG-gap,depth=140+r2*140;
+  let gap=4+r3*12,depth=140+r2*140;
+  if(T.homes){gap=12+r3*14;depth=80+r2*60;}
+  const z0=i*SEG+gap,z1=(i+1)*SEG-gap;
   let h,type;
-  if(T.shita){h=46+Math.floor(r*3)*20;type='shop';}
+  if(T.homes){h=r2<.82?36+Math.floor(r*2)*20:46+r*30;type=r2<.82?'home':'shop';}
+  else if(T.shita){h=46+Math.floor(r*3)*20;type='shop';}
   else if(T.night){h=110+r*160;type=r2<.55?'tower':'shop';}
   else if(T.sea){h=40+r*55;type=r2<.5?'shop':'house';}
   else{h=90+r*165;type=r2<.38?'glass':r2<.72?'office':'apart';}
@@ -2551,7 +2616,8 @@ function drawGround(T,za,zb,t){
     for(let z=Math.floor(za/20)*20,f=1;z<zb;z+=20){pj(-XS0-62+Math.sin(t/500+z*.05)*3,0,z);f?ctx.moveTo(PX,PY):ctx.lineTo(PX,PY);f=0;}ctx.stroke();
   }
   if(T.mountain){ // 草地のムラ
-    for(let i=Math.floor(za/SEG);i<=zb/SEG;i++)for(const s of[-1,1]){const r=hh(i,s+60,T.seed);gEllipse(s*(HWR+80+r*200),i*SEG+r*120,40+r*40,26+r*20,'rgba(40,90,40,.35)');}
+    for(let i=Math.floor(za/SEG);i<=zb/SEG;i++)for(const s of[-1,1]){const r=hh(i,s+60,T.seed);gEllipse(s*(HWR+80+r*200),i*SEG+r*120,40+r*40,26+r*20,T.snow?'rgba(170,190,215,.35)':'rgba(40,90,40,.35)');}
+    if(T.snow)for(const s of[-1,1])gq(s<0?-HWR-12:HWR,s<0?-HWR:HWR+12,za,zb,'rgba(255,255,255,.75)');   // 路肩の雪
   }
   for(const s of[-1,1]){
     if(T.sea&&s<0)gq(-XS0,-HWR,za,zb,T.walk);else gq(s<0?(T.mountain?-HWR-34:-XS0):HWR,s<0?-HWR:(T.mountain?HWR+34:XS0),za,zb,T.walk);
@@ -2581,6 +2647,7 @@ function drawGround(T,za,zb,t){
       const b=bldOf(T,i,-1),dx=b.h*T.shadow[0],dz=b.h*T.shadow[1];
       ctx.beginPath();[[b.x0,b.z0],[b.x1,b.z0],[b.x1+dx,b.z0+dz],[b.x1+dx,b.z1+dz],[b.x0+dx,b.z1+dz],[b.x0,b.z1]].forEach((p,k)=>{pj(p[0],0,p[1]);k?ctx.lineTo(PX,PY):ctx.moveTo(PX,PY);});ctx.closePath();ctx.fill();}
   }
+  if(CURP.hills)slopeShade(za,zb);
   for(const d of decals){if(d.z1<za||d.z0>zb)continue;gq(d.x-.9,d.x+.9,d.z0,d.z1,'rgba(20,20,24,'+(.5*d.a)+')');}
   if(T.night){
     ctx.globalCompositeOperation='lighter';
@@ -2589,12 +2656,24 @@ function drawGround(T,za,zb,t){
   }
 }
 
+// 坂道の陰影：上り坂は日が当たって明るく、下り坂は暗く。坂の始まりには段差の線
+function slopeShade(za,zb){
+  for(let z=Math.floor(za/24)*24;z<zb;z+=24){
+    const g=gradeAt(CURCI,z+12);if(Math.abs(g)<.015)continue;
+    const a=Math.min(.32,Math.abs(g)*1.25);
+    gq(-900,900,z,z+24,g>0?'rgba(255,250,235,'+a.toFixed(3)+')':'rgba(10,15,45,'+(a*1.1).toFixed(3)+')');
+  }
+  // 上り坂の路面に「▲」のペイント
+  for(let z=Math.floor(za/180)*180;z<zb;z+=180){const g=gradeAt(CURCI,z);if(g<.06)continue;
+    for(const lx of[-84,-28,28,84]){fill3([lx-9,0,z,lx+9,0,z,lx,0,z+16],'rgba(255,255,255,.55)');}}
+}
+
 /* ===== 建物 ===== */
 function winFace(T,b,ax,c,u0,u1){
   const span=u1-u0;if(span<14)return;
-  const glass=b.type==='glass',night=T.night,fh=glass?18:(b.type==='shop'||b.type==='house')?20:19;
-  const y0=(b.type==='shop'||b.type==='house')?32:12;
-  const cwT=glass?16:night?22:14,ncol=Math.max(1,Math.floor((span-6)/cwT)),cw=(span-6)/ncol;
+  const glass=b.type==='glass',night=T.night,home=b.type==='home',fh=glass?18:(b.type==='shop'||b.type==='house'||home)?20:19;
+  const y0=home?8:(b.type==='shop'||b.type==='house')?32:12;
+  const cwT=glass?16:home?30:night?22:14,ncol=Math.max(1,Math.floor((span-6)/cwT)),cw=(span-6)/ncol;
   let top=y0;
   for(let y=y0,f=0;y+9<b.h-4;y+=fh,f++){
     const wh=glass?fh-4:fh*.5;top=y+wh;
@@ -2603,11 +2682,12 @@ function winFace(T,b,ax,c,u0,u1){
       for(let k=0;k<ncol;k++){if(hh(b.i*31+k,f*7+(ax==='x'?1:2),b.s+T.seed)<.45){const ua=u0+3+k*cw+2,ub=ua+cw-4;fr3(ax,c,ua,ub,y+1,y+wh-1,T.winLit[(k+f+b.i)&3]);}}
     }else{
       const g=glass?(f%3===0?shade(T.win,1.35):f%2?shade(T.win,1.15):T.win):(f%4===1?shade(T.win,1.25):T.win);
+      if(home){const ncl=Math.max(1,Math.floor((span-6)/30)),cw2=(span-6)/ncl;for(let k=0;k<ncl;k++){const ua=u0+3+k*cw2+5,ub=ua+cw2-10;if(ub-ua>4){fr3(ax,c,ua-1.5,ub+1.5,y+1,y+wh+1.5,'#fbfbf7');fr3(ax,c,ua,ub,y+2,y+wh,g);}}continue;}
       fr3(ax,c,u0+3,u1-3,y,y+wh,g);
       if(b.type==='apart')fr3(ax,c,u0+3,u1-3,y-2.5,y-.8,shade(b.col,1.18));
     }
   }
-  if(!night&&ncol>1){
+  if(!night&&ncol>1&&!home){
     ctx.beginPath();for(let k=1;k<ncol;k++){const u=u0+3+k*cw;if(ax==='x'){pj(c,y0,u);ctx.moveTo(PX,PY);pj(c,top,u);ctx.lineTo(PX,PY);}else{pj(u,y0,c);ctx.moveTo(PX,PY);pj(u,top,c);ctx.lineTo(PX,PY);}}
     ctx.strokeStyle=shade(b.col,.85);ctx.lineWidth=Math.max(1,PK*1.6);ctx.stroke();
   }
@@ -2647,7 +2727,26 @@ function storefront(T,b,c,u0,u1){
   fill3([out,23,u0+4,out,23,u1-4,out,19,u1-4,out,19,u0+4],shade(ac,.8));
   if(night){pj(out,10,(u0+u1)/2);ctx.globalCompositeOperation='lighter';ctx.save();ctx.translate(PX,PY);ctx.scale(1.6,.6);glow(0,0,28*PK,'rgba(255,200,120,.35)');ctx.restore();ctx.globalCompositeOperation='source-over';}
 }
+// 住宅（切妻屋根の一軒家）
+function drawHome(T,b,t){
+  const {x0,x1,z0,z1,h,col}=b,xc=(x0+x1)/2,rh=20+b.r3*10,rc=(T.roofs||[T.roof])[Math.floor(b.r*(T.roofs||[T.roof]).length)];
+  box(x0,x1,0,h,z0,z1,col,{top:shade(col,.9)});
+  pj(b.xf,h*.5,(z0+z1)/2);if(PK<.25){fill3([x0-3,h,z0-3,xc,h+rh,z0-3,xc,h+rh,z1+3,x0-3,h,z1+3],rc);fill3([x1+3,h,z0-3,xc,h+rh,z0-3,xc,h+rh,z1+3,x1+3,h,z1+3],shade(rc,.8));return;}
+  const cF=b.xf,roadSide=vis(cF,h/2,(z0+z1)/2,-b.s,0,0),front=vis(xc,h/2,z0,0,0,-1);
+  if(roadSide){winFace(T,b,'x',cF,z0,z1);const dz=z0+(z1-z0)*(.25+b.r2*.5);fr3('x',cF-b.s*.3,dz-7,dz+7,0,22,'#7a5230');fr3('x',cF-b.s*.4,dz-5.5,dz+5.5,2,20,'#8d6238');}
+  if(front)winFace(T,b,'z',z0,x0,x1);
+  // 屋根：奥の面→手前の面→妻壁の順に描く
+  const far=b.s>0?1:-1,xo=far>0?x1+3:x0-3,xn=far>0?x0-3:x1+3;
+  fill3([xo,h,z0-3,xc,h+rh,z0-3,xc,h+rh,z1+3,xo,h,z1+3],shade(rc,.78));
+  if(front)fill3([x0,h,z0,x1,h,z0,xc,h+rh,z0],shade(col,.86));
+  fill3([xn,h,z0-3,xc,h+rh,z0-3,xc,h+rh,z1+3,xn,h,z1+3],rc);
+  ctx.strokeStyle=shade(rc,.6);ctx.lineWidth=Math.max(1,PK*1.2);ctx.beginPath();lineZ(xc,h+rh,z0-3,z1+3);ctx.stroke();
+  if(T.night){pj(cF,12,(z0+z1)/2);ctx.globalCompositeOperation='lighter';glow(PX,PY,26*PK,'rgba(255,210,140,.25)');ctx.globalCompositeOperation='source-over';}
+  // 生け垣
+  const hx=b.s*(XB-4);box(hx-3,hx+3,0,9,z0+2,z1-2,'#4f8f46',{top:'#64a957'});
+}
 function drawBuilding(T,b,t){
+  if(b.type==='home')return drawHome(T,b,t);
   const {x0,x1,z0,z1,h,col}=b,night=T.night;
   pj(b.xf,h*.5,(z0+z1)/2);const lod=PK;
   box(x0,x1,0,h,z0,z1,col);
@@ -2684,7 +2783,8 @@ function tree(T,x,z,kind){
     pj(x,0,z);const bx=PX,by=PY,k0=PK;pj(x,14,z);const k=PK;
     ctx.strokeStyle='#5d4037';ctx.lineWidth=3*k0;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(PX,PY);ctx.stroke();
     const cx=PX,cy=PY;
-    [[0,22,'#1f5e33'],[14,17,'#2a7a40'],[26,12,'#3a9450']].forEach(([dy,r,c])=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(cx-r*k,cy-dy*k);ctx.lineTo(cx,cy-(dy+r*1.5)*k);ctx.lineTo(cx+r*k,cy-dy*k);ctx.closePath();ctx.fill();ctx.lineWidth=Math.max(1,k*.7);ctx.strokeStyle='rgba(10,30,15,.5)';ctx.stroke();});
+    [[0,22,'#1f5e33'],[14,17,'#2a7a40'],[26,12,'#3a9450']].forEach(([dy,r,c])=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(cx-r*k,cy-dy*k);ctx.lineTo(cx,cy-(dy+r*1.5)*k);ctx.lineTo(cx+r*k,cy-dy*k);ctx.closePath();ctx.fill();ctx.lineWidth=Math.max(1,k*.7);ctx.strokeStyle='rgba(10,30,15,.5)';ctx.stroke();
+      if(T.snow){ctx.fillStyle='#f7fbff';ctx.beginPath();ctx.moveTo(cx-r*.5*k,cy-(dy+r*.75)*k);ctx.lineTo(cx,cy-(dy+r*1.5)*k);ctx.lineTo(cx+r*.5*k,cy-(dy+r*.75)*k);ctx.lineTo(cx+r*.2*k,cy-(dy+r*.62)*k);ctx.lineTo(cx-r*.15*k,cy-(dy+r*.8)*k);ctx.closePath();ctx.fill();}});
     return;
   }
   gq(x-6,x+6,z-6,z+6,'#7a6a58',0);
@@ -2777,6 +2877,42 @@ function collectCity(T,items,za,zb,t){
     if(T.lantern&&i%2===0)items.push({z:z0+70.5,f:()=>lanterns(z0+70.5)});
   }
   collectCurves(items,za,zb);
+}
+
+/* ===== 泥だまり（踏むと3秒間スピードダウン） ===== */
+function drawMud(m,t){
+  const r=hh(m.id,5,9);
+  gEllipse(m.x+2,m.z+1,20,25,'rgba(60,40,20,.35)');
+  ctx.beginPath();
+  for(let i=0;i<18;i++){const a=i/18*Math.PI*2,w=1+.18*Math.sin(a*3+r*6)+.1*Math.sin(a*5+r*3);pj(m.x+Math.cos(a)*17*w,0,m.z+Math.sin(a)*22*w);i?ctx.lineTo(PX,PY):ctx.moveTo(PX,PY);}
+  ctx.closePath();ctx.fillStyle='#6b4a2b';ctx.fill();ctx.lineWidth=Math.max(1,PK*1.5);ctx.strokeStyle='#4e3420';ctx.stroke();
+  gEllipse(m.x-3,m.z+2,10,13,'#7d5834');
+  // ぬかるみのツヤとあぶく
+  gEllipse(m.x-6,m.z-6,4,2.6,'rgba(255,240,210,.35)');
+  const b=Math.sin(t/300+m.id)*.5+.5;gEllipse(m.x+6,m.z+7,1.5+b*1.6,1.5+b*1.6,'rgba(140,105,70,.9)');
+  pj(m.x,0,m.z);if(PK>.45){ctx.font='900 '+Math.max(8,9*PK|0)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='rgba(255,230,190,.7)';ctx.fillText('泥',PX,PY);}
+}
+// 坂道の予告標識
+function hillSign(x,z,up){
+  line3(x,0,z,x,40,z,'#8a8f98',1.6);
+  if(!vis(x,46,z,0,0,-1))return;
+  ctx.save();planeXf([x-10,57,z],[x+10,57,z],[x-10,37,z],20,20);ctx.translate(10,10);ctx.rotate(Math.PI/4);
+  ctx.fillStyle='#ffd600';ctx.fillRect(-7,-7,14,14);ctx.lineWidth=1;ctx.strokeStyle='#111';ctx.strokeRect(-6.2,-6.2,12.4,12.4);ctx.rotate(-Math.PI/4);
+  ctx.fillStyle='#111';ctx.beginPath();if(up){ctx.moveTo(-6,4);ctx.lineTo(6,4);ctx.lineTo(6,-3);}else{ctx.moveTo(-6,4);ctx.lineTo(6,4);ctx.lineTo(-6,-3);}ctx.closePath();ctx.fill();
+  ctx.font='900 4px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(up?'上':'下',up?3.5:-3.5,2.4);ctx.restore();
+}
+function collectHills(ci,items,za,zb){
+  const hs=HILLS[ci];if(!hs||!hs.length)return;const L=CURP.L;
+  for(let n=Math.floor(za/L)-1;n<=Math.floor(zb/L)+1;n++)for(const [s0,up,top] of hs){
+    const a=n*L+s0-120,b=n*L+s0+up+top-60;
+    if(a>za-50&&a<zb)items.push({z:a,f:()=>hillSign(HWR+16,a,true)});
+    if(b>za-50&&b<zb)items.push({z:b,f:()=>hillSign(HWR+16,b,false)});
+  }
+}
+// 雪（画面に降らせる）
+function snowfall(t){
+  ctx.fillStyle='rgba(255,255,255,.85)';
+  for(let i=0;i<70;i++){const r=hh(i,3,17),r2=hh(i,7,19),sp=30+r2*40,x=((r*W+Math.sin(t/900+i)*30)%W+W)%W,y=((r2*H+t/1000*sp)%H);ctx.beginPath();ctx.arc(x,y,1+r*1.8,0,7);ctx.fill();}
 }
 
 /* ===== 車・バス・パトカー・コーン ===== */
@@ -3032,10 +3168,13 @@ function drawParts3(){
 /* ===== ワールド全体の描画 ===== */
 function renderWorld(ci,st,t,meIdx,names){
   const T=COURSES[ci]||COURSES[0];curT=T;
-  const zNear=CAM.z+20,zTop=groundZAtY(-20),zFar=Math.min(isFinite(zTop)?zTop+180:1e9,CAM.z+CFG.view);
+  const zNear=CAM.z+20,zTop=groundZAtY(-20),zFar=Math.min(isFinite(zTop)?zTop+180+(CURP.hills?380:0):1e9,CAM.z+CFG.view+(CURP.hills?250:0));
   ctx.fillStyle=T.gnd;ctx.fillRect(0,0,W,H);
   drawGround(T,zNear,zFar,t);
   const items=[];collectCity(T,items,zNear-40,zFar,t);
+  collectHills(ci,items,zNear-40,zFar);
+  // 泥だまりは地面なので、ほかのものより先に描く
+  for(const m of st.mud||[])if(m.z>zNear-40&&m.z<zFar+40)drawMud(m,t);
   for(const o of st.obs||[])if(o.z>zNear-90&&o.z<zFar+80)items.push({z:o.z,f:()=>drawCar(o,T,t)});
   (st.P||[]).forEach((p,i)=>{if(!p)return;const team=i===meIdx?0:1,nm=names?names[i]:null;
     items.push({z:p.z,f:()=>{if(p.boost){drawRider(Object.assign({},p,{z:p.z-9}),team,t,null,.25);drawRider(Object.assign({},p,{z:p.z-18}),team,t,null,.12);}drawRider(p,team,t,nm);}});});
@@ -3045,14 +3184,15 @@ function renderWorld(ci,st,t,meIdx,names){
   pj(0,0,zFar-380);const y1=PY;pj(0,0,zFar);const y0=PY;
   if(y1>0){const g=ctx.createLinearGradient(0,Math.min(y0,y1-1),0,y1);g.addColorStop(0,rgba(T.fog,T.fogA));g.addColorStop(1,rgba(T.fog,0));ctx.fillStyle=g;ctx.fillRect(0,0,W,y1);}
   if(T.tint){ctx.fillStyle=T.tint;ctx.fillRect(0,0,W,H);}
+  if(T.snow)snowfall(t);
 }
 function renderCourseThumb(cvs,i){
-  const sc=ctx,sW=W,sH=H,sCam=Object.assign({},CAM),sCW=Object.assign({},CAMW),sP=CURP,c2=cvs.getContext('2d');
+  const sc=ctx,sW=W,sH=H,sCam=Object.assign({},CAM),sCW=Object.assign({},CAMW),sP=CURP,sCI=CURCI,c2=cvs.getContext('2d');
   ctx=c2;W=cvs.width;H=cvs.height;c2.setTransform(1,0,0,1,0,0);
   useCourse(i);const fc=CURP.P.find(p=>p.k),z0=fc?fc.s0-120:300;
   CAM.ok=false;setCam(0,z0,110,0,true);
   try{renderWorld(i,{obs:[{id:1,k:'car',x:56,z:z0+260,vz:-90,d:-1,c:i},{id:2,k:'car',x:-56,z:z0+380,vz:50,d:1,c:i+2}],P:[Object.assign({x:-20,z:z0,v:110,_ph:1},myLook())]},performance.now(),0,null);}catch(e){console.error(e);}
-  ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;RMz=NaN;
+  ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;CURCI=sCI;RMz=NaN;
 }
 /* =====================================================================
    ゲーム状態・同期（自分の横移動はクライアント予測で遅延なく・なめらかに）
@@ -3071,7 +3211,7 @@ function enterGame(d){
   if(GAME.ranked){SV.rkPend={opp:(d.opp&&d.opp.rp)||SV.rp,bot:!!(d.opp&&d.opp.bot),t:Date.now()};saveNow();}
   VS=mode==='versus'?{t0:performance.now(),s1:false,s2:false}:null;
   if(!roomGame)hideRoom();else $('room').classList.add('hide');
-  parts3=[];decals=[];pops=[];confetti=[];prevFlags={};riderFx={};shake=0;flash=0;PRED.ok=false;
+  parts3=[];decals=[];pops=[];confetti=[];prevFlags={};riderFx={};shake=0;flash=0;mudFlash=0;PRED.ok=false;
   roomBub[0]=roomBub[1]=null;
   useCourse(d.course||0);
   $('lobby').style.display='none';$('side-menu').classList.add('hide');$('item-modal').classList.add('hide');IM=null;
@@ -3107,7 +3247,12 @@ function onSnap(s){
     if(p.brk&&!pf.brk){if(AU.ctx)SFX.brake();const q=(D&&D.P[i])||p;decals.push({x:q.x-3,z0:q.z-6,z1:q.z+38,a:1},{x:q.x+3,z0:q.z-6,z1:q.z+38,a:1});
       for(let k=0;k<14;k++)addP({x:q.x+(Math.random()-.5)*4,y:1,z:q.z-8,vx:(Math.random()-.5)*70,vy:30+Math.random()*70,vz:-40-Math.random()*70,l:.5,ml:.5,k:'spark'});}
     if(p.boost&&!pf.boost&&AU.ctx)SFX.boost();
-    prevFlags[i]={brk:p.brk,boost:p.boost};
+    if(p.mud>2.5&&!(pf.mud>0)){   // 泥を踏んだ！
+      const q=(D&&D.P[i])||p;if(AU.ctx&&(i===slot||mode==='versus'))SFX.splat();
+      for(let k=0;k<22;k++)addP({x:q.x+(Math.random()-.5)*16,y:3,z:q.z+(Math.random()-.5)*14,vx:(Math.random()-.5)*120,vy:50+Math.random()*110,vz:(Math.random()-.5)*90,l:.8,ml:.8,s:2+Math.random()*2.5,c:['#5d3b1e','#7a5230','#4a2f18'][k%3],k:'debris',r:Math.random()*6});
+      if(i===slot){mudFlash=1;try{navigator.vibrate&&navigator.vibrate([40,30,40]);}catch(e){}pops.push({t:'泥にハマった！',sub:'3秒間スピードダウン',x:W/2,y:H*.36,l:1.4,ml:1.4,c:'#d7a86e',s:26});}
+    }
+    prevFlags[i]={brk:p.brk,boost:p.boost,mud:p.mud};
   });
   if(s.s!==lastState){
     stateT=performance.now();
@@ -3163,7 +3308,7 @@ function sync(dt){
     const tz=t.z+(play?(t.v||0)*age:0),px=c.x;
     if(i===slot)predictMe(c,t,dt,play,age);else c.x+=(t.x+(play?(t.vx||0)*age*.5:0)-c.x)*k;
     if(play)c.z+=(t.v||0)*dt;c.z+=(tz-c.z)*kz;if(Math.abs(tz-c.z)>60)c.z=tz;
-    Object.assign(c,{v:t.v,brk:t.brk,brakes:t.brakes,boost:t.boost,cd:t.cd,bcd:t.bcd,skin:t.skin,hair:t.hair,fit:t.fit,acc:t.acc,trail:t.trail});
+    Object.assign(c,{v:t.v,mud:t.mud||0,brk:t.brk,brakes:t.brakes,boost:t.boost,cd:t.cd,bcd:t.bcd,skin:t.skin,hair:t.hair,fit:t.fit,acc:t.acc,trail:t.trail});
     const vx=(c.x-px)/Math.max(dt,1e-3),tl=clamp(vx/650,-.38,.38)+(c.boost&&play?Math.sin(nowT/90)*.13:0);
     c._lean+=(tl-c._lean)*Math.min(1,dt*9);
     if(play)c._ph+=dt*((c.v||110)/16)*(c.boost?1.5:1);
@@ -3175,7 +3320,7 @@ function sync(dt){
     const tz=o.z+(play?o.vz*age:0);c.x+=(o.x-c.x)*k;if(play)c.z+=o.vz*dt;c.z+=(tz-c.z)*kz;if(Math.abs(tz-c.z)>80)c.z=tz;
     c.vz=o.vz;c.k=o.k;c.c=o.c;c.d=o.d;return c;
   });
-  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names,lvs:S.lvs,course:S.course,fx:S.fx,score:S.score,combo:S.combo,mode:S.mode});
+  Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,mud:S.mud||[],bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names,lvs:S.lvs,course:S.course,fx:S.fx,score:S.score,combo:S.combo,mode:S.mode});
 }
 setInterval(()=>{if(!inGame||!socket.connected)return;const t0=performance.now();socket.emit('pg',0,()=>{const r=(performance.now()-t0)/1000;lat=clamp(lat*.7+(r/2)*.3,0,.3);});},2000);
 
@@ -3311,6 +3456,32 @@ function drawConfetti(){for(const p of confetti){p.x+=p.vx;p.y+=p.vy;p.vy+=.3;p.
 function pill(x,y,w,h,bg){ctx.fillStyle=bg;rr(ctx,x,y,w,h,h/2);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();}
 function nearestCop(me){let best=null,bd=1e9;for(const o of D.obs||[])if(o.k==='cop'){const d=me.z-o.z;if(d>-60&&d<620&&Math.abs(d)<bd){bd=Math.abs(d);best=o;}}return best;}
 function curveAhead(z){let best=0;for(let d=100;d<=560;d+=40){const k=curvAt(z+d);if(Math.abs(k)>Math.abs(best))best=k;}return best;}
+// 坂道・泥のHUD
+let mudFlash=0;
+function slopeHUD(me,t,dt){
+  if(D.s!=='play')return;
+  const ci=D.course||0,g=Math.max(gradeAt(ci,me.z+40),gradeAt(ci,me.z)),gd=gradeAt(ci,me.z);
+  const canBoost=mode==='endless'||D.att!==slot,y=mode==='endless'?H*.19:H*.25;
+  if(g>.05){
+    const steep=g>.2,need=canBoost&&!me.boost,s=need?1+Math.sin(t/110)*.05:1;
+    const msg='⛰️ '+(steep?'急な':'')+'上り坂'+(canBoost?(me.boost?'　ブーストで登ってる！':'　ブーストで登れ！'):'　スピードダウン');
+    ctx.save();ctx.translate(W/2,y);ctx.scale(s,s);ctx.font='900 17px '+FONT;const tw=ctx.measureText(msg).width+34;
+    pill(-tw/2,-17,tw,34,me.boost?'#2e7d32':steep?'#d84315':'#ef6c00');txt(msg,0,6,17,'#fff','center',false);ctx.restore();
+  }else if(gd<-.05){
+    ctx.save();ctx.globalAlpha=.9;ctx.font='900 15px '+FONT;const msg='↘ 下り坂　スピードアップ！',tw=ctx.measureText(msg).width+30;
+    pill(W/2-tw/2,y-15,tw,30,'#1565c0');txt(msg,W/2,y+5,15,'#fff','center',false);ctx.restore();
+  }
+  if(me.mud>0){
+    const w=150,x=W/2-w/2,yy=y+(g>.05||gd<-.05?30:0);
+    pill(x,yy-12,w,24,'#4e3420');ctx.fillStyle='#d7a86e';rr(ctx,x+4,yy-8,(w-8)*clamp(me.mud/3,0,1),16,8);ctx.fill();
+    txt('泥でスピードダウン '+me.mud.toFixed(1)+'秒',W/2,yy+5,12,'#fff','center',true,800);
+  }
+  if(mudFlash>0){   // 画面のふちに泥はね
+    ctx.save();ctx.globalAlpha=Math.min(1,mudFlash)*.8;ctx.fillStyle='#5d3b1e';
+    for(let i=0;i<14;i++){const a=hh(i,1,3),b=hh(i,2,5),x=i%2?W*(.02+a*.18):W*(.8+a*.18),yy=H*(.1+b*.8),r=10+hh(i,4,7)*26;ctx.beginPath();ctx.arc(x,yy,r,0,7);ctx.arc(x+r*.8,yy+r*.6,r*.45,0,7);ctx.arc(x-r*.6,yy+r*.9,r*.3,0,7);ctx.fill();}
+    ctx.restore();mudFlash=Math.max(0,mudFlash-dt*.7);
+  }
+}
 function curveSignHUD(me,t){
   if(D.s!=='play')return;const k=curveAhead(me.z);if(Math.abs(k)<.0009)return;
   const strong=Math.abs(k)>.0017,x=W-(document.body.classList.contains('touch')?150:110),y=mode==='endless'?60:110,s=strong?1+Math.sin(t/120)*.06:1;
@@ -3411,7 +3582,7 @@ function drawBubbles(t){
 }
 function drawHUD(T,me,t,dt){
   if(mode==='endless')hudEndless(T,me,t);else hudVersus(T,me,t);
-  curveSignHUD(me,t);
+  curveSignHUD(me,t);slopeHUD(me,t,dt);
   const age=(performance.now()-stateT)/1000,w=D.hist&&D.hist.length?D.hist[D.hist.length-1]:-1;
   if(D.s==='count'){
     const n=Math.max(1,Math.ceil(D.t)),f=D.t-Math.floor(D.t),sc=1+f*.6;
@@ -3454,9 +3625,10 @@ function gameOverPanel(t,age){
 }
 function drawGame(dt,t){
   if(!D){ctx.fillStyle='#0d1226';ctx.fillRect(0,0,W,H);txt('接続中…',W/2,H/2,24,'#fff');return;}
-  const ci=D.course||0,T=COURSES[ci]||COURSES[0];if(CURP!==PATHB[ci])useCourse(ci);
+  const ci=D.course||0,T=COURSES[ci]||COURSES[0];if(CURP!==PATHB[ci]||CURCI!==ci)useCourse(ci);
   const me=D.P[slot]||D.P.find(Boolean);if(!me)return;
-  if(D.s==='play')for(const p of D.P)if(p&&p.boost)trailEmit(p,dt);
+  if(D.s==='play')for(const p of D.P){if(p&&p.boost)trailEmit(p,dt);
+    if(p&&p.mud>0&&Math.random()<dt*25)addP({x:p.x+(Math.random()-.5)*6,y:2,z:p.z-12,vx:(Math.random()-.5)*30,vy:30+Math.random()*40,vz:-20,l:.45,ml:.45,s:1.6+Math.random(),c:'#5d3b1e',k:'debris',r:0});}
   setCam(me.x,me.z,me.v,dt,false);
   ctx.save();if(shake>0){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake=Math.max(0,shake-dt*32);}
   const names=mode==='versus'&&D.names?D.names.map((n,i)=>i===slot?null:n):null;
@@ -3475,12 +3647,36 @@ function drawGame(dt,t){
    ===================================================================== */
 function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv,best:SV.best,rp:SV.rp,ttl:myTitle()});}
 socket.on('connect',hello);
+/* ===== ランキングの端末バックアップ
+   サーバーが再起動して記録が消えても、みんなの端末に残した「サーバーの署名つきランキング」から復元する。
+   （署名はサーバーしか作れないので、書き換えた記録は受け付けられない。ログインIDは含まない） ===== */
+const RBK='nm_rank_bk';
+function rbkLoad(){try{const j=JSON.parse(LS.get(RBK,'')||'{}');return{run:Array.isArray(j.run)?j.run:[],rp:Array.isArray(j.rp)?j.rp:[]};}catch(e){return{run:[],rp:[]};}}
+function rbkMerge(local,server,key){
+  const m=new Map();
+  for(const e of local)if(e&&e.h&&e.sig)m.set(e.h,e);
+  for(const e of server){if(!e||!e.h||!e.sig)continue;const c=m.get(e.h);if(!c||(key==='score'?e.score>=c.score:e.ts>=(c.ts||0)))m.set(e.h,e);}
+  return[...m.values()].sort((a,b)=>b[key]-a[key]).slice(0,120);
+}
+function rankBackup(){
+  socket.emit('rank_backup',{},r=>{
+    if(!r)return;const bk=rbkLoad(),mine=r.mine||{};
+    LS.set(RBK,JSON.stringify({run:rbkMerge(bk.run,(r.run||[]).concat(mine.run?[mine.run]:[]),'score'),rp:rbkMerge(bk.rp,(r.rp||[]).concat(mine.rp?[mine.rp]:[]),'rp'),t:Date.now()}));
+  });
+}
+// つないでいる間は2分ごとに最新のランキングを端末へ（ほかの人の新記録もバックアップされる）
+setInterval(()=>{if(socket.connected&&SV&&SV.nameReg)rankBackup();},120000);
+function rankSync(){
+  const bk=rbkLoad();
+  if(!bk.run.length&&!bk.rp.length){rankBackup();return;}
+  socket.emit('rank_restore',bk,()=>rankBackup());
+}
 socket.on('disconnect',()=>{if(MM)hideMM();if(inGame&&GAME.ranked&&SV.rkPend&&!(D&&D.s==='match'))rankPenalty('通信が切れたためランクマッチは敗北扱いになりました');if(inGame||ROOM){stopGame();hideRoom();startBGM(SV.eq.bgm,true);$('lobby').style.display='flex';showPage('home');toast('通信が切れました。もう一度お試しください',3000);}});
 socket.on('id_conflict',()=>toast('このログインIDは別の画面で使用中です',3000));
 // ユーザー名の確認結果（接続のたび）。他の人が使っている・未登録なら名前を決めてもらう
 socket.on('name_status',st=>{
   if(!st||!SV)return;
-  if(st.ok){SV.name=st.name;SV.nameReg=true;save();updateHome();if(NM&&NM.force)closeNameModal();if(page==='friends')renderFriends();}
+  if(st.ok){SV.name=st.name;SV.nameReg=true;save();updateHome();if(NM&&NM.force)closeNameModal();if(page==='friends')renderFriends();rankSync();}
   else{SV.nameReg=false;save();updateHome();if(!inGame&&!ROOM)openNameModal(true,st.reason,st.suggest);}
 });
 socket.on('start',d=>enterGame(d));
@@ -3527,7 +3723,7 @@ socket.on('reward',d=>{
   if(inGame)pops.push({t:'+'+g+' NC',x:W-150,y:mode==='endless'?84:100,l:1.6,ml:1.6,c:'#ffe56b',s:20});
   if(mode==='versus')playSE(SV.eq.se);else if(AU.ctx)SFX.coin();
 });
-socket.on('endless_over',d=>{END=d;if(d.score>SV.best){SV.best=d.score;save();}questChanged();});
+socket.on('endless_over',d=>{END=d;if(d.score>SV.best){SV.best=d.score;save();}questChanged();setTimeout(rankBackup,500);});
 socket.on('prog',p=>{   // サーバーで起きた出来事 → クエスト進行・XP（CPU戦は少し控えめ）
   if(!p||!SV)return;const m=p.ranked?(p.bot?.8:1.2):p.cpu?.6:1;
   switch(p.k){
@@ -3627,7 +3823,7 @@ function applyRank(win,oppRp,bot){
   const ti1=tierOf(SV.rp);let promo=null,bonus=0;
   if(win&&ti1>SV.rkTop){for(let i=SV.rkTop+1;i<=ti1;i++)bonus+=RANKS[i].bonus;SV.rkTop=ti1;SV.coins+=bonus;promo=RANKS[ti1].n;grantUnlocks();}
   saveNow();questChanged();updateTop();
-  socket.emit('rank_report',{id:SV.id,name:SV.name,rp:SV.rp,lv:SV.lv,ttl:myTitle()});
+  socket.emit('rank_report',{id:SV.id,name:SV.name,rp:SV.rp,lv:SV.lv,ttl:myTitle()},()=>setTimeout(rankBackup,300));
   return {rp0,rp1:SV.rp,d,ti0,ti1,promo,bonus,streak:SV.rkStreak,win};
 }
 function startRankQueue(){
@@ -3770,6 +3966,5 @@ $('res-again').onclick=()=>{initAudio();again();};
 $('res-room').onclick=()=>{initAudio();socket.emit('toroom');};
 $('res-lobby').onclick=()=>{initAudio();returnLobby();};
 </script>
- quick-friends
 </body>
 </html>
