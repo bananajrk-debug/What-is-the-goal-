@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v9 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v10 — Express + Socket.io（サーバー権威型）
+// 坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
@@ -36,8 +37,47 @@ const PATHS = [
   [[900, 0], [1000, 40], [500, 0], [1000, -70], [400, 0], [900, 50], [600, 0], [900, -20]],
   [[1200, 0], [1300, 90], [900, 0], [1300, -90], [700, 0]],
   [[700, 0], [500, -30], [300, 0], [500, 30], [900, 0], [600, 35], [300, 0], [600, -35]],
-  [[600, 0], [650, 75], [200, 0], [650, -75], [300, 0], [500, -60], [150, 0], [500, 60], [400, 0], [700, 90], [250, 0], [700, -90]]
+  [[600, 0], [650, 75], [200, 0], [650, -75], [300, 0], [500, -60], [150, 0], [500, 60], [400, 0], [700, 90], [250, 0], [700, -90]],
+  [[700, 0], [600, 35], [500, 0], [600, -35], [800, 0], [500, -25], [600, 0], [500, 25]],
+  [[600, 0], [600, 60], [300, 0], [600, -60], [500, 0], [700, 80], [300, 0], [700, -80]],
+  [[800, 0], [900, 90], [600, 0], [900, -90], [500, 0]]
 ];
+/* ===== 坂道（クライアントと共通。[開始位置, 上り長さ, 頂上の長さ, 下り長さ, 高さ]） ===== */
+const HILLS = [[], [], [], [], [[1200, 600, 300, 600, 70]],
+  [[600, 450, 500, 450, 55], [2900, 400, 300, 500, 70]],
+  [[400, 700, 300, 600, 90], [2500, 600, 400, 700, 110]],
+  [[300, 450, 300, 450, 60], [2200, 500, 250, 400, 75]]];
+function elev(ci, s) {
+  const hs = HILLS[ci]; if (!hs || !hs.length) return 0;
+  const L = PATH[ci].L; let r = s % L; if (r < 0) r += L;
+  let e = 0;
+  for (const [s0, up, top, dn, h] of hs) {
+    const u = r - s0;
+    if (u < 0 || u > up + top + dn) continue;
+    if (u < up) e += h * (1 - Math.cos(Math.PI * u / up)) / 2;
+    else if (u < up + top) e += h;
+    else e += h * (1 + Math.cos(Math.PI * (u - up - top) / dn)) / 2;
+  }
+  return e;
+}
+const grade = (ci, s) => (elev(ci, s + 6) - elev(ci, s - 6)) / 12;
+// 坂による前進の倍率：上りはブーストしないと大きく遅くなる／下りは少し速い。泥の上は半分
+function moveMul(R, p) {
+  const g = grade(R.course || 0, p.z);
+  let m = g > 0 ? (p.boost > 0 ? Math.max(0.82, 1 - g * 0.9) : Math.max(0.45, 1 - g * 2.6)) : 1 + Math.min(0.3, -g * 1.4);
+  if (p.mud > 0) m *= 0.5;
+  return m;
+}
+// 泥（ごくまれに道路に出る。踏むと3秒スピードダウン。ぶつかってもアウトにはならない）
+const MUD_W = 15, MUD_L = 20, MUD_RATE = Number(process.env.MUD_RATE) || 1;   // 泥の出やすさ（テスト用。ふだんは1＝ごく稀）
+function addMud(R, x, z) { if (!R.mud) R.mud = []; if (clearAt(R, x, z, MUD_W, MUD_L) && !R.mud.some(m => Math.abs(m.z - z) < 120)) R.mud.push({ id: R.nid++, x, z }); }
+function mudCheck(R, i, p, dt) {
+  if (p.mud > 0) p.mud = Math.max(0, p.mud - dt);
+  for (const m of R.mud || []) if (Math.abs(m.x - p.x) < MUD_W + BIKE_W - 2 && Math.abs(m.z - p.z) < MUD_L + BIKE_L - 4) {
+    if (p.mudId !== m.id) { if (!(p.mud > 0)) prog(R, i, 'mud'); p.mud = 3; p.mudId = m.id; }   // 踏んだ瞬間から3秒間
+  }
+}
+const mudSnap = R => (R.mud || []).map(m => ({ id: m.id, x: r1(m.x), z: r1(m.z) }));
 const PATH = PATHS.map(def => {
   let L = 0;
   const P = def.map(([len, deg]) => { const o = { s0: L, len, k: deg * Math.PI / 180 / len }; L += len; return o; });
@@ -61,6 +101,13 @@ const clean = (v, def) => (typeof v === 'string' && /^[\w-]{1,24}$/.test(v)) ? v
 const cleanUid = v => (typeof v === 'string' && /^[\w-]{8,64}$/.test(v)) ? v : '';
 const cleanFid = v => (typeof v === 'string' && /^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)) ? v : '';   // 旧フレンドID（v6）…移行のためだけに使う
 const cleanPk = v => (typeof v === 'string' && /^[0-9a-f]{16}$/.test(v)) ? v : '';             // フレンド用の内部キー（端末UUIDのハッシュ。画面には出さない）
+// ランキング用：ログインIDは外に出さず、秘密の鍵でハッシュした値（h）で本人を見分ける
+const RANK_SECRET = process.env.RANK_SECRET || crypto.createHash('sha256').update('nm-rank:' + (process.env.RENDER_SERVICE_ID || '') + ':' + (process.env.RENDER_EXTERNAL_HOSTNAME || 'local')).digest('hex');
+const hmac = t => crypto.createHmac('sha256', RANK_SECRET).update(t).digest('hex');
+const hidCache = new Map();
+const hidOf = id => { if (!id) return ''; let h = hidCache.get(id); if (!h) { h = hmac('h:' + id).slice(0, 16); if (hidCache.size > 5000) hidCache.clear(); hidCache.set(id, h); } return h; };
+const same = (r, id) => !!id && r.h === hidOf(id);
+const signE = (board, e) => hmac([board, e.h, e.name, board === 'run' ? e.score : e.rp, e.lv, e.ttl || '', e.ts].join('|')).slice(0, 24);
 const pkOf = uid => crypto.createHash('sha256').update('nm-friend:' + uid).digest('hex').slice(0, 16);
 const isLoginId = v => typeof v === 'string' && /^NM-[\w-]{3,20}$/.test(v);
 const cleanText = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').trim().slice(0, max) : '');
@@ -99,15 +146,30 @@ const STORE = {
     }
     try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return null; }
   },
-  save(key, file, data) {
+  save(key, file, data, sync) {
     const body = JSON.stringify(data);
     if (useKV) {
-      fetch(KV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(['SET', 'nm:' + key, body]) })
+      return fetch(KV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(['SET', 'nm:' + key, body]) })
         .then(r => r.json()).then(j => { if (j.error) console.warn('保存エラー(' + key + '):', j.error); }).catch(e => console.warn('保存エラー(' + key + '):', e.message));
-    } else fs.writeFile(file, body, err => { if (err) console.warn('保存エラー(' + key + '):', err.message); });
+    }
+    if (sync) { try { fs.writeFileSync(file, body); } catch (e) { console.warn('保存エラー(' + key + '):', e.message); } return Promise.resolve(); }
+    fs.writeFile(file, body, err => { if (err) console.warn('保存エラー(' + key + '):', err.message); });
+    return Promise.resolve();
   }
 };
-const saver = (key, file, get, ms) => { let t = null; return () => { if (t) return; t = setTimeout(() => { t = null; STORE.save(key, file, get()); }, ms || 3000); }; };
+// まとめて保存（3秒ごと）。サーバーが止められるとき（再起動・スリープ）は、待っている保存をすぐ書き出す
+const PENDING = new Map();
+const saver = (key, file, get, ms) => { let t = null; return () => { if (t) return; PENDING.set(key, () => { clearTimeout(t); t = null; PENDING.delete(key); return STORE.save(key, file, get(), true); }); t = setTimeout(() => { t = null; PENDING.delete(key); STORE.save(key, file, get()); }, ms || 3000); }; };
+let stopping = false;
+async function flushAndExit(sig) {
+  if (stopping) return; stopping = true;
+  const jobs = [...PENDING.values()].map(f => f());
+  if (jobs.length) console.log(sig + ': 保存してから終了します（' + jobs.length + '件）');
+  await Promise.race([Promise.all(jobs), new Promise(r => setTimeout(r, 4000))]);
+  process.exit(0);
+}
+process.on('SIGTERM', () => flushAndExit('SIGTERM'));
+process.on('SIGINT', () => flushAndExit('SIGINT'));
 
 /* =====================================================================
    ユーザー名の名簿（重複禁止）：正規化したキー → { name, pk, uid }
@@ -150,27 +212,27 @@ const nameOfPk = pk => { const k = pkKey.get(pk), e = k && nameReg.get(k); retur
 /* ===== ランキング（ranking.json に保存） ===== */
 const RANK_FILE = process.env.RANK_FILE || path.join(__dirname, 'ranking.json');
 let ranking = [];
-function loadRanking(j) { if (Array.isArray(j)) ranking = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.score)).sort((a, b) => b.score - a.score).slice(0, 100); }
+function loadRanking(j) { if (Array.isArray(j)) ranking = j.filter(r => r && (typeof r.id === 'string' || typeof r.h === 'string') && Number.isFinite(r.score)).map(r => Object.assign(r, { h: r.h || hidOf(r.id) })).sort((a, b) => b.score - a.score).slice(0, 100); }
 const saveRanking = saver('ranking', RANK_FILE, () => ranking);
 function submitScore(id, name, score, lv) {
   if (!id) return { best: score, rank: 0, improved: false };
-  const i = ranking.findIndex(r => r.id === id);
+  const h = hidOf(id), i = ranking.findIndex(r => r.h === h);
   let best = score, improved = false;
   if (i >= 0) {
-    if (score > ranking[i].score) { ranking[i] = { id, name, score, lv, ts: Date.now() }; improved = true; }
+    if (score > ranking[i].score) { ranking[i] = { h, name, score, lv, ts: Date.now() }; improved = true; }
     else { best = ranking[i].score; ranking[i].name = name; ranking[i].lv = lv; }
-  } else { ranking.push({ id, name, score, lv, ts: Date.now() }); improved = true; }
+  } else { ranking.push({ h, name, score, lv, ts: Date.now() }); improved = true; }
   ranking.sort((a, b) => b.score - a.score);
   ranking = ranking.slice(0, 100);
   saveRanking();
-  return { best, rank: ranking.findIndex(r => r.id === id) + 1, improved };
+  return { best, rank: ranking.findIndex(r => r.h === h) + 1, improved };
 }
 // 公開するランキングにはログインIDを含めない（自分の行だけ me:true を付ける）
-const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, me: !!me && r.id === me }));
+const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, me: same(r, me) }));
 // チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
-function loadRp(j) { if (Array.isArray(j)) rpBoard = j.filter(r => r && typeof r.id === 'string' && Number.isFinite(r.rp)).sort((a, b) => b.rp - a.rp).slice(0, 100); }
+function loadRp(j) { if (Array.isArray(j)) rpBoard = j.filter(r => r && (typeof r.id === 'string' || typeof r.h === 'string') && Number.isFinite(r.rp)).map(r => Object.assign(r, { h: r.h || hidOf(r.id) })).sort((a, b) => b.rp - a.rp).slice(0, 100); }
 const saveRp = saver('rp', RP_FILE, () => rpBoard);
 /* ===== フレンド申請（承認制）：申請と「承認された／取り消された」のお知らせを保存（相手がオフラインでも届く） ===== */
 const FR_FILE = process.env.FRIENDS_FILE || path.join(__dirname, 'friends.json');
@@ -184,27 +246,48 @@ function loadFriends(j) {
 const saveFriends = saver('friends', FR_FILE, () => ({ req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] }));
 
 // 保存先が消えた後（ファイル保存で再起動したとき）は、つないできたプレイヤーの端末の記録からランキングを作り直す
+// 名前を変えたら、ランキングの表示名も新しい名前に
+// 外部DBなしでサーバーの記録が消えていた場合は、本人の端末に残る自己ベストからも戻す
 function restoreBoards(id, name, best, rp, lv, ttl) {
   if (!id || !name) return;
-  let ch = false;
-  const r = ranking.find(x => x.id === id);
-  if (r) { if (r.name !== name) { r.name = name; ch = true; } }
-  else if (!useKV && best > 0 && (ranking.length < 100 || best > ranking[ranking.length - 1].score)) { ranking.push({ id, name, score: best, lv, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); ch = true; }
-  if (ch) saveRanking();
-  let ch2 = false;
-  const q = rpBoard.find(x => x.id === id);
-  if (q) { if (q.name !== name) { q.name = name; ch2 = true; } }
-  else if (!useKV && rp > 0 && (rpBoard.length < 100 || rp > rpBoard[rpBoard.length - 1].rp)) { rpBoard.push({ id, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); ch2 = true; }
-  if (ch2) saveRp();
+  const h = hidOf(id), r = ranking.find(x => x.h === h), q = rpBoard.find(x => x.h === h);
+  if (r) { if (r.name !== name) { r.name = name; saveRanking(); } }
+  else if (!useKV && best > 0) { ranking.push({ h, name, score: best, lv, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
+  if (q) { if (q.name !== name) { q.name = name; saveRp(); } }
+  else if (!useKV && rp > 0) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
 }
 function submitRp(id, name, rp, lv, ttl) {
-  const i = rpBoard.findIndex(r => r.id === id);
-  if (i >= 0) { rp = Math.min(rp, rpBoard[i].rp + 60); rpBoard[i] = { id, name, rp, lv, ttl, ts: Date.now() }; }
-  else rpBoard.push({ id, name, rp, lv, ttl, ts: Date.now() });
+  const h = hidOf(id), i = rpBoard.findIndex(r => r.h === h);
+  if (i >= 0) { rp = Math.min(rp, rpBoard[i].rp + 60); rpBoard[i] = { h, name, rp, lv, ttl, ts: Date.now() }; }
+  else rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() });
   rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp();
-  return rpBoard.findIndex(r => r.id === id) + 1;
+  return rpBoard.findIndex(r => r.h === h) + 1;
 }
-const rpTop = (n, me) => rpBoard.slice(0, n).map(r => ({ name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie', me: !!me && r.id === me }));
+/* ===== ランキングの端末バックアップ（サーバーの署名つき）
+   サーバーが再起動して保存データが消えても、プレイヤーの端末に残っている「署名つきのランキング」を
+   受け取って復元する。署名はサーバーしか作れないので、書き換えたデータは受け付けない。 ===== */
+const entryOut = (board, e) => { const o = { h: e.h, name: e.name, lv: e.lv || 1, ttl: e.ttl || '', ts: e.ts || 0 }; if (board === 'run') o.score = e.score; else o.rp = e.rp; o.sig = signE(board, o); return o; };
+function restoreSigned(board, list) {
+  if (!Array.isArray(list)) return 0;
+  const arr = board === 'run' ? ranking : rpBoard, key = board === 'run' ? 'score' : 'rp';
+  let n = 0;
+  for (const it of list.slice(0, 150)) {
+    if (!it || typeof it.h !== 'string' || !/^[0-9a-f]{16}$/.test(it.h) || typeof it.name !== 'string' || !Number.isFinite(it[key]) || !Number.isFinite(it.ts)) continue;
+    const e = { h: it.h, name: cleanName(it.name, 'プレイヤー'), lv: clamp(parseInt(it.lv, 10) || 1, 1, 99), ttl: clean(it.ttl, ''), ts: it.ts, [key]: it[key] };
+    if (e.name !== it.name || typeof it.sig !== 'string' || it.sig !== signE(board, Object.assign({}, e, { ttl: it.ttl || '' }))) continue;
+    const cur = arr.find(x => x.h === e.h);
+    if (!cur) { arr.push(e); n++; }
+    else if (board === 'run' ? e.score > cur.score : e.ts > (cur.ts || 0)) { Object.assign(cur, e); n++; }
+  }
+  if (n) {
+    if (board === 'run') { ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
+    else { rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
+  }
+  return n;
+}
+const myEntry = (board, id) => { const h = hidOf(id), e = (board === 'run' ? ranking : rpBoard).find(x => x.h === h); return e ? entryOut(board, e) : null; };
+const rpTop = (n, me) => rpBoard.slice(0, n).map(r => ({ name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie', me: same(r, me) }));
+app.get('/api/ping', (req, res) => res.json({ ok: true }));
 app.get('/api/ranking', (req, res) => res.json({ top: topN(50), rp: rpTop(50) }));
 app.get('/api/sounds', (req, res) => {
   fs.readdir(path.join(__dirname, 'public', 'sounds'), (err, list) => {
@@ -332,7 +415,7 @@ function newRound(R) {
   R.P = [];
   R.P[R.att] = mkRider(R, R.att, rnd(-30, 30), 60);
   R.P[d] = mkRider(R, d, rnd(-30, 30), 0);
-  R.obs = []; R.nid = 1; R.fx = null;
+  R.obs = []; R.mud = []; R.nid = 1; R.fx = null;
   R.inp = [{ s: 0 }, { s: 0 }];
   R.act = [false, false]; R.actK = [null, null];
   R.state = 'count'; R.timer = 3; R.el = 0;
@@ -382,6 +465,9 @@ function updateCpuInp(R) {
     ahead.sort((a, b) => a.z - b.z);
     const dg = ahead[0];
     if (Math.abs(dg.x - cpuP.x) < 36) targetX = dg.x > 0 ? dg.x - 60 : dg.x + 60;
+  } else if ((R.mud || []).some(m => m.z - cpuP.z > 0 && m.z - cpuP.z < 140 + sk * 80 && Math.abs(m.x - cpuP.x) < 30)) {
+    const m = R.mud.find(m => m.z - cpuP.z > 0 && m.z - cpuP.z < 140 + sk * 80 && Math.abs(m.x - cpuP.x) < 30);
+    targetX = m.x > cpuP.x ? m.x - 45 : m.x + 45;
   } else if (playerP) {
     if (R.att === cpuSlot) targetX = playerP.x + Math.sin(R.el * 3) * 45;
     else targetX = (playerP.z - cpuP.z) < 50 ? playerP.x + (playerP.x > 0 ? -50 : 50) : playerP.x;
@@ -416,12 +502,15 @@ function step(R, dt) {
   if (A.brk > 0) { A.v = Math.max(0, A.v - 800 * dt); A.brk -= dt; } else A.v = Math.min(BASE, A.v + 120 * dt);
   if (B.boost > 0) { B.v = Math.min(220, B.v + 600 * dt); B.boost -= dt; } else B.v = Math.max(BASE, B.v - 300 * dt);
   B.cd = Math.max(0, B.cd - dt);
-  A.z += A.v * dt; B.z += B.v * dt;
+  mudCheck(R, att, A, dt); mudCheck(R, d, B, dt);
+  A.mm = moveMul(R, A); B.mm = moveMul(R, B);
+  A.z += A.v * A.mm * dt; B.z += B.v * B.mm * dt;
 
   const front = Math.max(A.z, B.z), back = Math.min(A.z, B.z);
   R.nextCar -= dt;
   if (R.nextCar <= 0) {
     R.nextCar = rnd(2, 3.6);
+    if (Math.random() < 0.06 * MUD_RATE) addMud(R, LANES[Math.floor(Math.random() * 4)] + rnd(-12, 12), front + rnd(460, 600));   // ごくまれに泥
     if (Math.random() < 0.62) {
       const x = ONC[Math.random() < 0.5 ? 0 : 1] + rnd(-6, 6), z = front + rnd(560, 660);
       if (clearAt(R, x, z, 19, 26)) addObs(R, 'car', x, z, rnd(70, 110), -1, Math.floor(rnd(0, 6)));
@@ -433,6 +522,7 @@ function step(R, dt) {
   if (R.el >= R.patrolAt) { R.patrolAt = 1e9; addObs(R, 'cop', SAME[Math.random() < 0.5 ? 0 : 1], back - 260, 175, 1); }
   traffic(R, dt, R.P);
   R.obs = R.obs.filter(o => o.z > back - 360 && o.z < front + 900);
+  R.mud = (R.mud || []).filter(m => m.z > back - 200);
   copPasses(R);
 
   const lost = [null, null];
@@ -454,7 +544,7 @@ function step(R, dt) {
   if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)');
 }
 function riderSnap(p) {
-  return { x: r1(p.x), z: r1(p.z), v: r1(p.v), vx: r1(p.vx || 0), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), bcd: r1(p.bcd || 0), skin: p.skin, hair: p.hair, fit: p.fit, acc: p.acc, trail: p.trail };
+  return { x: r1(p.x), z: r1(p.z), v: r1(p.v * (p.mm || 1)), mud: p.mud > 0 ? r1(p.mud) : 0, vx: r1(p.vx || 0), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), bcd: r1(p.bcd || 0), skin: p.skin, hair: p.hair, fit: p.fit, acc: p.acc, trail: p.trail };
 }
 function snapV(R, slot) {
   const att = R.att, d = 1 - att;
@@ -469,7 +559,7 @@ function snapV(R, slot) {
   });
   return {
     mode: 'versus', s: R.state, t: r1(R.timer), rd: R.round, att: R.att, sc: R.sc, hist: R.hist, msg: R.msg, sub: R.sub, el: r1(R.el),
-    course: R.course || 0, bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names, lvs: R.lvs, ranked: !!R.ranked, fx: R.fx, P, obs: obsSnap(R)
+    course: R.course || 0, bgGap: r1(bgGap), bgBx: r1(bgBx), bgBoost, names: R.names, lvs: R.lvs, ranked: !!R.ranked, fx: R.fx, P, obs: obsSnap(R), mud: mudSnap(R)
   };
 }
 
@@ -479,7 +569,7 @@ function snapV(R, slot) {
 const EN = { BASE: 130, MAX: 330, ACC: 2.4, STEER: 260 };
 function resetEndless(R) {
   R.P = [{ x: 0, z: 0, v: EN.BASE, vx: 0, brk: 0, bcd: 0, boost: 0, cd: 0, brakes: 0, skin: R.skins[0], hair: R.hairs[0], fit: R.fits[0], acc: R.accs[0], trail: R.trails[0] }];
-  R.obs = []; R.nid = 1; R.fx = null;
+  R.obs = []; R.mud = []; R.nid = 1; R.fx = null;
   R.inp = [{ s: 0 }, { s: 0 }]; R.act = [false, false]; R.actK = [null, null];
   R.state = 'count'; R.timer = 3; R.el = 0;
   R.score = 0; R.bonus = 0; R.combo = 0; R.comboT = 0; R.nearN = 0; R.ev = [];
@@ -493,6 +583,7 @@ function spawnWave(R, p) {
   if (free.length < 2) return;
   const keep = free[Math.floor(Math.random() * free.length)];
   const cand = free.filter(i => i !== keep).sort(() => Math.random() - 0.5);
+  if (Math.random() < 0.045 * MUD_RATE) addMud(R, LANES[Math.floor(Math.random() * 4)] + rnd(-10, 10), z - rnd(120, 220));   // ごくまれに泥
   const r = Math.random();
   if (r < 0.12 + lvl * 0.06) { const li = cand[0]; for (let i = 0; i < 3; i++) addObs(R, 'cone', LANES[li] + rnd(-5, 5), z + i * 26, 0, 1); return; }
   const sameC = cand.filter(i => i < 2);
@@ -511,7 +602,7 @@ function overEndless(R, kind, reason) {
   const coins = Math.floor(R.score / 40), sid = R.ids[0];
   if (coins > 0) io.to(sid).emit('reward', { gain: coins });
   prog(R, 0, 'run', { score: R.score, dist: Math.floor(p.z / 10) });
-  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10, R.hostId) });
+  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10, R.hostId), tok: myEntry('run', R.hostId) });
 }
 function stepEndless(R, dt) {
   if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
@@ -529,7 +620,8 @@ function stepEndless(R, dt) {
   else if (p.boost > 0) { p.boost -= dt; p.v = Math.min(target + 160, p.v + 520 * dt); }
   else { const df = target - p.v; p.v += Math.sign(df) * Math.min(Math.abs(df), 170 * dt); }
   p.cd = Math.max(0, p.cd - dt); p.bcd = Math.max(0, p.bcd - dt);
-  p.z += p.v * dt;
+  mudCheck(R, 0, p, dt); p.mm = moveMul(R, p);
+  p.z += p.v * p.mm * dt;
   R.comboT -= dt; if (R.comboT <= 0) R.combo = 0;
 
   const lvl = Math.min(1, R.el / 150);
@@ -544,6 +636,7 @@ function stepEndless(R, dt) {
   for (const o of R.obs) if (o.k === 'cop') o.v0 = Math.max(o.v0, p.v + 75);
   traffic(R, dt, R.P);
   R.obs = R.obs.filter(o => o.z > p.z - 420 && o.z < p.z + 900);
+  R.mud = (R.mud || []).filter(m => m.z > p.z - 200);
   copPasses(R);
 
   for (const o of R.obs) {
@@ -564,7 +657,7 @@ function snapE(R) {
   const s = {
     mode: 'endless', s: R.state, t: r1(R.timer), el: r1(R.el), course: R.course, names: R.names, lvs: R.lvs, fx: R.fx,
     score: R.score, combo: R.combo, rd: 0, att: 0, sc: [0, 0], hist: [], msg: R.msg, sub: R.sub,
-    P: [riderSnap(R.P[0])], obs: obsSnap(R), ev: R.ev
+    P: [riderSnap(R.P[0])], obs: obsSnap(R), mud: mudSnap(R), ev: R.ev
   };
   R.ev = [];
   return s;
@@ -791,6 +884,13 @@ io.on('connection', socket => {
   });
   socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId) }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
+  // 端末バックアップ用の署名つきランキング／復元
+  socket.on('rank_backup', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ run: ranking.map(e => entryOut('run', e)), rp: rpBoard.map(e => entryOut('rp', e)), mine: { run: myEntry('run', socket.nmId), rp: myEntry('rp', socket.nmId) } }); });
+  socket.on('rank_restore', (d, cb) => {
+    if (socket.restored || !d || typeof d !== 'object') return rp(cb)({ added: 0 });
+    socket.restored = true;
+    rp(cb)({ added: restoreSigned('run', d.run) + restoreSigned('rp', d.rp) });
+  });
   socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId) }); });
   socket.on('rank_report', (d, cb) => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
@@ -948,4 +1048,11 @@ const PORT = process.env.PORT || 3000;
   }
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
   server.listen(PORT, () => console.log('listening on ' + PORT));
+  // Render無料プランのスリープ（＝保存データが消える）を防ぐため、自分のURLへ10分ごとにアクセス
+  // （Upstashを設定済みなら不要なので動かさない。止めたいときは環境変数 KEEP_AWAKE=0）
+  const selfUrl = process.env.RENDER_EXTERNAL_URL;
+  if (selfUrl && !useKV && process.env.KEEP_AWAKE !== '0') {
+    setInterval(() => { fetch(selfUrl + '/api/ping').catch(() => {}); }, 10 * 60 * 1000);
+    console.log('スリープ防止: ON（' + selfUrl + '）');
+  }
 })();
