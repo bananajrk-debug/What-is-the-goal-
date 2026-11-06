@@ -1,5 +1,5 @@
-// なにが目的なん？ ONLINE v10 — Express + Socket.io（サーバー権威型）
-// 坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
+// なにが目的なん？ ONLINE v11 — Express + Socket.io（サーバー権威型）
+// 自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
@@ -26,7 +26,7 @@ const SAME = [-84, -28], ONC = [28, 84], LANES = [-84, -28, 28, 84];
 const STEER_ACC = 1500;  // 横移動の加速度（指の動きになめらかに追従）
 const DRIFT = 0.28;      // カーブで外側へ流される強さ
 const EMOTES = ['wave', 'thumbs', 'laugh', 'wheelie', 'dance', 'clap', 'bow', 'angry', 'cry', 'heart', 'sleep', 'gg',
-  'think', 'shock', 'cool', 'peace', 'flex', 'fire', 'party', 'crowne', 'rocket', 'hofe'];
+  'think', 'shock', 'cool', 'peace', 'flex', 'fire', 'party', 'crowne', 'rocket', 'hofe', 'ramen', 'yoyu'];
 const BOT_AFTER = 18;    // ランクマッチ：この秒数だけ相手が見つからなければランクCPUと対戦
 const BOT_NAMES = ['チャリ太郎', 'ペダル姫', '坂道キング', 'ママチャリ番長', '立ちこぎ仮面', '風のミナト', 'ギア3速', 'サドル侍', '向かい風', 'ベル鳴らし'];
 const CPU_LINES = ['よろしく！', '負けないよ', 'ナイス！', 'GG！', '手加減しないよ', 'まだまだ！', 'いいね！'];
@@ -117,7 +117,7 @@ const look = (d, defName) => {
   d = (d && typeof d === 'object') ? d : {};
   return {
     name: cleanName(d.name, defName), skin: clean(d.skin, 'default'), hair: clean(d.hair, 'default'), fit: clean(d.fit, 'default'),
-    acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, ''),
+    acc: clean(d.acc, 'none'), trail: clean(d.trail, 'none'), bike: clean(d.bike, 'std'), lv: clamp(parseInt(d.lv, 10) || 1, 1, 99), pid: clean(d.id, ''),
     ttl: clean(d.ttl, 'rookie'), pl: clean(d.pl, 'normal'), rp: clamp(parseInt(d.rp, 10) || 0, 0, 99999), pk: ''
   };
 };
@@ -408,7 +408,7 @@ function copPasses(R) {
 /* =====================================================================
    対戦モード（攻守交代・4ポイント先取・サドンデス）
    ===================================================================== */
-const mkRider = (R, i, x, z) => ({ x, z, v: BASE, vx: 0, brk: 0, brakes: 3, boost: 0, cd: 0, skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i] });
+const mkRider = (R, i, x, z) => ({ x, z, v: BASE, vx: 0, brk: 0, brakes: 3, boost: 0, cd: 0, bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i] });
 function newRound(R) {
   R.att = attOf(R.round);
   const d = 1 - R.att;
@@ -544,7 +544,7 @@ function step(R, dt) {
   if (R.el >= LIMIT) endRound(R, att, -1, 'ブロック成功(時間切れ)');
 }
 function riderSnap(p) {
-  return { x: r1(p.x), z: r1(p.z), v: r1(p.v * (p.mm || 1)), mud: p.mud > 0 ? r1(p.mud) : 0, vx: r1(p.vx || 0), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), bcd: r1(p.bcd || 0), skin: p.skin, hair: p.hair, fit: p.fit, acc: p.acc, trail: p.trail };
+  return { x: r1(p.x), z: r1(p.z), v: r1(p.v * (p.mm || 1)), mud: p.mud > 0 ? r1(p.mud) : 0, vx: r1(p.vx || 0), brk: p.brk > 0 ? 1 : 0, brakes: p.brakes, boost: p.boost > 0 ? 1 : 0, cd: r1(p.cd), bcd: r1(p.bcd || 0), bike: p.bike, skin: p.skin, hair: p.hair, fit: p.fit, acc: p.acc, trail: p.trail };
 }
 function snapV(R, slot) {
   const att = R.att, d = 1 - att;
@@ -568,7 +568,7 @@ function snapV(R, slot) {
    ===================================================================== */
 const EN = { BASE: 130, MAX: 330, ACC: 2.4, STEER: 260 };
 function resetEndless(R) {
-  R.P = [{ x: 0, z: 0, v: EN.BASE, vx: 0, brk: 0, bcd: 0, boost: 0, cd: 0, brakes: 0, skin: R.skins[0], hair: R.hairs[0], fit: R.fits[0], acc: R.accs[0], trail: R.trails[0] }];
+  R.P = [{ x: 0, z: 0, v: EN.BASE, vx: 0, brk: 0, bcd: 0, boost: 0, cd: 0, brakes: 0, bike: R.bikes[0], skin: R.skins[0], hair: R.hairs[0], fit: R.fits[0], acc: R.accs[0], trail: R.trails[0] }];
   R.obs = []; R.mud = []; R.nid = 1; R.fx = null;
   R.inp = [{ s: 0 }, { s: 0 }]; R.act = [false, false]; R.actK = [null, null];
   R.state = 'count'; R.timer = 3; R.el = 0;
@@ -671,12 +671,15 @@ setInterval(() => {
       if (R.state === 'over' && R.sentOver) continue;
       stepEndless(R, TICK);
       if (R.state === 'over') R.sentOver = true;
-      io.to(R.ids[0]).emit('st', snapE(R));
+      const se = snapE(R);
+      io.to(R.ids[0]).emit('st', se);
+      if (R.spec && R.spec.size) for (const sid of R.spec) io.to(sid).emit('st', se);
       continue;
     }
     if (!R.isCpu && !R.ids[1]) continue;
     step(R, TICK);
     for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('st', snapV(R, i));
+    if (R.spec && R.spec.size) { const sv = snapV(R, -1); for (const sid of R.spec) io.to(sid).emit('st', sv); }   // 観戦者には両方の位置を見せる
   }
 }, TICK * 1000);
 
@@ -688,6 +691,26 @@ const owners = new Map(); // ログインID -> 端末UUID（なりすまし防�
 const byPk = new Map();   // フレンド用内部キー -> socket.id
 const byFid = new Map();  // 旧フレンドID(v6) -> socket.id（古いフレンド登録を自動で移行するためだけに使う）
 const sockOf = sid => sid && io.sockets.sockets.get(sid);
+/* ===== 観戦（フレンドの試合を見る） ===== */
+const specs = new Map();   // 観戦者のsocket.id -> ルームコード
+const SPEC_MAX = 8;
+function canWatch(R) { return !!R && R.state !== 'lobby' && (R.mode === 'endless' || R.isCpu || !!R.ids[1]); }
+function specCount(R) { const n = R.spec ? R.spec.size : 0; for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('spec_n', n); }
+function specLeave(socket) {
+  const code = specs.get(socket.id); if (!code) return;
+  specs.delete(socket.id); const R = rooms.get(code);
+  if (R && R.spec) { R.spec.delete(socket.id); specCount(R); }
+}
+function specEnd(sid, why) { specs.delete(sid); const sk = sockOf(sid); if (sk) sk.emit('spec_end', { why }); }
+// 試合が終わってルームが消えた・ロビーに戻ったら観戦も終わり
+setInterval(() => {
+  for (const [sid, code] of specs) {
+    const R = rooms.get(code);
+    if (!sockOf(sid)) { specs.delete(sid); if (R && R.spec) R.spec.delete(sid); continue; }
+    if (!R) specEnd(sid, '試合が終わりました');
+    else if (R.state === 'lobby') { R.spec.delete(sid); specEnd(sid, 'ルームのロビーに戻りました'); }
+  }
+}, 1000);
 function statusOf(sid) {
   const sk = sockOf(sid);
   if (!sk) return 'offline';
@@ -706,10 +729,10 @@ function notify(pk, n) {   // オンラインならすぐ届ける。オフラ�
   else { const a = fnote.get(pk) || []; a.push(n); fnote.set(pk, a.slice(-50)); saveFriends(); }
 }
 function delReq(to, from) { const m = freq.get(to); if (m && m.delete(from)) { if (!m.size) freq.delete(to); saveFriends(); return true; } return false; }
-function setLook(R, i, L) { R.names[i] = L.name; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.pks[i] = L.pk; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
+function setLook(R, i, L) { R.names[i] = L.name; R.bikes[i] = L.bike || 'std'; R.skins[i] = L.skin; R.hairs[i] = L.hair; R.fits[i] = L.fit; R.accs[i] = L.acc; R.trails[i] = L.trail; R.lvs[i] = L.lv; R.pids[i] = L.pid; R.pks[i] = L.pk; R.ttls[i] = L.ttl; R.pls[i] = L.pl; R.rps[i] = L.rp; }
 function newRoom(code, socket, d, extra) {
   const R = Object.assign({
-    code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
+    code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], bikes: ['std', 'std'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
     accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], pks: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
     course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), hostPk: socket.nmPk || '', mode: 'versus', isCpu: false,
     inp: [{ s: 0 }, { s: 0 }], act: [false, false], actK: [null, null], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], nid: 1
@@ -720,11 +743,12 @@ function newRoom(code, socket, d, extra) {
 function roomInfo(R, me) {
   return {
     code: R.code, me, course: R.course, state: R.state,
-    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], pk: R.pks[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
+    players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], pk: R.pks[i], bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
   };
 }
 function sendRoom(R) { for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('room', roomInfo(R, i)); }
 function leaveRoom(socket) {
+  specLeave(socket);
   const R = rooms.get(socket.data && socket.data.code);
   if (R) {
     const slot = socket.data.slot;
@@ -761,7 +785,7 @@ function joinRoom(socket, R, d, reply) {
   reply({ ok: true });
   sendRoom(R);
 }
-const oppInfo = (R, i) => ({ name: R.names[i], pk: (R.isCpu && i === 1) ? '' : R.pks[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
+const oppInfo = (R, i) => ({ name: R.names[i], pk: (R.isCpu && i === 1) ? '' : R.pks[i], lv: R.lvs[i], rp: R.rps[i], ttl: R.ttls[i], pl: R.pls[i], bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], bot: !!(R.bot && i === 1), cpu: !!(R.isCpu && i === 1) });
 function startRoomMatch(R) {
   resetMatch(R);
   for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'versus', room: true, opp: oppInfo(R, 1 - i) });
@@ -787,7 +811,7 @@ function startRanked(a, b) {
     const lv = R.lvs[0] || 1, pick = arr => arr[Math.floor(Math.random() * arr.length)];
     setLook(R, 1, {
       name: pick(BOT_NAMES), skin: pick(['default', 'gold', 'cyber', 'ocean', 'neon', 'tiger', 'mint', 'sunset']), hair: pick(['helmet', 'short_b', 'spiky', 'pony', 'mohawk', 'bob']),
-      fit: pick(['jersey', 'racer', 'hoodie', 'happi', 'aloha', 'suit']), acc: pick(['none', 'cap', 'sunglass', 'goggles', 'headphone']), trail: pick(['none', 'fire', 'spark', 'bubble']),
+      fit: pick(['jersey', 'racer', 'hoodie', 'happi', 'aloha', 'suit']), acc: pick(['none', 'cap', 'sunglass', 'goggles', 'headphone']), trail: pick(['none', 'fire', 'spark', 'bubble']), bike: pick(['std', 'road', 'mtb', 'bmx', 'std', 'road']),
       lv: clamp(lv + Math.floor(rnd(-3, 4)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: clamp(Math.round(a.rp + rnd(-60, 60)), 0, 99999)
     });
     R.skill = clamp(0.25 + a.rp / 1700, 0.25, 0.95);
@@ -865,7 +889,7 @@ io.on('connection', socket => {
   socket.on('friends_status', (list, cb) => {
     const o = {};
     (Array.isArray(list) ? list.slice(0, 50) : []).forEach(f => {
-      if (cleanPk(f)) { const sid = byPk.get(f), sk = sockOf(sid); o[f] = { s: statusOf(sid), name: nameOfPk(f) || undefined, lv: sk ? sk.nmLv : undefined }; }
+      if (cleanPk(f)) { const sid = byPk.get(f), sk = sockOf(sid), R = sk && sk.data && rooms.get(sk.data.code); o[f] = { s: statusOf(sid), name: nameOfPk(f) || undefined, lv: sk ? sk.nmLv : undefined, w: canWatch(R) ? (R.ranked ? 'rank' : R.mode === 'endless' ? 'run' : R.isCpu ? 'cpu' : 'vs') : undefined }; }
       else if (cleanFid(f) || isLoginId(f)) {
         const sid = cleanFid(f) ? byFid.get(f) : byId.get(f), sk = sockOf(sid);
         o[f] = { s: statusOf(sid), pk: sk && sk.nmPk ? sk.nmPk : undefined, name: sk && sk.nmRegName ? sk.nmRegName : undefined };
@@ -911,7 +935,7 @@ io.on('connection', socket => {
   socket.on('solo', d => {
     leaveRoom(socket); qRemove(socket.id);
     const code = 'SOLO_' + socket.id, R = newRoom(code, socket, d, { isCpu: true });
-    setLook(R, 1, { name: 'CPU', skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: 0 });
+    setLook(R, 1, { name: 'CPU', bike: ['std', 'road', 'mtb', 'bmx', 'mini'][Math.floor(Math.random() * 5)], skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: 0 });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     resetMatch(R);
@@ -1011,6 +1035,7 @@ io.on('connection', socket => {
     else return;
     const slot = socket.data.slot, msg = { from: slot, name: R.names[slot], t, v };
     for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('chat', msg);
+    if (R.spec) for (const sid of R.spec) io.to(sid).emit('chat', msg);
     if (R.isCpu && Math.random() < 0.6) setTimeout(() => {
       if (!rooms.has(R.code) || !R.ids[0]) return;
       const emo = Math.random() < 0.4;
@@ -1032,11 +1057,29 @@ io.on('connection', socket => {
     else if (R.state === 'match' && !R.ranked) resetMatch(R);   // ランクマッチは毎回マッチングし直す
   });
   socket.on('leave', () => { qRemove(socket.id); leaveRoom(socket); });
+  // フレンドの試合を観戦する（見るだけ。操作やチャットはできない）
+  socket.on('spectate', (d, cb) => {
+    const pk = cleanPk(d && d.pk), sid = pk && byPk.get(pk), sk = sockOf(sid);
+    if (!sk) return rp(cb)({ ok: false, err: 'フレンドはオフラインです' });
+    if (sid === socket.id) return rp(cb)({ ok: false, err: '自分は観戦できません' });
+    const R = rooms.get(sk.data && sk.data.code);
+    if (!canWatch(R)) return rp(cb)({ ok: false, err: '今は試合をしていません' });
+    R.spec = R.spec || new Set();
+    if (!R.spec.has(socket.id) && R.spec.size >= SPEC_MAX) return rp(cb)({ ok: false, err: '観戦の人数がいっぱいです（' + SPEC_MAX + '人まで）' });
+    qRemove(socket.id); leaveRoom(socket);
+    R.spec.add(socket.id); specs.set(socket.id, R.code);
+    const follow = R.ids[0] === sid ? 0 : 1;
+    rp(cb)({ ok: true });
+    socket.emit('spec_start', { follow, mode: R.mode, course: R.course || 0, names: R.names, ranked: !!R.ranked, cpu: !!R.isCpu, target: nameOfPk(pk) || R.names[follow],
+      players: [0, 1].map(i => (R.ids[i] || (R.isCpu && i === 1)) ? { name: R.names[i], lv: R.lvs[i], bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i] } : null) });
+    specCount(R);
+  });
+  socket.on('spec_leave', () => specLeave(socket));
   socket.on('disconnect', () => {
     if (socket.nmId && byId.get(socket.nmId) === socket.id) byId.delete(socket.nmId);
     if (socket.nmFid && byFid.get(socket.nmFid) === socket.id) byFid.delete(socket.nmFid);
     if (socket.nmPk && byPk.get(socket.nmPk) === socket.id) byPk.delete(socket.nmPk);
-    qRemove(socket.id); leaveRoom(socket);
+    qRemove(socket.id); leaveRoom(socket); specLeave(socket);
   });
 });
 
