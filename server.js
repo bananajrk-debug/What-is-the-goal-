@@ -1,5 +1,5 @@
-// なにが目的なん？ ONLINE v11 — Express + Socket.io（サーバー権威型）
-// 自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
+// なにが目的なん？ ONLINE v12 — Express + Socket.io（サーバー権威型）
+// タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
@@ -107,7 +107,9 @@ const hmac = t => crypto.createHmac('sha256', RANK_SECRET).update(t).digest('hex
 const hidCache = new Map();
 const hidOf = id => { if (!id) return ''; let h = hidCache.get(id); if (!h) { h = hmac('h:' + id).slice(0, 16); if (hidCache.size > 5000) hidCache.clear(); hidCache.set(id, h); } return h; };
 const same = (r, id) => !!id && r.h === hidOf(id);
-const signE = (board, e) => hmac([board, e.h, e.name, board === 'run' ? e.score : e.rp, e.lv, e.ttl || '', e.ts].join('|')).slice(0, 24);
+// 署名（記録を出したコース c があるときはそれも含める。古いバックアップはそのまま有効）
+const signE = (board, e) => hmac([board, e.h, e.name, board === 'run' ? e.score : e.rp, e.lv, e.ttl || '', e.ts].join('|') + (Number.isInteger(e.c) ? '|c' + e.c : '')).slice(0, 24);
+const courseOk = c => Number.isInteger(c) && c >= 0 && c < PATHS.length;
 const pkOf = uid => crypto.createHash('sha256').update('nm-friend:' + uid).digest('hex').slice(0, 16);
 const isLoginId = v => typeof v === 'string' && /^NM-[\w-]{3,20}$/.test(v);
 const cleanText = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>&"'`\\]/g, '').trim().slice(0, max) : '');
@@ -214,21 +216,21 @@ const RANK_FILE = process.env.RANK_FILE || path.join(__dirname, 'ranking.json');
 let ranking = [];
 function loadRanking(j) { if (Array.isArray(j)) ranking = j.filter(r => r && (typeof r.id === 'string' || typeof r.h === 'string') && Number.isFinite(r.score)).map(r => Object.assign(r, { h: r.h || hidOf(r.id) })).sort((a, b) => b.score - a.score).slice(0, 100); }
 const saveRanking = saver('ranking', RANK_FILE, () => ranking);
-function submitScore(id, name, score, lv) {
+function submitScore(id, name, score, lv, c) {
   if (!id) return { best: score, rank: 0, improved: false };
   const h = hidOf(id), i = ranking.findIndex(r => r.h === h);
   let best = score, improved = false;
   if (i >= 0) {
-    if (score > ranking[i].score) { ranking[i] = { h, name, score, lv, ts: Date.now() }; improved = true; }
+    if (score > ranking[i].score) { ranking[i] = { h, name, score, lv, c, ts: Date.now() }; improved = true; }
     else { best = ranking[i].score; ranking[i].name = name; ranking[i].lv = lv; }
-  } else { ranking.push({ h, name, score, lv, ts: Date.now() }); improved = true; }
+  } else { ranking.push({ h, name, score, lv, c, ts: Date.now() }); improved = true; }
   ranking.sort((a, b) => b.score - a.score);
   ranking = ranking.slice(0, 100);
   saveRanking();
   return { best, rank: ranking.findIndex(r => r.h === h) + 1, improved };
 }
 // 公開するランキングにはログインIDを含めない（自分の行だけ me:true を付ける）
-const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, me: same(r, me) }));
+const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, c: courseOk(r.c) ? r.c : undefined, me: same(r, me) }));   // c=記録を出したコース
 // チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
@@ -248,11 +250,11 @@ const saveFriends = saver('friends', FR_FILE, () => ({ req: [...freq].map(([k, m
 // 保存先が消えた後（ファイル保存で再起動したとき）は、つないできたプレイヤーの端末の記録からランキングを作り直す
 // 名前を変えたら、ランキングの表示名も新しい名前に
 // 外部DBなしでサーバーの記録が消えていた場合は、本人の端末に残る自己ベストからも戻す
-function restoreBoards(id, name, best, rp, lv, ttl) {
+function restoreBoards(id, name, best, rp, lv, ttl, bc) {
   if (!id || !name) return;
   const h = hidOf(id), r = ranking.find(x => x.h === h), q = rpBoard.find(x => x.h === h);
   if (r) { if (r.name !== name) { r.name = name; saveRanking(); } }
-  else if (!useKV && best > 0) { ranking.push({ h, name, score: best, lv, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
+  else if (!useKV && best > 0) { ranking.push({ h, name, score: best, lv, c: courseOk(bc) ? bc : undefined, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
   if (q) { if (q.name !== name) { q.name = name; saveRp(); } }
   else if (!useKV && rp > 0) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
 }
@@ -266,7 +268,7 @@ function submitRp(id, name, rp, lv, ttl) {
 /* ===== ランキングの端末バックアップ（サーバーの署名つき）
    サーバーが再起動して保存データが消えても、プレイヤーの端末に残っている「署名つきのランキング」を
    受け取って復元する。署名はサーバーしか作れないので、書き換えたデータは受け付けない。 ===== */
-const entryOut = (board, e) => { const o = { h: e.h, name: e.name, lv: e.lv || 1, ttl: e.ttl || '', ts: e.ts || 0 }; if (board === 'run') o.score = e.score; else o.rp = e.rp; o.sig = signE(board, o); return o; };
+const entryOut = (board, e) => { const o = { h: e.h, name: e.name, lv: e.lv || 1, ttl: e.ttl || '', ts: e.ts || 0 }; if (board === 'run') { o.score = e.score; if (courseOk(e.c)) o.c = e.c; } else o.rp = e.rp; o.sig = signE(board, o); return o; };
 function restoreSigned(board, list) {
   if (!Array.isArray(list)) return 0;
   const arr = board === 'run' ? ranking : rpBoard, key = board === 'run' ? 'score' : 'rp';
@@ -274,6 +276,7 @@ function restoreSigned(board, list) {
   for (const it of list.slice(0, 150)) {
     if (!it || typeof it.h !== 'string' || !/^[0-9a-f]{16}$/.test(it.h) || typeof it.name !== 'string' || !Number.isFinite(it[key]) || !Number.isFinite(it.ts)) continue;
     const e = { h: it.h, name: cleanName(it.name, 'プレイヤー'), lv: clamp(parseInt(it.lv, 10) || 1, 1, 99), ttl: clean(it.ttl, ''), ts: it.ts, [key]: it[key] };
+    if (board === 'run' && it.c != null) { if (!courseOk(it.c)) continue; e.c = it.c; }
     if (e.name !== it.name || typeof it.sig !== 'string' || it.sig !== signE(board, Object.assign({}, e, { ttl: it.ttl || '' }))) continue;
     const cur = arr.find(x => x.h === e.h);
     if (!cur) { arr.push(e); n++; }
@@ -598,7 +601,7 @@ function overEndless(R, kind, reason) {
   const p = R.P[0];
   R.state = 'over'; R.fx = { who: [0], kind }; R.msg = 'GAME OVER'; R.sub = reason;
   R.score = Math.floor(p.z / 10) + R.bonus;
-  const res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0]);
+  const res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0], R.course || 0);
   const coins = Math.floor(R.score / 40), sid = R.ids[0];
   if (coins > 0) io.to(sid).emit('reward', { gain: coins });
   prog(R, 0, 'run', { score: R.score, dist: Math.floor(p.z / 10) });
@@ -868,7 +871,7 @@ io.on('connection', socket => {
       claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n });
       socket.emit('friend_inbox', inboxOf(pk));
       const nt = fnote.get(pk); if (nt && nt.length) { nt.forEach(x => { x.name = nameOfPk(x.pk) || x.name || ''; }); socket.emit('friend_notice', nt); fnote.delete(pk); saveFriends(); }
-      restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'));
+      restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'), d ? parseInt(d.bestC, 10) : undefined);
     }
     else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
   });
