@@ -387,7 +387,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
         <div class="rankwrap"><button id="rankbtn" class="rankbtn"><canvas id="rk-badge" width="120" height="120"></canvas><span class="rk-txt"><b><em>RANKED</em>ランクマッチ</b><small id="rk-sub">ブロンズ III ・ 0 RP</small><span class="rkbar"><i id="rk-fill"></i></span></span></button><button id="rk-info" class="rk-info" aria-label="ランク表">?</button></div>
         <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>練習・XPかせぎ</small></button></div>
         <div class="row"><button id="create" class="btn blue grow">🏠 ルームを作る</button><input id="code" class="tx" style="width:6.4em" maxlength="6" placeholder="6桁コード" inputmode="numeric"><button id="join" class="btn blue">参加</button></div>
-        <button id="course-btn" class="coursebtn"><canvas id="course-th" width="192" height="108"></canvas><span class="cb-t"><small>コース（タップで変更）</small><b id="cname"></b><small id="cdesc"></small></span><span class="cb-go">変更 ▶</span></button>
+        <button id="course-btn" class="coursebtn"><canvas id="course-th" width="192" height="108"></canvas><span class="cb-t"><small>🗺️ コース（タップで変更）</small><b id="cname"></b><small id="cdesc"></small></span><span class="cb-go">変更 ▶</span></button>
         <button id="wk-banner"></button>
         <div id="quick-friends"></div>
         <div id="st"></div>
@@ -416,8 +416,9 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="stage"><div class="cvbox"><canvas id="gcv" style="touch-action:none"></canvas></div></div>
       <div class="side">
         <div class="panel" style="text-align:center">タイヤのクランクを<b>指でぐるっと回す</b>か、ボタンで回そう！<div id="g-res" style="min-height:2.6em;margin-top:.3em"></div></div>
-        <div class="row"><button id="gpull" class="btn big purple grow">1回まわす<small>30 NC</small></button><button id="gpull10" class="btn big grow">10連<small>270 NC（1回おトク）</small></button></div>
-        <div class="muted">排出：自転車の種類／自転車カラー／髪型／服装／アクセ／軌跡／エモート／ボイス／BGM／勝利演出（ガチャ限定アイテムあり・ショップ限定アイテムは出ません）<br>C 55% ・ R 28% ・ EPIC 12% ・ LEGEND 5%　<b>10連はR以上1つ確定！</b>　ダブりはNCに変換されます<br>回している途中で光の色が変わったら…？ 虹色なら<b>LEGEND確定</b>！</div>
+        <div class="row"><button id="gpull" class="btn big purple grow">1回まわす<small id="gpull-c"></small></button><button id="gpull10" class="btn big grow">10連<small id="gpull10-c"></small></button></div>
+        <button id="g-lineup" class="btn blue">📜 ラインナップと確率を見る</button>
+        <div class="muted" id="g-rates"></div>
       </div>
     </section>
     <section id="pg-quest" class="pg">
@@ -508,6 +509,8 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   </div>
   <div id="res-promo" class="res-promo hide"></div>
 </div>
+<div id="g-line" class="modal hide"><div class="box wide"><div class="row" style="align-items:center"><b class="grow">📜 ガチャのラインナップ</b><button id="g-line-close" class="btn sm dark">閉じる</button></div>
+  <div class="muted" id="g-line-sub"></div><div class="chips" id="g-line-tabs"></div><div class="grid" id="g-line-list"></div></div></div>
 <div id="g-grid" class="modal hide"><div class="box wide" style="position:relative"><b>🎰 10連の結果</b> <span class="muted" id="g-grid-sub">タップでめくる・まとめてめくる</span><div class="grid" id="g-grid-list"></div><div class="row"><button id="g-grid-all" class="btn big purple grow">ぜんぶめくる</button><button id="g-grid-close" class="btn big grow">OK</button></div></div></div>
 
 <!-- ===== ルームロビー ===== -->
@@ -544,7 +547,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <b>アカウント（この端末専用）</b>
     <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ログインID（端末アカウント・引き継ぎ用。人には教えないでください）：<b id="sm-id" style="color:#fff"></b><br>ユーザー名（公開・重複不可）：<b id="sm-name" style="color:#9fe0ff"></b><br>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
     <button id="btn-export" class="btn sm dark">引き継ぎコードを表示</button>
-    <textarea id="bk-code" class="tx hide" readonly></textarea>
+    <span id="bk-len" class="muted"></span><textarea id="bk-code" class="tx hide" readonly></textarea>
     <div class="row"><button id="btn-copy-code" class="btn sm blue hide">コピー</button><button id="btn-import" class="btn sm">コードから復元</button></div>
     <div class="muted">ブラウザのデータ削除・機種変更に備えて、コードをメモしておくと安心です。</div>
   </div>
@@ -553,7 +556,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <input type="file" id="audio-file-input" accept="audio/*">
     <span id="audio-file-info" class="muted">現在の音声: マイ録音.m4a</span>
   </div>
-  <div class="muted"></div>
+  <div class="muted">サウンド：Web Audio APIによるリアルタイム生成（環境音はなし）。public/sounds/ にフリー素材を置くと自動で差し替わります。</div>
 </div></div>
 
 <div id="lvup" class="hide"><div class="lvup-in"><b>LEVEL UP!</b><span id="lvup-n"></span><span id="lvup-r" class="muted"></span><span id="lvup-u" style="color:#8cf08c;font-size:.85em;text-align:center"></span></div></div>
@@ -565,6 +568,16 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 <script src="/socket.io/socket.io.js"></script>
 <script>
 'use strict';
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+   ガチャの設定（ここの数字を変えるだけで、確率・値段・保証が変わります）
+   ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+const GACHA_CONFIG={
+  rates:{C:55,R:28,EPIC:12,LEGEND:5},   // 出る確率（%）。合計が100でなくても、割合として計算します
+  cost1:30,                              // 1回まわす値段（NC）
+  cost10:270,                            // 10連の値段（NC）
+  guarantee10:2,                         // 10連で1つ確定するレア度（2=R以上 / 3=EPIC以上 / 4=LEGEND / 0=保証なし）
+  refund:{C:5,R:10,EPIC:20,LEGEND:40}    // ダブったときにもらえるNC
+};
 /* =====================================================================
    基本ユーティリティ
    ===================================================================== */
@@ -627,7 +640,7 @@ const SKINS={
  pixel:{n:'ピクセル',c:'#00e676',a:'#1b5e20',str:1,rim:'#00e676',p:140,r:3},sakura24:{n:'夜桜(限定)',c:'#3b1a4a',a:'#ff9ecb',rim:'#ff9ecb',gx:1,g:1,r:4},
  sumi:{n:'墨流し',c:'#1b1b1f',a:'#f4f4f4',str:1,rim:'#f4f4f4',p:160,r:3,so:1},koi:{n:'錦鯉',c:'#fafafa',a:'#e53935',str:1,rim:'#ffb300',p:170,r:3,so:1},
  silverline:{n:'シルバーライン',c:'#90a4ae',a:'#ffffff',chrome:1,rim:'#eceff1',p:200,r:3,so:1},
- hof:{n:'殿堂チャリ（ランク報酬）',c:'#ffd54f',a:'#ff5a4e',chrome:1,gold:1,rim:'#ff5a4e',rk:6,r:4},
+ hof:{n:'殿堂チャリ（ランク報酬）',c:'#ffd54f',a:'#ff5a4e',chrome:1,gold:1,rim:'#ff5a4e',rk:6,r:4,hof:1},
  // ▼ 季節の限定スキン：ウィークリークエストを全部クリアすると、その月のスキンがもらえる（ev=月）
  ev_newyear:{n:'初日の出チャリ',c:'#d32f2f',a:'#ffd23f',rim:'#ffd23f',deco:'🎍',ev:1,r:4,pf:'✨'},
  ev_valentine:{n:'チョコレートチャリ',c:'#6d3b2a',a:'#ff80ab',rim:'#ff80ab',deco:'💝',ev:2,r:4,pf:'💕'},
@@ -641,6 +654,7 @@ const SKINS={
  ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4,pf:'🦇'},
  ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4,pf:'🍂'},
  ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4,pf:'❄️'}};
+/* ※各アイテムのリストに新しいアイテムを足すときは、必ず末尾に追加すること（引き継ぎコードの持ち物がずれないように） */
 /* ===== 自転車の種類（車体の形）。見た目だけで、速さや当たり判定はどれも同じ
    so=ショップ限定（ガチャには出ない） ===== */
 const BIKES={
@@ -754,7 +768,7 @@ const SES={none:{n:'なし',p:0,r:1},
  whistle:{n:'ホイッスル',sy:'whistle',p:70,r:2},meow:{n:'にゃーん',sy:'meow',p:80,r:2},
  gong:{n:'ゴング',sy:'gong',g:1,r:3},clapse:{n:'拍手喝采',sy:'clapse',g:1,r:3},fan:{n:'ファンファーレ',sy:'fan',g:1,r:3},
  oss:{n:'ボイス「おっす！」',say:'おっす！',pi:.9,p:50,r:1},maji:{n:'ボイス「マジで！？」',say:'マジで！？',pi:1.4,p:70,r:2},
- nande:{n:'ボイス「なにが目的なん！？」',say:'なにが目的なん！？',pi:1.2,g:1,r:4},
+ nande:{n:'ボイス「なにが目的なん！？」（録音ボイス）',voice:'nande',g:1,r:4},
  osaki:{n:'ボイス「お先に〜！」',say:'お先に〜！',pi:1.3,p:90,r:2,so:1},gyaku:{n:'ボイス「逆転だ！」',say:'逆転だ！',pi:.95,p:90,r:2,so:1}};
 const BGMS={default:{n:'シティポップ',p:0,r:1},chill:{n:'チルドライブ',p:120,r:2},rock:{n:'ロック疾走',g:1,r:2},arcade:{n:'アーケード',g:1,r:3},matsuri:{n:'祭囃子',g:1,r:3}};
 const WFX={ // 勝利演出（リザルト画面で勝ったとき・新記録のときに出る）
@@ -763,7 +777,10 @@ const WFX={ // 勝利演出（リザルト画面で勝ったとき・新記録�
 const CAT={bike:BIKES,skin:SKINS,hair:HAIRS,fit:OUTFITS,acc:ACCS,trail:TRAILS,emote:EMOS,se:SES,bgm:BGMS,wfx:WFX};
 const CATN={bike:'自転車の種類',skin:'自転車カラー',hair:'髪型',fit:'服装',acc:'アクセ',trail:'軌跡',emote:'エモート',se:'ボイス/SE',bgm:'BGM',wfx:'勝利演出'};
 const CATDESC={bike:'自転車の形（ロードバイク・ペニー・ファージング・一輪車など）。色は「自転車カラー」で変えられます',skin:'自転車の色・デザイン',hair:'キャラクターの髪型',fit:'キャラクターの服装',acc:'頭や顔につける小物',trail:'ブースト中にうしろに出るエフェクト',emote:'ロビーやルーム、対戦中に使える動き',se:'ベル（Q）や得点時に鳴る音',bgm:'プレイ中のBGM',wfx:'勝利・新記録のときにリザルト画面で出る演出'};
-const RN=['','C','R','EPIC','LEGEND'],RW=[0,55,28,12,5],REFUND=[0,5,10,20,40];
+const RN=['','C','R','EPIC','LEGEND'];
+// 確率は上の GACHA_CONFIG から作る（合計100%に直す）
+const RW=(()=>{const r=GACHA_CONFIG.rates,a=[0,+r.C||0,+r.R||0,+r.EPIC||0,+r.LEGEND||0],t=a.reduce((x,y)=>x+y,0)||1;return a.map(v=>v*100/t);})();
+const REFUND=[0,GACHA_CONFIG.refund.C,GACHA_CONFIG.refund.R,GACHA_CONFIG.refund.EPIC,GACHA_CONFIG.refund.LEGEND];
 const COL=['#3fa9ff','#ff5a4e'];
 const PHRASES=['よろしく！','いいね！','ナイス！','もう一回！','まって！','ドンマイ','負けないよ','GG！','ありがとう','手加減してね'];
 const itemCount=()=>Object.keys(CAT).reduce((a,c)=>a+SV.inv[c].length,0);
@@ -1147,8 +1164,18 @@ SFX.rankup=()=>{const t=now();seq([[392,.1],[523,.1],[659,.1],[784,.12],[1047,.5
 SFX.tick=()=>{const t=now();tone('square',1700+Math.random()*200,t,.03,.025,null,{lp:5000});};
 SFX.whoosh=()=>{const t=now();noiseHit(t,.45,.35,'bandpass',600,1.4,null,2600);};
 SFX.slam=()=>{const t=now();noiseHit(t,.25,.5,'lowpass',900,.8,null,120);tone('sine',90,t,.35,.5,null,{to:40});};
+/* ===== 録音ボイス「なにが目的なん？」（ゲームに埋め込み済み。public/sounds/se_nande.mp3 を置くとそちらを優先） ===== */
+const VOICE_NANDE='data:audio/mpeg;base64,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qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr/+3LEbQPAAAGkAAAAIAAANIAAAASqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg==';
+const VOICES={nande:VOICE_NANDE};
+function loadVoice(k){
+  if(AU.files['se_'+k]||!AU.ctx||!VOICES[k])return Promise.resolve(AU.files['se_'+k]);
+  if(AU['vp_'+k])return AU['vp_'+k];
+  return AU['vp_'+k]=fetch(VOICES[k]).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>AU.ctx.decodeAudioData(ab,res,rej))).then(buf=>{AU.files['se_'+k]=buf;return buf;}).catch(()=>null);
+}
+function playVoice(k,vol){initAudio();if(!AU.ctx)return;if(AU.files['se_'+k]){playFile('se_'+k,vol==null?1:vol);return;}loadVoice(k).then(b=>{if(b)playFile('se_'+k,vol==null?1:vol);});}
 function playSE(id){
   const s=SES[id];if(!s||id==='none')return;initAudio();if(!AU.ctx)return;
+  if(s.voice){playVoice(s.voice,1.1);return;}
   if(s.say&&'speechSynthesis' in window){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s.say);u.lang='ja-JP';u.pitch=s.pi;u.rate=1.1;speechSynthesis.speak(u);}catch(e){}return;}
   if(s.sy&&SFX[s.sy])SFX[s.sy]();
 }
@@ -1578,7 +1605,7 @@ const EMO_FX=new Set(['laugh','angry','heart','sleep','gg','clap','dance','wheel
 function drawSide(c,w,h,lk,t,sc,opt){
   opt=opt||{};lk=LK(lk);
   const sk=SKINS[lk.skin]||SKINS.default,ft=OUTFITS[lk.fit]||OUTFITS.default,F=FITS[ft.st]||FITS.tee,G=bikeOf(lk.bike);
-  const R=Math.min(h*.128,w*.1)*(sc||1)*(G.k||1),cx=w/2,gy=h*.93,wy=gy-R,PT=q=>[cx+q[0]*R,gy-q[1]*R];
+  const R=Math.min(h*.128,w*.1)*(sc||1)*(G.k||1)*(sk.hof?1.08:1),cx=w/2,gy=h*.93,wy=gy-R,PT=q=>[cx+q[0]*R,gy-q[1]*R];
   const Wh=G.W.map(q=>({x:cx+q[0]*R,y:gy-q[1]*R,r:q[1]*R,tw:q[2]||1})),x1=Wh[0].x,x2=Wh[Wh.length-1].x;
   let ek=null,ee=0,ea=0;
   if(opt.emote){ee=(t-opt.emote.t0)/1000;if(ee>=0&&ee<EMO_DUR){ek=opt.emote.k;ea=Math.min(1,ee/.2)*Math.min(1,(EMO_DUR-ee)/.25);}}
@@ -1590,13 +1617,14 @@ function drawSide(c,w,h,lk,t,sc,opt){
   if(opt.trail&&lk.trail)drawTrailSide(c,x1-R*.6,wy,R,lk.trail,t,1);
   if(ek==='wheelie'){const a=-.42*ea*(1+.1*Math.sin(ee*10));c.translate(x1,gy);c.rotate(a);c.translate(-x1,-gy);}
   if(ek==='dance'||ek==='laugh'){c.translate(0,-Math.abs(Math.sin(ee*(ek==='dance'?7:14)))*R*.12*ea);}
+  if(ek){const mv=EMO_MOVE[ek];if(mv){const y=mv(ee)*R*ea;c.translate(0,-y);}}
   if(sk.ghost)c.globalAlpha=.6;
   const col=frameCol(c,sk,t,x1,wy-R*1.5,x2,wy);
   const A=[Wh[0].x,Wh[0].y],Fh=[x2,Wh[Wh.length-1].y],BB=PT(G.BB),S=PT(G.S),Hd=G.Hd?PT(G.Hd):S,HB=G.HB?PT(G.HB):null,grip=G.G?PT(G.G):null;
   const BP={A,BB,S,Hd,Fh,HB,grip,Wh};
   // 体の位置（サドルに腰をのせる）
   const hip=[S[0]+R*.05,S[1]-R*.2];
-  let lean=0;if(ek==='bow')lean=.95*ea;else if(ek==='dance')lean=Math.sin(ee*7)*.22*ea;else if(ek==='sleep')lean=.18*ea;else if(ek==='laugh')lean=Math.sin(ee*16)*.06*ea;
+  let lean=0;if(ek==='yoyu')lean=-.18*ea;else if(ek==='shock')lean=-.12*ea*(1+.3*Math.sin(ee*30)*Math.max(0,1-ee*2));else if(ek==='ramen')lean=.15*ea+Math.sin(ee*9)*.04*ea;else if(ek==='think')lean=Math.sin(ee*2)*.05*ea;else if(ek==='bow')lean=.95*ea;else if(ek==='dance')lean=Math.sin(ee*7)*.22*ea;else if(ek==='sleep')lean=.18*ea;else if(ek==='laugh')lean=Math.sin(ee*16)*.06*ea;
   const tl=R*1.38,ta=G.ta+lean;  // 胴体の角度（前傾）
   const sh=[hip[0]+Math.cos(ta)*tl,hip[1]+Math.sin(ta)*tl],hr_=R*1.0;
   const hdA=ta-.15+(ek==='sleep'?.35*ea:0),hd=[sh[0]+Math.cos(hdA)*R*1.08,sh[1]+Math.sin(hdA)*R*1.08];
@@ -1609,7 +1637,12 @@ function drawSide(c,w,h,lk,t,sc,opt){
     c.translate(cx,wy-R*.3);c.rotate(t/3000);for(let i=0;i<10;i++){c.rotate(Math.PI/5);c.fillStyle=rgba(sk.a,.06+.04*pul);c.beginPath();c.moveTo(0,0);c.lineTo(R*3.4,-R*.28);c.lineTo(R*3.4,R*.28);c.fill();}
     c.restore();
   }
+  // 季節限定・殿堂チャリの大きな目玉パーツ（自転車より奥）
+  const BIG={RK:[Wh[0].x-R*.1,Wh[0].y-Wh[0].r-R*.28],HB,S,cx,wy,Wh};
+  if(sk.ev&&String(lk.skin).startsWith('ev_'))seasonBig(c,lk.skin,'back',BIG,R,t);
+  if(sk.hof)hofSide(c,'back',BIG,R,t,spin);
   bikeWheelsSide(c,G,Wh,R,spin,sk);
+  if(sk.hof)hofSide(c,'wheel',BIG,R,t,spin);
   legSide(c,hip,P2,R,shade(ft.pants,.68),G.lg);
   limb(c,[BB,P2],R*.1,'#4a4a52');
   hairSide(c,hd[0],hd[1],hr_,HAIRS[lk.hair]||HAIRS.default,t,false);   // うしろ髪は体より奥に（ロングヘアで腕が隠れないように）
@@ -1627,7 +1660,8 @@ function drawSide(c,w,h,lk,t,sc,opt){
     const pts=[A,BB,S,Hd,Fh],u=(t/700)%1*(pts.length-1),i0=Math.floor(u),f=u-i0,sp=[lerp(pts[i0][0],pts[i0+1][0],f),lerp(pts[i0][1],pts[i0+1][1],f)];
     c.globalCompositeOperation='lighter';c.fillStyle='#ffffff';c.beginPath();for(let k=0;k<8;k++){const rr=k%2?R*.06:R*.3,an=k*Math.PI/4+t/300;c.lineTo(sp[0]+Math.cos(an)*rr,sp[1]+Math.sin(an)*rr);}c.fill();
     c.globalCompositeOperation='source-over';
-    if(!sk.basket&&HB){const bx=HB[0]+R*.08,by=HB[1]+R*.08,bg=c.createLinearGradient(bx,by,bx,by+R*.55);bg.addColorStop(0,'#fff3b0');bg.addColorStop(1,'#c98a00');
+    if(!sk.basket&&HB&&BIGF.has(seasonOf(lk.skin)))seasonBig(c,lk.skin,'front',BIG,R,t);   // ハロウィンは大きなかぼちゃのカゴ など
+    else if(!sk.basket&&HB){const bx=HB[0]+R*.08,by=HB[1]+R*.08,bg=c.createLinearGradient(bx,by,bx,by+R*.55);bg.addColorStop(0,'#fff3b0');bg.addColorStop(1,'#c98a00');
       if(sk.deco)seasonDeco(c,lk.skin,bx+R*.42,by-R*.22,R*.62,t);
       c.fillStyle=bg;c.beginPath();c.moveTo(bx,by);c.lineTo(bx+R*.85,by);c.lineTo(bx+R*.75,by+R*.55);c.lineTo(bx+R*.1,by+R*.55);c.closePath();c.fill();c.lineWidth=Math.max(1.2,R*.05);c.strokeStyle=OUTL;c.stroke();
       c.strokeStyle='rgba(140,90,0,.7)';c.lineWidth=Math.max(1,R*.03);c.beginPath();for(let k=1;k<4;k++){c.moveTo(bx+k*R*.21,by);c.lineTo(bx+k*R*.2,by+R*.55);}c.stroke();}
@@ -1657,14 +1691,16 @@ function drawSide(c,w,h,lk,t,sc,opt){
   else if(ek==='flex'||ek==='fire'||ek==='hofe'||ek==='crowne'){hand=[sh[0]+R*.3,sh[1]-R*(1.2+.08*Math.sin(ee*9))];elbowFront=true;}
   else if(ek==='party'){hand=[sh[0]+R*.5,sh[1]-R*1.35];hand2=[sh[0]-R*.05,sh[1]-R*1.3];elbowFront=true;}
   else if(ek==='rocket'){hand=[sh[0]+R*1.2,sh[1]-R*.35];}
+  else if(ek==='ramen'){hand=[sh[0]+R*.85,sh[1]+R*.2];hand2=[sh[0]+R*.75,sh[1]+R*.35];}
+  else if(ek==='yoyu'){hand=[sh[0]+R*.25,sh[1]+R*.85];}
   if(hand2){const e2=ik(sh,hand2,R*.72,elbowFront);limb(c,[sh,e2],R*.25,shade(ft.c,.75));limb(c,[e2,hand2],R*.23,F.sl==='l'?shade(ft.c,.75):'#e8b994');blob(c,hand2[0],hand2[1],R*.14,'#e8b994',Math.max(1.2,R*.06));}
   torsoSide(c,hip,sh,R,ft,t,'front');
   if(lk.skin==='myart'&&myArtOk){const iw=R*.9,ih=iw*myArtImg.naturalHeight/myArtImg.naturalWidth;c.drawImage(myArtImg,(hip[0]+sh[0])/2-iw/2,(hip[1]+sh[1])/2-ih/2,iw,ih);}
   limb(c,[BB,P1],R*.1,'#5a5a64');
   legSide(c,hip,P1,R,ft.pants,G.lg);
-  if(sk.deco&&!G.okm){   // 季節スキンの飾り（うしろの荷台にのせる）
-    const rw=Wh[0],dx=rw.x-R*.2,dy=rw.y-rw.r-R*.28;limb(c,[[rw.x-R*.75,rw.y-rw.r+R*.02],[rw.x+R*.3,rw.y-rw.r+R*.02]],R*.09,'#4a4a52');
-    if(opt.flip){c.save();c.translate(dx,dy);c.scale(-1,1);seasonDeco(c,lk.skin,0,-R*.12,R*.92,t);c.restore();}else seasonDeco(c,lk.skin,dx,dy-R*.12,R*.92,t);}
+  if(sk.deco&&!G.okm){   // 季節スキンは荷台（飾りは奥のレイヤーで大きく描いている）
+    const rw=Wh[0];limb(c,[[rw.x-R*.75,rw.y-rw.r+R*.02],[rw.x+R*.3,rw.y-rw.r+R*.02]],R*.09,'#4a4a52');}
+  if(sk.hof)hofSide(c,'front',BIG,R,t,spin);
   if(sk.ghost)c.globalAlpha=1;
   headSide(c,hd[0],hd[1],hr_,lk,t,expr,true);
   // 手前の腕はいちばん最後に描く（髪や頭に隠れて腕が消えないように）
@@ -1697,7 +1733,7 @@ function drawSide(c,w,h,lk,t,sc,opt){
     if(ek==='rocket'){const q=(ee*.8)%1;EJ('🚀',hand[0]+q*R*2.2,hand[1]-q*R*2.6,R*.7);}
     if(ek==='party')for(let i=0;i<6;i++){const q=((ee*.9)+i/6)%1;c.globalAlpha=ea*(1-q);c.fillStyle='hsl('+(i*60)+',90%,60%)';c.fillRect(hx+Math.cos(i*1.7)*R*(.6+q*1.4)-R*.06,hy-R*1.1-q*R*1.2+Math.sin(i)*R*.3,R*.12,R*.2);}
     if(ek==='hofe'){c.save();c.globalCompositeOperation='lighter';const g=c.createRadialGradient(hx,hy-R*1.6,1,hx,hy-R*1.6,R*1.2);g.addColorStop(0,'rgba(255,220,90,.55)');g.addColorStop(1,'rgba(255,220,90,0)');c.fillStyle=g;c.fillRect(hx-R*1.3,hy-R*2.9,R*2.6,R*2.6);c.restore();}
-    if(!EMO_FX.has(ek)&&EMOS[ek])EJ(EMOS[ek].i,hx+R*1.25,hy-R*1.35+Math.sin(ee*6)*R*.08,R*.85*(1+.08*Math.sin(ee*10)));
+    emoteExtra(c,ek,ee,ea,{hx,hy,hand,sh,hip,R,cx,wy,t,ET,EJ});
     c.globalAlpha=1;
   }
   c.restore();
@@ -1806,6 +1842,7 @@ function drawPlate(c,x,y,w,h,o,t){
    季節限定スキン（ウィークリー報酬）の飾り・舞うパーティクル・背景を、絵文字を使わずに描く
    ===================================================================== */
 const SPF={newyear:'spark',valentine:'heart',hina:'petal',sakura:'petal',koinobori:'spark',ajisai:'drop',tanabata:'star',hanabi:'burst',tsukimi:'spark',halloween:'bat',momiji:'leaf',xmas:'flake'};
+const BIGF=new Set(['halloween','valentine','tsukimi','xmas']);   // 前カゴが特別なもの
 const seasonOf=key=>(key||'').replace(/^ev_/,'');
 // 輪郭つきの塗り
 function _f(c,col,lw){c.fillStyle=col;c.fill();if(lw){c.lineWidth=lw;c.strokeStyle=OUTL;c.stroke();}}
@@ -1970,11 +2007,210 @@ function seasonEmblem(c,key,x,y,r,t){
   c.beginPath();c.arc(x,y,r*.74,0,7);const ig=c.createRadialGradient(x,y-r*.3,0,x,y,r*.74);ig.addColorStop(0,'#5a3fc0');ig.addColorStop(1,'#1b1450');c.fillStyle=ig;c.fill();c.lineWidth=Math.max(1,r*.05);c.stroke();
   c.beginPath();c.arc(x,y,r*.72,0,7);c.clip();seasonDeco(c,key,x,y+r*.05,r*1.05,t);c.restore();
 }
+
+/* =====================================================================
+   季節限定スキン（ウィークリー報酬）の「大きな目玉パーツ」と、殿堂チャリの豪華装備
+   横向き（ロビー・ロッカー等）用。layer='back'は自転車より奥、'front'はカゴ
+   ===================================================================== */
+function koiFish(c,x,y,len,col,bel,t,ph,dir){   // こいのぼり1匹（x,y=口の位置、dir=-1で左へなびく）
+  const hh2=len*.17;c.beginPath();
+  for(let i=0;i<=12;i++){const u=i/12,wv=Math.sin(t/200-u*5+ph)*len*.07*u;c.lineTo(x+dir*u*len,y-hh2*(1-u*.25)+wv);}
+  c.lineTo(x+dir*len*1.08,y+Math.sin(t/200-5+ph)*len*.07-hh2*.4);c.lineTo(x+dir*len*.95,y+Math.sin(t/200-5+ph)*len*.07);c.lineTo(x+dir*len*1.08,y+Math.sin(t/200-5+ph)*len*.07+hh2*.5);
+  for(let i=12;i>=0;i--){const u=i/12,wv=Math.sin(t/200-u*5+ph)*len*.07*u;c.lineTo(x+dir*u*len,y+hh2*(1-u*.25)+wv);}
+  c.closePath();c.fillStyle=col;c.fill();c.save();c.clip();c.fillStyle=bel;c.fillRect(Math.min(x,x+dir*len*1.1),y+hh2*.25-len*.1,len*1.1,len*.4);
+  c.strokeStyle='rgba(255,255,255,.45)';c.lineWidth=Math.max(1,len*.025);for(let i=2;i<10;i++){const u=i/12;c.beginPath();c.arc(x+dir*u*len,y+Math.sin(t/200-u*5+ph)*len*.07*u,hh2*.55,dir>0?-1.3:1.84,dir>0?1.3:4.44);c.stroke();}c.restore();
+  c.lineWidth=Math.max(1.2,len*.03);c.strokeStyle=OUTL;c.stroke();
+  c.beginPath();c.arc(x+dir*len*.1,y-hh2*.15,hh2*.42,0,7);c.fillStyle='#fff';c.fill();c.stroke();c.fillStyle='#111';c.beginPath();c.arc(x+dir*len*.1,y-hh2*.15,hh2*.2,0,7);c.fill();
+  c.fillStyle='#ffd23f';c.beginPath();c.ellipse(x+dir*len*.02,y,hh2*.12,hh2*.6,0,0,7);c.fill();
+}
+function seasonBig(c,key,layer,P,R,t){
+  const k=seasonOf(key),{RK,HB,cx,wy}=P,lw=Math.max(1.2,R*.05);
+  c.save();c.lineJoin='round';c.lineCap='round';
+  if(layer==='back'){
+    switch(k){
+      case 'newyear':{   // 凧あげ
+        const kx=RK[0]-R*2.7+Math.sin(t/900)*R*.2,ky=wy-R*4.4+Math.sin(t/600)*R*.25;
+        c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=Math.max(1,R*.03);c.beginPath();c.moveTo(RK[0],RK[1]);c.quadraticCurveTo(RK[0]-R*1.2,RK[1]-R*.6,kx+R*.3,ky+R*.55);c.stroke();
+        c.save();c.translate(kx,ky);c.rotate(-.15+Math.sin(t/700)*.08);
+        for(const sd of[-1,1]){c.strokeStyle=sd<0?'#e53935':'#ffd23f';c.lineWidth=R*.08;c.beginPath();c.moveTo(sd*R*.25,R*.6);for(let i=1;i<=5;i++)c.lineTo(sd*R*.25+Math.sin(t/180+i)*R*.12,R*.6+i*R*.3);c.stroke();}
+        c.beginPath();c.rect(-R*.55,-R*.65,R*1.1,R*1.3);c.fillStyle='#fffaf0';c.fill();c.lineWidth=lw;c.strokeStyle=OUTL;c.stroke();
+        c.strokeStyle='rgba(120,80,40,.5)';c.lineWidth=lw*.6;c.beginPath();c.moveTo(-R*.55,-R*.65);c.lineTo(R*.55,R*.65);c.moveTo(R*.55,-R*.65);c.lineTo(-R*.55,R*.65);c.stroke();
+        c.font='900 '+(R*.95|0)+'px '+FONT;c.textAlign='center';c.textBaseline='middle';c.fillStyle='#d32f2f';if(c.getTransform().a<0)c.scale(-1,1);c.fillText('寿',0,R*.04);c.restore();
+        seasonDeco(c,key,RK[0],RK[1]-R*.62,R*1.3,t);break;}
+      case 'hina':seasonDeco(c,key,RK[0],RK[1]-R*.75,R*1.55,t);break;
+      case 'sakura':case 'momiji':{   // 自転車をおおう枝のアーチ
+        const top=[cx-R*.3,wy-R*5.0];c.strokeStyle='#5d3a24';c.lineWidth=R*.16;c.beginPath();c.moveTo(RK[0],RK[1]);c.bezierCurveTo(RK[0]-R*.8,top[1],top[0]+R*.6,top[1]-R*.6,(HB?HB[0]:cx)+R*.9,wy-R*3.6);c.stroke();
+        c.lineWidth=R*.07;c.beginPath();c.moveTo(top[0],top[1]+R*.1);c.quadraticCurveTo(top[0]-R*.8,top[1]-R*.5,top[0]-R*1.4,top[1]-R*.2);c.stroke();
+        for(let i=0;i<16;i++){const u=i/15,bx=lerp(RK[0]-R*.4,(HB?HB[0]:cx)+R*.9,u)+Math.sin(i*2.1)*R*.4,by=wy-R*(3.9+Math.sin(u*Math.PI)*1.3)+Math.cos(i*1.7)*R*.35;
+          if(k==='sakura')_sakura(c,bx,by,R*(.26+hsh(i,2)*.12),t/2000+i,i%3?'#ffc1d9':'#ffe4ef');else{_maple(c,bx,by,R*(.28+hsh(i,2)*.12),i+Math.sin(t/700+i)*.15);_f(c,['#d84315','#f9a825','#e64a19','#c62828'][i%4],lw*.6);}}
+        for(let i=0;i<8;i++){const q=((t/3000)+hsh(i,7))%1;seasonPf(c,key,lerp(RK[0]-R,cx+R*2,hsh(i,8))+Math.sin(t/500+i)*R*.3,wy-R*4+q*R*4,R*.35,t/500+i,t);}
+        break;}
+      case 'koinobori':{   // 大きなこいのぼり
+        const px=RK[0]-R*.1,top=wy-R*5.7;c.strokeStyle='#8d6e63';c.lineWidth=R*.14;c.beginPath();c.moveTo(px,RK[1]+R*.2);c.lineTo(px,top);c.stroke();
+        c.save();c.translate(px,top-R*.1);c.rotate(t/150);for(let i=0;i<6;i++){c.rotate(Math.PI/3);c.fillStyle=['#e53935','#ffd23f','#1e88e5'][i%3];c.beginPath();c.moveTo(0,0);c.lineTo(R*.3,-R*.08);c.lineTo(R*.3,R*.08);c.fill();}c.restore();
+        c.beginPath();c.arc(px,top-R*.1,R*.1,0,7);_f(c,'#ffd23f',lw*.7);
+        // 吹き流し
+        c.beginPath();for(let i=0;i<=10;i++){const u=i/10;c.lineTo(px-u*R*2.6,top+R*.15+Math.sin(t/160-u*5)*R*.12*u);}for(let i=10;i>=0;i--){const u=i/10;c.lineTo(px-u*R*2.6,top+R*.55+Math.sin(t/160-u*5)*R*.12*u);}c.closePath();
+        const sg=c.createLinearGradient(0,top+R*.15,0,top+R*.55);['#1e88e5','#fff','#e53935','#ffd23f','#43a047'].forEach((col,i)=>{sg.addColorStop(i/5,col);sg.addColorStop((i+1)/5-.001,col);});c.fillStyle=sg;c.fill();c.lineWidth=lw*.7;c.strokeStyle=OUTL;c.stroke();
+        koiFish(c,px-R*.05,top+R*1.05,R*3.1,'#263238','#90a4ae',t,0,-1);koiFish(c,px-R*.05,top+R*1.95,R*2.6,'#e53935','#ffcdd2',t,1.3,-1);koiFish(c,px-R*.05,top+R*2.75,R*2.1,'#1e88e5','#bbdefb',t,2.6,-1);
+        break;}
+      case 'ajisai':{   // 自転車にさした大きな傘と雨
+        for(let i=0;i<14;i++){const q=((t/600)+hsh(i,3))%1,x=cx+(hsh(i,4)-.5)*R*6,y=wy-R*5.5+q*R*5.5;c.strokeStyle='rgba(170,210,255,.6)';c.lineWidth=Math.max(1,R*.03);c.beginPath();c.moveTo(x,y);c.lineTo(x-R*.05,y+R*.3);c.stroke();}
+        const ux=P.S[0]-R*.1,uy=wy-R*5.0;c.strokeStyle='#5d4037';c.lineWidth=R*.08;c.beginPath();c.moveTo(P.S[0]-R*.2,P.S[1]+R*.1);c.lineTo(ux,uy);c.stroke();
+        c.beginPath();c.moveTo(ux-R*2.1,uy+R*.75);c.quadraticCurveTo(ux,uy-R*1.4,ux+R*2.1,uy+R*.75);for(let i=0;i<6;i++){const a=ux+R*2.1-i*R*.7,b=a-R*.7;c.quadraticCurveTo((a+b)/2,uy+R*.45,b,uy+R*.75);}c.closePath();
+        const ug=c.createLinearGradient(ux-R*2,0,ux+R*2,0);ug.addColorStop(0,'#5c6bc0');ug.addColorStop(.5,'#9575cd');ug.addColorStop(1,'#42a5f5');c.fillStyle=ug;c.fill();c.lineWidth=lw;c.strokeStyle=OUTL;c.stroke();
+        c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=lw*.7;c.beginPath();for(let i=0;i<5;i++){c.moveTo(ux,uy-R*.33);c.lineTo(ux+R*(1.4-i*.7),uy+R*.68);}c.stroke();c.beginPath();c.arc(ux,uy-R*.36,R*.07,0,7);_f(c,'#ffd23f',lw*.5);
+        seasonDeco(c,key,RK[0],RK[1]-R*.5,R*1.05,t);break;}
+      case 'tanabata':{   // 背の高い笹飾り
+        const px=RK[0]-R*.15,top=wy-R*5.8;c.strokeStyle='#558b2f';c.lineWidth=R*.12;c.beginPath();c.moveTo(px,RK[1]);c.quadraticCurveTo(px-R*.3,(RK[1]+top)/2,px-R*.1,top);c.stroke();
+        for(let i=0;i<22;i++){const by=lerp(top,RK[1]-R*.6,hsh(i,1)),bx=px+(hsh(i,2)-.6)*R*2.2;c.save();c.translate(bx,by);c.rotate(-.7+hsh(i,3)*1.4+Math.sin(t/800+i)*.08);c.fillStyle='#7cb342';c.beginPath();c.ellipse(0,0,R*.32,R*.07,0,0,7);c.fill();c.restore();}
+        const cols=['#e53935','#ffd23f','#42a5f5','#ab47bc','#66bb6a','#ff8a65'];
+        for(let i=0;i<9;i++){const tx=px+(hsh(i,5)-.65)*R*2.2,ty=lerp(top+R*.4,RK[1]-R*1.4,hsh(i,6)),sw=Math.sin(t/450+i)*.18;c.save();c.translate(tx,ty);c.rotate(sw);c.beginPath();c.rect(-R*.12,0,R*.24,R*.7);_f(c,cols[i%6],lw*.6);c.restore();}
+        _star(c,px-R*.1,top-R*.2,R*.32,5,.45,t/900);_f(c,'#ffe082',lw);break;}
+      case 'hanabi':{   // 荷台から本物の花火が上がる
+        for(let j=0;j<2;j++){const per=2200,q=((t+j*1100)%per)/per,bx=RK[0]-R*(.6+j*1.4),by=wy-R*(4.6+j*.6);
+          if(q<.22){const u=q/.22;c.strokeStyle='#ffcc80';c.lineWidth=Math.max(1,R*.05);c.beginPath();c.moveTo(RK[0],RK[1]-R*.5);c.lineTo(lerp(RK[0],bx,u),lerp(RK[1]-R*.5,by,u));c.stroke();}
+          else{const u=(q-.22)/.78,rr=R*(.4+u*1.7);c.save();c.globalCompositeOperation='lighter';c.globalAlpha=1-u;for(let i=0;i<20;i++){const a=i*Math.PI/10,col=['#ff7043','#ffd54f','#4fc3f7','#f06292','#b388ff'][(i+j)%5];c.strokeStyle=col;c.lineWidth=Math.max(1,R*.06);c.beginPath();c.moveTo(bx+Math.cos(a)*rr*.5,by+Math.sin(a)*rr*.5+u*R*.4);c.lineTo(bx+Math.cos(a)*rr,by+Math.sin(a)*rr+u*R*.6);c.stroke();}c.restore();}}
+        seasonDeco(c,key,RK[0],RK[1]-R*.62,R*1.25,t);break;}
+      case 'tsukimi':{   // うしろの大きな満月とうさぎ
+        const mx=RK[0]-R*.4,my=wy-R*3.9,mr=R*1.75,mg=c.createRadialGradient(mx,my,mr*.6,mx,my,mr*1.8);mg.addColorStop(0,'rgba(255,245,190,.55)');mg.addColorStop(1,'rgba(255,245,190,0)');c.fillStyle=mg;c.fillRect(mx-mr*2,my-mr*2,mr*4,mr*4);
+        c.beginPath();c.arc(mx,my,mr,0,7);c.fillStyle='#fff6c4';c.fill();c.lineWidth=lw;c.strokeStyle='rgba(200,170,80,.8)';c.stroke();
+        c.fillStyle='rgba(215,190,110,.55)';c.beginPath();c.arc(mx-mr*.35,my-mr*.2,mr*.16,0,7);c.arc(mx+mr*.3,my+mr*.3,mr*.12,0,7);c.arc(mx+mr*.2,my-mr*.4,mr*.08,0,7);c.fill();
+        c.fillStyle='rgba(120,100,60,.55)';const hop=Math.abs(Math.sin(t/400))*mr*.08;c.beginPath();c.ellipse(mx,my+mr*.3-hop,mr*.22,mr*.16,0,0,7);c.ellipse(mx+mr*.12,my+mr*.1-hop,mr*.11,mr*.1,0,0,7);c.ellipse(mx+mr*.1,my-mr*.08-hop,mr*.04,mr*.14,-.2,0,7);c.ellipse(mx+mr*.17,my-mr*.06-hop,mr*.04,mr*.14,.2,0,7);c.fill();
+        break;}
+      case 'xmas':{   // サンタの大きなプレゼント袋
+        const bx=RK[0]-R*.15,by=RK[1];c.beginPath();c.moveTo(bx-R*.9,by);c.quadraticCurveTo(bx-R*1.15,by-R*1.4,bx-R*.25,by-R*1.75);c.quadraticCurveTo(bx+R*.05,by-R*2.1,bx+R*.35,by-R*1.8);c.quadraticCurveTo(bx+R*1.1,by-R*1.3,bx+R*.8,by);c.closePath();_f(c,'#c62828',lw);
+        c.fillStyle='rgba(255,255,255,.25)';c.beginPath();c.ellipse(bx-R*.4,by-R*.9,R*.25,R*.5,-.3,0,7);c.fill();
+        [['#43a047',-.2,-2.0],['#1e88e5',.25,-1.95],['#ffd23f',0,-2.2]].forEach(([col,dx,dy])=>{c.beginPath();c.rect(bx+dx*R-R*.22,by+dy*R-R*.22,R*.44,R*.44);_f(c,col,lw*.8);c.fillStyle='#fff';c.fillRect(bx+dx*R-R*.04,by+dy*R-R*.22,R*.08,R*.44);});
+        c.strokeStyle='#ffd23f';c.lineWidth=R*.1;c.beginPath();c.moveTo(bx-R*.3,by-R*1.62);c.lineTo(bx+R*.3,by-R*1.62);c.stroke();
+        break;}
+      case 'halloween':{for(let i=0;i<3;i++){const a=t/900+i*2.1;seasonPf(c,key,cx+Math.cos(a)*R*2.4,wy-R*3.6+Math.sin(a*1.3)*R*.6,R*.6,0,t+i*200);}
+        seasonDeco(c,key,RK[0],RK[1]-R*.4,R*.95,t);break;}
+      default:seasonDeco(c,key,RK[0],RK[1]-R*.45,R*1.1,t);
+    }
+  }else if(layer==='front'&&HB){   // 前カゴ
+    const bx=HB[0]+R*.48,by=HB[1]+R*.2;
+    switch(k){
+      case 'halloween':{   // 大きなジャック・オ・ランタンのカゴ
+        const s=R*1.25,fl=.75+.25*Math.sin(t/90)*Math.sin(t/37);
+        c.save();c.globalCompositeOperation='lighter';const gg=c.createRadialGradient(bx,by,0,bx,by,s*1.2);gg.addColorStop(0,'rgba(255,160,40,'+(.4*fl)+')');gg.addColorStop(1,'rgba(255,120,0,0)');c.fillStyle=gg;c.fillRect(bx-s*1.3,by-s*1.3,s*2.6,s*2.6);c.restore();
+        for(const [dx,ww] of [[-.3,.32],[.3,.32],[-.13,.36],[.13,.36],[0,.33]]){c.beginPath();c.ellipse(bx+dx*s,by,ww*s,s*.46,0,0,7);_f(c,dx===0?'#ff9800':'#f57c00',lw);}
+        c.beginPath();c.ellipse(bx,by-s*.42,s*.32,s*.09,0,0,7);_f(c,'#3e2723',lw*.8);
+        c.strokeStyle='#33691e';c.lineWidth=s*.07;c.beginPath();c.moveTo(bx-s*.32,by-s*.4);c.quadraticCurveTo(bx-s*.55,by-s*.75,bx-s*.2,by-s*.7);c.stroke();
+        c.fillStyle='rgb(255,'+(200+fl*55|0)+',90)';c.beginPath();c.moveTo(bx-s*.3,by-s*.08);c.lineTo(bx-s*.1,by-s*.08);c.lineTo(bx-s*.2,by-s*.28);c.closePath();c.moveTo(bx+s*.3,by-s*.08);c.lineTo(bx+s*.1,by-s*.08);c.lineTo(bx+s*.2,by-s*.28);c.closePath();c.fill();
+        c.beginPath();c.moveTo(bx-s*.33,by+s*.1);for(let i=0;i<=8;i++)c.lineTo(bx-s*.33+i*s*.0825,by+s*.1+(i%2?s*.08:0));c.lineTo(bx+s*.28,by+s*.3);for(let i=7;i>=0;i--)c.lineTo(bx-s*.3+i*s*.0775,by+s*.3-(i%2?s*.07:0));c.closePath();c.fill();
+        c.fillStyle='rgba(120,60,0,.6)';c.fillRect(bx-s*.36,by-s*.46,s*.72,s*.04);   // 取っ手のふち
+        break;}
+      case 'valentine':{const s=R*1.2;_heart(c,bx,by+s*.12,s*.9);_f(c,'#c2185b',lw);_heart(c,bx,by+s*.05,s*.8);c.fillStyle='#e91e63';c.fill();c.fillStyle='#ffd1e3';c.fillRect(bx-s*.06,by-s*.33,s*.12,s*.6);
+        for(const sd of[-1,1]){c.beginPath();c.ellipse(bx+sd*s*.17,by-s*.36,s*.17,s*.09,sd*.4,0,7);_f(c,'#ff80ab',lw*.8);}c.beginPath();c.arc(bx,by-s*.35,s*.06,0,7);_f(c,'#ff4081',lw*.8);
+        for(let i=0;i<3;i++){const q=((t/1400+i/3)%1);c.globalAlpha=1-q;_heart(c,bx+s*(.3-i*.3),by-s*.5-q*s*.6,s*.18);_f(c,'#ff80ab');}c.globalAlpha=1;break;}
+      case 'tsukimi':seasonDeco(c,key,bx,by-R*.15,R*1.2,t);break;
+      case 'xmas':{   // ハンドルにトナカイの角と赤い鼻
+        for(const sd of[-1,1]){c.strokeStyle='#8d6e63';c.lineWidth=R*.1;c.beginPath();const ax=HB[0]+sd*R*.12,ay=HB[1];c.moveTo(ax,ay);c.lineTo(ax+sd*R*.25,ay-R*.7);c.moveTo(ax+sd*R*.12,ay-R*.35);c.lineTo(ax+sd*R*.45,ay-R*.5);c.moveTo(ax+sd*R*.2,ay-R*.55);c.lineTo(ax-sd*R*.05,ay-R*.85);c.stroke();}
+        const pl=.6+.4*Math.sin(t/200);c.save();c.globalCompositeOperation='lighter';c.fillStyle='rgba(255,40,40,'+pl*.5+')';c.beginPath();c.arc(bx+R*.25,by-R*.1,R*.35,0,7);c.fill();c.restore();c.beginPath();c.arc(bx+R*.25,by-R*.1,R*.16,0,7);_f(c,'#e53935',lw*.7);
+        seasonDeco(c,key,bx-R*.1,by-R*.2,R*.7,t);break;}
+      default:seasonDeco(c,key,bx,by-R*.22,R*.75,t);
+    }
+  }
+  c.restore();
+}
+// 殿堂チャリ：金の翼・後光（奥）／宝石つき金ホイール・王冠・旗（手前）
+function hofSide(c,layer,P,R,t,spin){
+  const {RK,HB,S,cx,wy,Wh}=P,lw=Math.max(1.2,R*.05);c.save();c.lineJoin='round';c.lineCap='round';
+  if(layer==='back'){
+    c.save();c.globalCompositeOperation='lighter';c.translate(cx,wy-R*1.3);c.rotate(t/2500);for(let i=0;i<16;i++){c.rotate(Math.PI/8);c.fillStyle=i%2?'rgba(255,215,80,.16)':'rgba(255,120,80,.10)';c.beginPath();c.moveTo(0,0);c.lineTo(R*4.6,-R*.35);c.lineTo(R*4.6,R*.35);c.fill();}c.restore();
+    // 殿堂の旗
+    const fx=RK[0]-R*.75,ft=wy-R*5.2;c.strokeStyle='#ffd23f';c.lineWidth=R*.09;c.beginPath();c.moveTo(fx,RK[1]);c.lineTo(fx,ft);c.stroke();
+    c.beginPath();c.moveTo(fx,ft+R*.05);for(let i=0;i<=8;i++){const u=i/8;c.lineTo(fx-u*R*1.6,ft+R*.05+Math.sin(t/180-u*4)*R*.12*u);}for(let i=8;i>=0;i--){const u=i/8;c.lineTo(fx-u*R*1.6,ft+R*.8+Math.sin(t/180-u*4)*R*.12*u);}c.closePath();_f(c,'#c62828',lw*.8);
+    c.font='900 '+(R*.42|0)+'px '+FONT;c.textAlign='center';c.textBaseline='middle';c.fillStyle='#ffd23f';c.save();c.translate(fx-R*.8,ft+R*.45+Math.sin(t/180-2)*R*.06);if(c.getTransform().a<0)c.scale(-1,1);c.fillText('殿堂',0,0);c.restore();
+    _star(c,fx,ft-R*.15,R*.22,5,.45,t/700);_f(c,'#ffd23f',lw*.7);
+    // 金の翼（骨に沿って羽根を並べる。奥の翼は少し暗く）
+    const flap=Math.sin(t/260)*.1,wx=S[0]-R*.2,wy2=S[1]-R*.35;
+    for(const back of[1,0]){c.save();c.translate(wx+(back?R*.35:0),wy2-(back?R*.15:0));c.rotate(-flap-(back?.12:0));const sc2=back?.92:1;c.scale(sc2,sc2);
+      const bone=u=>[-u*R*2.7,-Math.sin(u*Math.PI*.55)*R*2.3];
+      for(const row of[0,1])for(let i=9;i>=0;i--){const u=.12+i*.098,[bx,by]=bone(u),L=R*(row?.75+u*.6:1.25+u*1.55),a=1.9+u*.55+(row?-.1:0);
+        c.save();c.translate(bx,by);c.rotate(a);c.beginPath();c.moveTo(0,-R*.13);c.quadraticCurveTo(L*.6,-R*.2,L,0);c.quadraticCurveTo(L*.6,R*.2,0,R*.13);c.closePath();
+        const g=c.createLinearGradient(0,0,L,0);g.addColorStop(0,back?'#d79b00':(row?'#fffbe0':'#fff3b0'));g.addColorStop(1,back?'#9a6a00':(row?'#ffd54f':'#ffb300'));c.fillStyle=g;c.fill();c.lineWidth=lw*.6;c.strokeStyle=OUTL;c.stroke();
+        c.strokeStyle='rgba(150,100,0,.5)';c.lineWidth=lw*.4;c.beginPath();c.moveTo(R*.05,0);c.lineTo(L*.85,0);c.stroke();c.restore();}
+      c.strokeStyle=back?'#b8860b':'#ffe082';c.lineWidth=R*.16;c.beginPath();for(let i=0;i<=10;i++){const [bx,by]=bone(i/10);i?c.lineTo(bx,by):c.moveTo(bx,by);}c.stroke();
+      c.restore();}
+  }else if(layer==='wheel'){
+    for(const w of Wh){c.lineWidth=R*.07;c.strokeStyle='#ffd23f';c.beginPath();c.arc(w.x,w.y,w.r*.84,0,7);c.stroke();
+      for(let i=0;i<6;i++){const a=spin*(R/w.r)+i*Math.PI/3,gx=w.x+Math.cos(a)*w.r*.84,gy=w.y+Math.sin(a)*w.r*.84;c.fillStyle=['#e53935','#1e88e5','#43a047'][i%3];c.beginPath();c.moveTo(gx,gy-R*.1);c.lineTo(gx+R*.08,gy);c.lineTo(gx,gy+R*.1);c.lineTo(gx-R*.08,gy);c.closePath();c.fill();c.lineWidth=Math.max(.8,R*.02);c.strokeStyle='#fff';c.stroke();}
+      c.beginPath();c.arc(w.x,w.y,w.r*.2,0,7);_f(c,'#ffd23f',lw*.6);}
+  }else if(layer==='front'&&HB){   // ハンドルの王冠
+    const bx=HB[0]+R*.45,by=HB[1]-R*.05,s=R*1.0,bob=Math.sin(t/300)*R*.05;c.save();c.translate(bx,by+bob);
+    c.beginPath();c.moveTo(-s*.45,s*.2);c.lineTo(-s*.5,-s*.3);c.lineTo(-s*.22,-s*.05);c.lineTo(0,-s*.42);c.lineTo(s*.22,-s*.05);c.lineTo(s*.5,-s*.3);c.lineTo(s*.45,s*.2);c.closePath();
+    const g=c.createLinearGradient(0,-s*.4,0,s*.2);g.addColorStop(0,'#fff3b0');g.addColorStop(1,'#d79b00');c.fillStyle=g;c.fill();c.lineWidth=lw;c.strokeStyle=OUTL;c.stroke();
+    [['#e53935',0,-.02],['#1e88e5',-.28,.06],['#43a047',.28,.06]].forEach(([col,x,y])=>{c.beginPath();c.arc(x*s,y*s,s*.07,0,7);_f(c,col,lw*.5);});
+    for(const [x,y] of [[-.5,-.3],[0,-.42],[.5,-.3]]){c.beginPath();c.arc(x*s,y*s,s*.06,0,7);_f(c,'#fff',lw*.4);}c.restore();
+    for(let i=0;i<10;i++){const q=((t/1500)+hsh(i,3))%1,a=hsh(i,4)*7;c.globalAlpha=1-q;c.fillStyle='#fff3b0';_star(c,cx+Math.cos(a)*R*(1.5+q*1.6),wy-R*1.4+Math.sin(a)*R*(1+q*1.2),R*(.18-q*.1),4,.3,0);c.fill();}c.globalAlpha=1;
+  }
+  c.restore();
+}
+
+/* ===== エモートの動き（全エモート）
+   EMO_MOVE=体の上下の動き（ジャンプなど）、emoteExtra=まわりの演出 ===== */
+const EMO_MOVE={
+  wave:e=>Math.abs(Math.sin(e*5))*.05,thumbs:e=>e<.3?Math.sin(e/.3*Math.PI)*.18:0,gg:e=>Math.abs(Math.sin(e*6))*.1,clap:e=>Math.abs(Math.sin(e*11))*.03,
+  cry:e=>Math.abs(Math.sin(e*14))*.03,angry:e=>Math.abs(Math.sin(e*25))*.03,heart:e=>Math.abs(Math.sin(e*4))*.06,shock:e=>e<.35?Math.sin(e/.35*Math.PI)*.35:0,
+  peace:e=>Math.abs(Math.sin(e*5))*.07,flex:e=>Math.abs(Math.sin(e*4))*.05,fire:e=>Math.abs(Math.sin(e*12))*.04,party:e=>Math.abs(Math.sin(e*8))*.14,
+  crowne:e=>e>.55&&e<.85?Math.sin((e-.55)/.3*Math.PI)*.15:0,rocket:e=>Math.abs(Math.sin(e*9))*.04,hofe:e=>Math.abs(Math.sin(e*3))*.06,yoyu:e=>0,ramen:e=>Math.abs(Math.sin(e*9))*.02,
+  think:e=>0,cool:e=>e<.3?Math.sin(e/.3*Math.PI)*.12:0,sleep:e=>Math.sin(e*2.5)*.02};
+const popS=e=>e<.25?(e/.25)*1.25:e<.4?1.25-(e-.25)/.15*.25:1;   // ぽんっと出て少し縮む
+function emoteExtra(c,ek,ee,ea,P){
+  const {hx,hy,hand,sh,R,t,ET,EJ}=P,ps=popS(ee);
+  switch(ek){
+    case 'wave':for(let i=0;i<3;i++){const a=-1.2+i*.35+Math.sin(ee*10)*.1;c.strokeStyle='rgba(255,255,255,'+(.4+.4*Math.sin(ee*10+i))+')';c.lineWidth=Math.max(1,R*.06);c.beginPath();c.arc(hand[0],hand[1],R*(.35+i*.14),a,a+.6);c.stroke();}break;
+    case 'thumbs':for(let i=0;i<5;i++){const q=Math.min(1,ee*2),a=-2.6+i*.45;c.globalAlpha=ea*(1-q*.7);c.fillStyle='#ffe56b';c.beginPath();c.arc(hand[0]+Math.cos(a)*R*(.5+q*.6),hand[1]-R*.35+Math.sin(a)*R*(.5+q*.6),R*.06,0,7);c.fill();}c.globalAlpha=ea;break;
+    case 'laugh':for(let i=0;i<2;i++){const q=((ee*1.2)+i/2)%1;c.globalAlpha=ea*(1-q);ET('w',hx+R*(1.0+i*.5),hy-R*(.5+q*.9),R*(.35+q*.2),'#fff');}c.globalAlpha=ea;break;
+    case 'angry':{c.save();c.globalCompositeOperation='lighter';c.fillStyle='rgba(255,60,40,'+(.18+.1*Math.sin(ee*20))+')';c.beginPath();c.arc(hx,hy,R*1.3,0,7);c.fill();c.restore();
+      for(let i=0;i<3;i++){const q=((ee*1.5)+i/3)%1;c.globalAlpha=ea*(1-q);c.fillStyle='#ddd';c.beginPath();c.arc(hx-R*(.2+i*.15),hy-R*(1+q*1.1),R*(.12+q*.15),0,7);c.fill();}c.globalAlpha=ea;break;}
+    case 'cry':for(const sd of[-1,1])for(let i=0;i<3;i++){const q=((ee*1.6)+i/3)%1;c.fillStyle='#64b5f6';c.globalAlpha=ea*(1-q);c.beginPath();c.arc(hx+R*.4+sd*R*.05+q*R*.6*sd,hy+R*.1+q*q*R*1.2,R*.07,0,7);c.fill();}c.globalAlpha=ea;break;
+    case 'clap':for(let i=0;i<4;i++){const q=((ee*2)+i/4)%1,a=-1.6+i*.6;c.globalAlpha=ea*(1-q);c.strokeStyle='#ffe56b';c.lineWidth=Math.max(1,R*.06);c.beginPath();c.moveTo(sh[0]+R*1.0+Math.cos(a)*R*(.25+q*.4),sh[1]-R*.1+Math.sin(a)*R*(.25+q*.4));c.lineTo(sh[0]+R*1.0+Math.cos(a)*R*(.4+q*.5),sh[1]-R*.1+Math.sin(a)*R*(.4+q*.5));c.stroke();}c.globalAlpha=ea;break;
+    case 'bow':c.globalAlpha=ea*.7;for(let i=0;i<3;i++){c.fillStyle='#9fd4ff';c.beginPath();c.ellipse(hx+R*(.8+i*.3),hy+R*(.1+i*.2)+Math.sin(ee*6+i)*R*.05,R*.05,R*.12,.4,0,7);c.fill();}c.globalAlpha=ea;break;
+    case 'heart':{const s=1+.15*Math.sin(ee*9);c.save();c.translate(hand[0]+R*.15,hand[1]-R*.25);c.scale(s*ps,s*ps);_heart(c,0,0,R*.55);c.fillStyle='#ff4081';c.fill();c.lineWidth=Math.max(1,R*.05);c.strokeStyle=OUTL;c.stroke();c.restore();break;}
+    case 'gg':for(let i=0;i<8;i++){const q=((ee*.8)+i/8)%1,a=i*.8;c.globalAlpha=ea*(1-q);c.fillStyle=['#ffd23f','#ff6fa3','#7cf','#8f8'][i%4];c.fillRect(hx+Math.cos(a)*R*(.8+q*1.2),hy-R*1.6-q*R*.5+Math.sin(a)*R*.4,R*.1,R*.16);}c.globalAlpha=ea;break;
+    case 'think':for(let i=0;i<3;i++){const q=Math.max(0,Math.min(1,(ee-i*.35)*2));c.globalAlpha=ea*q;c.fillStyle='#fff';c.beginPath();c.arc(hx+R*(.8+i*.25),hy-R*(.6+i*.35),R*(.07+i*.05),0,7);c.fill();}
+      {const q=Math.max(0,Math.min(1,(ee-1)*2.5));c.globalAlpha=ea*q;c.save();c.translate(hx+R*1.65,hy-R*1.65);c.rotate(Math.sin(ee*3)*.2);c.scale(q,q);c.beginPath();c.ellipse(0,0,R*.6,R*.45,0,0,7);c.fillStyle='#fff';c.fill();c.lineWidth=Math.max(1,R*.05);c.strokeStyle=OUTL;c.stroke();c.restore();ET('？',hx+R*1.65,hy-R*1.65+Math.sin(ee*5)*R*.04,R*.55*q,'#5a3fc0');}c.globalAlpha=ea;break;
+    case 'ramen':{const bx=hand[0]+R*.05,by=hand[1]-R*.05,s=R*.75;   // どんぶりと麺とゆげ
+      c.strokeStyle='#ffe082';c.lineWidth=Math.max(1,R*.05);for(let i=0;i<4;i++){c.beginPath();c.moveTo(bx-s*.15+i*s*.1,by-s*.15);c.bezierCurveTo(bx+i*s*.05,by-s*.6+Math.sin(ee*16+i)*s*.08,hx+R*.6,hy+R*.6,hx+R*.75,hy+R*.32);c.stroke();}
+      c.beginPath();c.moveTo(bx-s*.5,by-s*.15);c.lineTo(bx+s*.5,by-s*.15);c.quadraticCurveTo(bx+s*.45,by+s*.35,bx,by+s*.38);c.quadraticCurveTo(bx-s*.45,by+s*.35,bx-s*.5,by-s*.15);c.closePath();c.fillStyle='#fff8e1';c.fill();c.lineWidth=Math.max(1,R*.05);c.strokeStyle=OUTL;c.stroke();
+      c.strokeStyle='#e53935';c.lineWidth=Math.max(1,R*.04);c.beginPath();for(let i=0;i<5;i++){const x=bx-s*.38+i*s*.18;c.moveTo(x,by);c.lineTo(x+s*.08,by);c.lineTo(x+s*.08,by+s*.08);}c.stroke();
+      for(let i=0;i<3;i++){const q=((ee*.9)+i/3)%1;c.globalAlpha=ea*(1-q)*.8;c.strokeStyle='#fff';c.lineWidth=Math.max(1,R*.05);c.beginPath();c.moveTo(bx-s*.25+i*s*.25,by-s*.3-q*R*.8);c.bezierCurveTo(bx-s*.4+i*s*.25,by-s*.5-q*R*.8,bx-s*.1+i*s*.25,by-s*.7-q*R*.8,bx-s*.25+i*s*.25,by-s*.9-q*R*.8);c.stroke();}
+      c.globalAlpha=ea*(.6+.4*Math.abs(Math.sin(ee*9)));ET('ズズッ',hx+R*1.3,hy-R*1.0,R*.42,'#fff');c.globalAlpha=ea;break;}
+    case 'yoyu':{c.save();c.translate(hx+R*.2,hy-R*1.25);c.rotate(ee*2);c.fillStyle='#fff8c4';_star(c,0,0,R*.25*ps,4,.3,0);c.fill();c.restore();
+      const q=Math.min(1,Math.max(0,ee-.4)*2);c.globalAlpha=ea*q;ET('フッ…',hx+R*1.35,hy-R*.75-q*R*.2,R*.45,'#fff');
+      c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=Math.max(1,R*.03);for(let i=0;i<3;i++){c.beginPath();c.moveTo(hx-R*(1.0+i*.25),hy-R*(.2-i*.3));c.lineTo(hx-R*(1.5+i*.25),hy-R*(.2-i*.3));c.stroke();}c.globalAlpha=ea;break;}
+    case 'shock':{c.strokeStyle='rgba(80,110,220,.75)';c.lineWidth=Math.max(1,R*.05);c.beginPath();for(let i=0;i<5;i++){const x=hx-R*.4+i*R*.2;c.moveTo(x,hy-R*.75);c.lineTo(x,hy-R*(.2+(i%2)*.15));}c.stroke();
+      const s=ee<.2?2-ee/.2:1;c.save();c.translate(hx+R*1.4+(ee<.5?Math.sin(ee*60)*R*.06:0),hy-R*1.2);c.scale(s,s);emoText(c,'ガーン',0,0,R*.55,'#9fb6ff');c.restore();
+      for(let i=0;i<2;i++){c.fillStyle='#9fd4ff';c.beginPath();c.ellipse(hx+R*(.7+i*.2),hy-R*(.45-i*.3)+Math.sin(ee*8+i)*R*.03,R*.06,R*.11,.3,0,7);c.fill();}break;}
+    case 'cool':{const q=Math.min(1,ee*3);c.save();c.globalAlpha=ea*q;c.translate(hx+R*.6,hy+R*.02-(1-q)*R*.8);c.fillStyle='#111';c.beginPath();c.ellipse(0,0,R*.34,R*.22,0,0,7);c.fill();c.restore();
+      const sp=(ee*1.5)%1;c.globalAlpha=ea*(1-sp);c.fillStyle='#fff';_star(c,hx+R*.75,hy-R*.08,R*.18*(1-sp),4,.25,0);c.fill();c.globalAlpha=ea;break;}
+    case 'peace':{c.save();c.translate(hand[0],hand[1]-R*.2);c.rotate(Math.sin(ee*6)*.15);c.strokeStyle=SKIN_TONE;c.lineWidth=R*.12;c.lineCap='round';c.beginPath();c.moveTo(0,0);c.lineTo(-R*.12,-R*.38);c.moveTo(0,0);c.lineTo(R*.12,-R*.38);c.stroke();c.restore();
+      for(let i=0;i<3;i++){const a=ee*3+i*2.1;c.fillStyle='#fff8c4';_star(c,hand[0]+Math.cos(a)*R*.6,hand[1]-R*.4+Math.sin(a)*R*.4,R*.12,4,.3,0);c.fill();}
+      ET('ピース！',hx+R*1.5,hy-R*1.3,R*.42*ps,'#ffe56b');break;}
+    case 'flex':{const el=[(sh[0]+hand[0])/2+R*.1,(sh[1]+hand[1])/2],b=1+.25*Math.abs(Math.sin(ee*4));c.beginPath();c.ellipse(el[0],el[1]-R*.08,R*.2*b,R*.15*b,-.6,0,7);c.fillStyle=SKIN_TONE;c.fill();c.lineWidth=Math.max(1,R*.05);c.strokeStyle=OUTL;c.stroke();
+      for(let i=0;i<3;i++){const a=-1.2+i*.6;c.strokeStyle='#ffe56b';c.lineWidth=Math.max(1,R*.06);c.beginPath();c.moveTo(el[0]+Math.cos(a)*R*.35*b,el[1]+Math.sin(a)*R*.35*b);c.lineTo(el[0]+Math.cos(a)*R*.55*b,el[1]+Math.sin(a)*R*.55*b);c.stroke();}
+      ET('ムキッ',hx+R*1.45,hy-R*1.1,R*.48*ps,'#fff');break;}
+    case 'fire':{c.save();c.globalCompositeOperation='lighter';for(let i=0;i<9;i++){const q=((ee*1.8)+hsh(i,3))%1,x=P.cx+(hsh(i,4)-.5)*R*2.6,y=P.wy-q*R*3.4;c.globalAlpha=ea*(1-q)*.7;
+        c.fillStyle=q<.4?'#ffeb3b':q<.7?'#ff9800':'#f44336';c.beginPath();c.moveTo(x,y-R*.45*(1-q*.5));c.quadraticCurveTo(x+R*.22,y,x,y+R*.15);c.quadraticCurveTo(x-R*.22,y,x,y-R*.45*(1-q*.5));c.fill();}c.restore();
+      c.globalAlpha=ea*(.6+.4*Math.abs(Math.sin(ee*8)));ET('メラメラ',hx+R*1.4,hy-R*1.2,R*.42,'#ffb74d');c.globalAlpha=ea;break;}
+    case 'party':{c.save();c.translate(hand[0],hand[1]);c.rotate(-.8);c.beginPath();c.moveTo(0,0);c.lineTo(R*.5,-R*.15);c.lineTo(R*.5,R*.15);c.closePath();c.fillStyle='#ff6fa3';c.fill();c.lineWidth=Math.max(1,R*.04);c.strokeStyle=OUTL;c.stroke();c.restore();
+      if(ee<.5)for(let i=0;i<8;i++){const q=ee/.5,a=-2.2+i*.25;c.strokeStyle='hsl('+i*45+',90%,60%)';c.lineWidth=Math.max(1,R*.05);c.beginPath();c.moveTo(hand[0]+Math.cos(a)*R*.4,hand[1]+Math.sin(a)*R*.4);c.lineTo(hand[0]+Math.cos(a)*R*(.4+q*1.4),hand[1]+Math.sin(a)*R*(.4+q*1.4));c.stroke();}break;}
+    case 'crowne':{const q=Math.min(1,ee/.6),y=hy-R*1.05-(1-q*q)*R*2;c.save();c.translate(hx,y);const s=R*.75;c.beginPath();c.moveTo(-s*.45,s*.2);c.lineTo(-s*.5,-s*.3);c.lineTo(-s*.22,-s*.05);c.lineTo(0,-s*.42);c.lineTo(s*.22,-s*.05);c.lineTo(s*.5,-s*.3);c.lineTo(s*.45,s*.2);c.closePath();_f(c,'#ffc107',Math.max(1,R*.05));c.beginPath();c.arc(0,0,s*.08,0,7);_f(c,'#e53935');c.restore();
+      if(q>=1)for(let i=0;i<6;i++){const a=i*1.05+ee*2;c.fillStyle='#fff8c4';_star(c,hx+Math.cos(a)*R*.9,hy-R*1.2+Math.sin(a)*R*.4,R*.1,4,.3,0);c.fill();}break;}
+    case 'rocket':for(let i=0;i<6;i++){const q=((ee*.8)%1)-i*.05;if(q<0)continue;c.globalAlpha=ea*(.6-i*.09);c.fillStyle='#ddd';c.beginPath();c.arc(hand[0]+q*R*2.2-R*.2,hand[1]-q*R*2.6+R*.25,R*(.1+i*.04),0,7);c.fill();}c.globalAlpha=ea;break;
+    case 'hofe':{for(const sd of[-1,1])for(let i=0;i<6;i++){const a=Math.PI/2+sd*(.5+i*.32);c.save();c.translate(hx+Math.cos(a)*R*.95,hy+Math.sin(a)*R*.95);c.rotate(a+sd*1.2);c.fillStyle='#ffc107';c.beginPath();c.ellipse(0,0,R*.16,R*.07,0,0,7);c.fill();c.restore();}
+      ET('殿堂入り',hx+R*1.4,hy-R*1.5,R*.42*ps,'#ffd23f');break;}
+    case 'wheelie':for(let i=0;i<4;i++){const q=((ee*2)+i/4)%1;c.globalAlpha=ea*(1-q)*.6;c.fillStyle='#ccc';c.beginPath();c.arc(P.cx-R*(1.8+q*1.2),P.wy+R*.9-q*R*.3,R*(.12+q*.2),0,7);c.fill();}c.globalAlpha=ea;break;
+  }
+}
 /* =====================================================================
    ロビー画面・共通
    ===================================================================== */
 let page='home',lockCat='skin',shopCat='skin',fStatus={};
-const emoteState={home:null,lk:null,im:null};
+const emoteState={home:null,lk:null,im:null};let wfxT0=0;
 function fitCv(cv){const d=Math.min(devicePixelRatio||1,2),w=Math.max(1,cv.clientWidth*d|0),h=Math.max(1,cv.clientHeight*d|0);if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}return d;}
 function payload(){return Object.assign({name:SV.name,id:SV.id,lv:SV.lv,course:SV.course,ttl:myTitle(),pl:myPlate(),rp:SV.rp},myLook());}
 function updateTop(){
@@ -2129,7 +2365,7 @@ function chips(box,list,cur,fn){box.innerHTML='';list.forEach(c=>{const b=docume
 function equip(c,k){
   initAudio();
   if(c==='emote'){const i=SV.slots.indexOf(k);if(i>=0){if(SV.slots.length>1)SV.slots.splice(i,1);}else{if(SV.slots.length>=4)SV.slots.shift();SV.slots.push(k);}save();emoteState.lk={k,t0:performance.now()};if(AU.ctx)SFX.boing();}
-  else{SV.eq[c]=k;save();if(c==='se')playSE(k);if(c==='bgm'){stopBGM();startBGM(k,true);}}
+  else{SV.eq[c]=k;save();if(c==='se')playSE(k);if(c==='bgm'){stopBGM();startBGM(k,true);}if(c==='wfx'){wfxT0=performance.now();if(AU.ctx)SFX.win();}}
   if(page==='locker')renderLocker();if(page==='shop')renderShop();if(page==='home')updateHome();
   if(ROOM)socket.emit('room_look',payload());
 }
@@ -2138,7 +2374,7 @@ function equip(c,k){
 const PSEUDO={title:'称号',plate:'プレート'};
 function renderLocker(){
   const cats=Object.keys(CATN).concat(Object.keys(PSEUDO)),box=$('lk-list');
-  chips($('lk-cats'),cats,lockCat,c=>{lockCat=c;renderLocker();});
+  chips($('lk-cats'),cats,lockCat,c=>{lockCat=c;if(c==='wfx')wfxT0=performance.now();renderLocker();});
   $('lk-cats').querySelectorAll('.chip').forEach((b,i)=>{if(PSEUDO[cats[i]])b.textContent=PSEUDO[cats[i]];});
   const prof='Lv'+SV.lv+' ・ コイン獲得 +'+Math.round(coinBoost(SV.lv)*100)+'% ・ '+rankInfo(SV.rp).name;
   if(lockCat==='title'||lockCat==='plate'){
@@ -2259,19 +2495,43 @@ function rollOne(minR){
 }
 function pull(n,w0){
   initAudio();if(G.phase==='spin')return false;
-  const cost=n===10?270:30;
+  const cost=n===10?GACHA_CONFIG.cost10:GACHA_CONFIG.cost1,gr=GACHA_CONFIG.guarantee10|0;
   if(SV.coins<cost){$('g-res').textContent='コインが足りません（'+cost+' NC）';toast('コインが足りません');return false;}
-  SV.coins-=cost;G.res=[];for(let i=0;i<n;i++)G.res.push(rollOne(n===10&&i===9&&G.res.every(r=>r.r===1)?2:0));   // 10連はR以上1つ確定
+  SV.coins-=cost;G.res=[];for(let i=0;i<n;i++)G.res.push(rollOne(n===10&&i===9&&gr>1&&G.res.every(r=>r.r<gr)?gr:0));   // 10連の保証
   bump('gacha',n);save();updateTop();
-  G.phase='spin';G.t0=performance.now();G.w=Math.max(G.w,w0||0);$('g-res').textContent='';G.big=G.res.reduce((a,b)=>b.r>a.r?b:a);G.om=null;
+  G.phase='spin';G.t0=performance.now();G.w=Math.max(G.w,w0||0);$('g-res').textContent='';G.big=G.res.reduce((a,b)=>b.r>a.r?b:a);
+  G.om=Object.assign(omenPlan(G.big.r),{t0:G.t0+550});   // 予告演出は回っている途中から始まる
   return true;
 }
 $('gpull').onclick=()=>pull(1);$('gpull10').onclick=()=>pull(10);
+// ガチャ画面の値段・確率の表示（GACHA_CONFIG から自動で作る）
+const fmtP=v=>(Math.round(v*100)/100)+'%';
+function gachaTexts(){
+  const C=GACHA_CONFIG,save=C.cost1*10-C.cost10;
+  $('gpull-c').textContent=C.cost1+' NC';$('gpull10-c').textContent=C.cost10+' NC'+(save>0?'（'+Math.round(save/C.cost1*10)/10+'回分おトク）':'');
+  $('g-rates').innerHTML='排出：自転車の種類／自転車カラー／髪型／服装／アクセ／軌跡／エモート／ボイス／BGM／勝利演出（ガチャ限定アイテムあり・ショップ限定は出ません）<br>'+
+    [1,2,3,4].map(r=>RN[r]+' '+fmtP(RW[r])).join(' ・ ')+(C.guarantee10>1?'　<b>10連は'+RN[C.guarantee10]+(C.guarantee10<4?'以上':'')+'1つ確定！</b>':'')+'　ダブりはNCに変換<br>回っている途中で光の色が変わったら…？ 虹色なら<b>LEGEND確定</b>！';
+}
+gachaTexts();
+// ラインナップ（レア度ごとの全アイテムと、1つあたりの確率）
+let lineR=4;
+function openLineup(){
+  const tabs=$('g-line-tabs');tabs.innerHTML='';
+  [4,3,2,1].forEach(r=>{const n=gpool(r).length,b=document.createElement('button');b.className='chip'+(r===lineR?' on':'');b.textContent=RN[r]+'（'+fmtP(RW[r])+'・'+n+'種）';b.onclick=()=>{lineR=r;openLineup();};tabs.appendChild(b);});
+  const pool=gpool(lineR),per=pool.length?RW[lineR]/pool.length:0,own=pool.filter(([c,k])=>SV.inv[c].includes(k)).length;
+  $('g-line-sub').textContent=RN[lineR]+'：全'+pool.length+'種（1つあたり 約'+fmtP(per)+'）・ 持っている '+own+'／'+pool.length+'　ダブったら '+REFUND[lineR]+' NC';
+  const box=$('g-line-list');box.innerHTML='';
+  pool.sort((a,b)=>(CAT[b[0]][b[1]].g?1:0)-(CAT[a[0]][a[1]].g?1:0)).forEach(([c,k])=>{const has=SV.inv[c].includes(k),it=CAT[c][k];box.appendChild(itemCard(c,k,{owned:has,ownLabel:'所持',sub:it.g?'ガチャ限定':'ショップでも買える',onClick:()=>openItem(c,k)}));});
+  $('g-line').classList.remove('hide');
+}
+$('g-lineup').onclick=()=>{initAudio();if(AU.ctx)SFX.click();openLineup();};
+$('g-line-close').onclick=()=>$('g-line').classList.add('hide');
+$('g-line').addEventListener('click',e=>{if(e.target.id==='g-line')$('g-line').classList.add('hide');});
 $('g-grid-close').onclick=()=>{$('g-grid').classList.add('hide');if(GG)clearTimeout(GG.tm);};
 (function(){
   const cv=$('gcv');
   const ang=e=>{const r=cv.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2));};
-  cv.addEventListener('pointerdown',e=>{if(G.phase==='omen'){omenSkip();return;}if(G.phase==='spin')return;initAudio();G.drag={a:ang(e),acc:0,v:0,t:performance.now(),id:e.pointerId};try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+  cv.addEventListener('pointerdown',e=>{if(G.phase==='spin'){omenSkip();return;}initAudio();G.drag={a:ang(e),acc:0,v:0,t:performance.now(),id:e.pointerId};try{cv.setPointerCapture(e.pointerId);}catch(_){}});
   cv.addEventListener('pointermove',e=>{
     if(!G.drag||e.pointerId!==G.drag.id)return;const a=ang(e);let d=a-G.drag.a;if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;
     const nt=performance.now(),dt=Math.max(.008,(nt-G.drag.t)/1000);G.drag.v=lerp(G.drag.v,d/dt,.35);G.drag.t=nt;G.drag.a=a;G.a+=d;G.w=0;
@@ -2320,7 +2580,14 @@ function omenPlan(r){
   return {start:cur,steps,kk,tk,end:tk+dur+(kk?.2:.15),fired:0,kf:false};
 }
 function omenColor(om,e){let c=om.start;om.steps.forEach((k,i)=>{if(e>=.9+i*.85)c=k;});if(om.kk===4&&e>=om.tk+.45)c=4;return c;}
-function omenSkip(){if(G.phase!=='omen')return;G.phase='reveal';G.shown=performance.now();revealGacha();}
+function omenSkip(){if(G.phase!=='spin')return;G.phase='reveal';G.shown=performance.now();G.w=Math.min(G.w,3);revealGacha();}
+// 回転の速さ：昇格するたびに加速、EPIC確定でさらに速く、LEGEND確定は一瞬止まりかけてから超高速回転
+function spinTop(om,oe){
+  let top=20;om.steps.forEach((k,i)=>{if(oe>=.9+i*.85)top+=k===2?5:8;});
+  if(om.kk===3&&oe>=om.tk)top=Math.max(top,36);
+  if(om.kk===4&&oe>=om.tk)top=oe<om.tk+.45?6:60;
+  return top;
+}
 let gLast=0;
 function drawGacha(t){
   const cv=$('gcv'),d=fitCv(cv),c=cv.getContext('2d'),w=cv.width/d,h=cv.height/d,dt=Math.min(.05,Math.max(0,(t-(gLast||t))/1000));gLast=t;
@@ -2328,19 +2595,22 @@ function drawGacha(t){
   const bg=c.createRadialGradient(w/2,h/2,10,w/2,h/2,Math.max(w,h)*.7);bg.addColorStop(0,'#3a2a7a');bg.addColorStop(1,'#120c30');c.fillStyle=bg;c.fillRect(0,0,w,h);
   const R=Math.min(w,h)*.36;
   if(G.phase==='spin'){
-    const e=(t-G.t0)/1000,sm=x=>x*x*(3-2*x);
-    const target=e<.35?20*sm(e/.35):e<1.1?20:20*Math.exp(-(e-1.1)*2.4);
-    G.w=Math.max(G.w*Math.exp(-dt*3),target);
-    if(e>2.3&&G.w<1.4){G.phase='omen';G.om=Object.assign(omenPlan(G.big.r),{t0:t});if(AU.ctx)SFX.charge();}
-  }else if(G.phase==='omen'){G.w=Math.max(.6,G.w*Math.exp(-dt*1.2));}
+    const e=(t-G.t0)/1000,om=G.om,oe=(t-om.t0)/1000,sm=x=>x*x*(3-2*x),top=spinTop(om,oe);
+    if(oe>=0&&!om.cs){om.cs=true;if(AU.ctx)SFX.charge();}
+    const target=e<.35?top*sm(e/.35):oe<om.end?top:top*Math.exp(-(oe-om.end)*2.6);
+    G.w+=(target-G.w)*Math.min(1,dt*(target>G.w?5:3));
+    if(oe>om.end+.4&&G.w<1.4){G.phase='reveal';G.shown=t;revealGacha();}
+  }
   else if(!G.drag){G.w*=Math.exp(-dt*1.6);if(G.phase==='idle'&&Math.abs(G.w)<.05)G.w=0;}
   G.a+=G.w*dt;
   const tick=Math.floor(G.a/(Math.PI/6));if(tick!==G.lastTick&&t-G.tickT>40){G.lastTick=tick;G.tickT=t;if(AU.ctx&&Math.abs(G.w)>.3)SFX.ratchet();}
   // 回している途中から、うっすら予告の光
-  if(G.phase==='spin'&&G.big){const e=(t-G.t0)/1000;if(e>1.2){const col=GRC[1];c.save();c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(.5,(e-1.2)*.5);const g2=c.createRadialGradient(w/2,h/2,R*.2,w/2,h/2,R*1.4);g2.addColorStop(0,col);g2.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g2;c.fillRect(0,0,w,h);c.restore();}}
-  if(G.phase==='omen'&&G.om)drawOmenBack(c,w,h,R,t);
+  const omOn=G.phase==='spin'&&G.om&&t>=G.om.t0;
+  if(omOn)drawOmenBack(c,w,h,R,t);
   drawTire(c,w/2,h/2,R,G.a,G.w);
-  if(G.phase==='omen'&&G.om){drawOmenFront(c,w,h,R,t);if((t-G.om.t0)/1000>=G.om.end){G.phase='reveal';G.shown=t;revealGacha();}}
+  if(omOn){drawOmenFront(c,w,h,R,t);
+    // 高速回転のスピード線
+    if(G.w>30){c.save();c.globalCompositeOperation='lighter';const n=Math.min(24,(G.w-25)|0);for(let i=0;i<n;i++){const a=hsh(i,21)*7+t/60,r0=R*(1.15+hsh(i,22)*.3);c.strokeStyle='rgba(255,255,255,'+(.15+hsh(i,23)*.25)+')';c.lineWidth=Math.max(1,R*.012);c.beginPath();c.arc(w/2,h/2,r0,a,a+.5+G.w/120);c.stroke();}c.restore();}}
   if(G.phase==='idle'&&!G.drag&&Math.abs(G.w)<.5){
     const k=(t/900)%1;c.strokeStyle='rgba(255,255,255,'+(.7-k*.5)+')';c.lineWidth=4;c.beginPath();c.arc(w/2,h/2,R*1.12,-1.2+k*1.2,.2+k*1.2);c.stroke();
     emoText(c,'クランクを指でぐるっと回す！',w/2,h/2+R*1.3,R*.13,'#fff');
@@ -2400,7 +2670,7 @@ function drawOmenFront(c,w,h,R,t){
       c.save();c.translate(w/2,h*.17);c.scale(sc,sc);emoText(c,'EPIC以上確定！',0,0,R*.24,'#f3a6ff');c.restore();
     }
   }
-  if(e<om.end-.1)emoText(c,'タップでスキップ',w/2,h-R*.12,R*.09,'rgba(255,255,255,.7)');
+  if(e<om.end+.3)emoText(c,'タップでスキップ',w/2,h-R*.12,R*.09,'rgba(255,255,255,.7)');
 }
 function revealGacha(){
   const R2=G.big;if(AU.ctx)SFX.gacha(R2.r);
@@ -2619,7 +2889,12 @@ function prevDraw(cv,t,where){
   c.setTransform(d,0,0,d,0,0);stageBg(c,w,h,t,T,true);
   const sg=c.createRadialGradient(w/2,h*.85,5,w/2,h*.85,w*.45);sg.addColorStop(0,'rgba(255,240,180,.45)');sg.addColorStop(1,'rgba(255,240,180,0)');c.fillStyle=sg;c.fillRect(0,0,w,h);
   c.fillStyle='#1b2149';c.beginPath();c.ellipse(w/2,h*.9,w*.32,h*.07,0,0,7);c.fill();c.strokeStyle='#ffd23f';c.lineWidth=3;c.stroke();
+  // ロッカーで「勝利演出」を選んでいるときは、勝ちポーズと勝利演出をくり返しプレビュー
+  const wfxOn=where==='lk'&&lockCat==='wfx';
+  if(wfxOn&&(!emoteState.lk||t-emoteState.lk.t0>EMO_DUR*1000+300))emoteState.lk={k:'gg',t0:t};
   c.save();c.translate(0,Math.sin(t/300)*2);drawSide(c,w,h*.97,myLook(),t,1,{emote:emoteState[where],trail:SV.eq.trail!=='none'});c.restore();
+  if(wfxOn){const per=4200,e=(t-wfxT0)%per;drawWfx(c,w,h,SV.eq.wfx||'confetti',e,1);
+    c.font='900 '+Math.max(11,h*.055|0)+'px '+FONT;c.textAlign='right';c.textBaseline='middle';c.lineWidth=4;c.strokeStyle=OUTL;const s='勝利演出：'+((WFX[SV.eq.wfx]||{}).n||'');c.strokeText(s,w-10,h*.95);c.fillStyle='#ffe56b';c.fillText(s,w-10,h*.95);}
   const ph=Math.max(34,Math.min(h*.15,64)),pw=Math.min(w*.55,ph*4.6);
   drawPlate(c,10,10,pw,ph,{lv:SV.lv,name:SV.name,ttl:myTitle(),pl:myPlate()},t);
   const ri=rankInfo(SV.rp),bs=ph*1.25;drawRankBadge(c,w-bs*.62,bs*.58,bs,ri.i,t,ri.div);
@@ -2846,13 +3121,43 @@ async function goFull(){
   }catch(e){toast('この端末では全画面にできません。ホーム画面に追加すると全画面で遊べます',3500);}
 }
 $('btn-fs').onclick=goFull;
-$('btn-export').onclick=()=>{saveNow();const code='NMv4:'+btoa(unescape(encodeURIComponent(JSON.stringify(SV))));const ta=$('bk-code');ta.value=code;ta.classList.remove('hide');$('btn-copy-code').classList.remove('hide');};
+/* ===== 引き継ぎコード（短縮版 NM5）
+   持ち物は「アイテムの並び順のビット列」にして、全体を圧縮してから英数字にする。
+   ※アイテムは必ず各リストの末尾に追加すること（途中に入れると古いコードの持ち物がずれる）
+   v12までの長いコード（NMv4: / NMv3:）もそのまま復元できる ===== */
+const b64u=u8=>{let s='';for(let i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');};
+const ub64u=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;};
+async function zip(u8,inflate){
+  const cs=inflate?new DecompressionStream('deflate-raw'):new CompressionStream('deflate-raw'),w=cs.writable.getWriter();w.write(u8);w.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+function invBits(c){const ks=Object.keys(CAT[c]),u=new Uint8Array(Math.ceil(ks.length/8));ks.forEach((k,i)=>{if(SV.inv[c].includes(k))u[i>>3]|=1<<(i&7);});return b64u(u);}
+function bitsInv(c,s){const ks=Object.keys(CAT[c]),u=ub64u(s||''),o=[];ks.forEach((k,i)=>{if(u[i>>3]&(1<<(i&7)))o.push(k);});return o;}
+async function makeCode(){
+  const d=newSave(),P={};
+  // 初期値と同じ項目は入れない（短くするため）
+  for(const k of Object.keys(SV)){if(k==='inv'||k==='ts'||k==='daily'||k==='rkPend')continue;if(JSON.stringify(SV[k])!==JSON.stringify(d[k]))P[k]=SV[k];}
+  P.inv={};for(const c of Object.keys(CAT))P.inv[c]=invBits(c);
+  if(P.eq){const e={};for(const c in SV.eq)if(SV.eq[c]!==d.eq[c])e[c]=SV.eq[c];P.eq=e;}
+  const raw=new TextEncoder().encode(JSON.stringify(P));
+  try{return 'NM5'+b64u(await zip(raw));}catch(e){return 'NM5u'+b64u(raw);}
+}
+async function readCode(code){
+  code=code.replace(/\s+/g,'');
+  if(code.startsWith('NMv4:')||code.startsWith('NMv3:')){const raw=JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))));return code.startsWith('NMv4:')?raw:migrateV3(raw);}
+  if(!code.startsWith('NM5'))throw 0;
+  const u=code.startsWith('NM5u')?ub64u(code.slice(4)):await zip(ub64u(code.slice(3)),true),P=JSON.parse(new TextDecoder().decode(u)),s=newSave();
+  for(const k in P){if(k==='inv'||k==='eq')continue;s[k]=P[k];}
+  s.eq=Object.assign({},s.eq,P.eq||{});
+  for(const c of Object.keys(CAT)){const l=bitsInv(c,P.inv&&P.inv[c]);s.inv[c]=[...new Set([...s.inv[c],...l])];}
+  return s;
+}
+$('btn-export').onclick=async()=>{saveNow();const code=await makeCode();const ta=$('bk-code');ta.value=code;ta.classList.remove('hide');$('btn-copy-code').classList.remove('hide');$('bk-len').textContent='（'+code.length+'文字）';};
 $('btn-copy-code').onclick=()=>copyText($('bk-code').value,'コピーしました');
-$('btn-import').onclick=()=>{
+$('btn-import').onclick=async()=>{
   const code=(prompt('引き継ぎコードを貼り付けてください')||'').trim();if(!code)return;
   try{
-    const raw=JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))));let s=null;
-    if(code.startsWith('NMv4:'))s=raw;else if(code.startsWith('NMv3:'))s=migrateV3(raw);
+    const s=await readCode(code);
     if(!s||!s.id)throw 0;
     SV=fixSave(s);saveNow();toast('復元しました。再読み込みします…');setTimeout(()=>location.reload(),900);
   }catch(e){toast('コードが正しくありません');}
@@ -2927,6 +3232,24 @@ function handleRoomLink(){
   if(socket.connected)go();else socket.once('connect',()=>setTimeout(go,200));
 }
 $('rm-leave').onclick=()=>{$('code-modal').classList.add('hide');socket.emit('leave');hideRoom();$('lobby').style.display='flex';showPage('home');};
+// 試合中のエモート：ふきだしがぽんっと出て、中の絵が動く（エモートごとに動きが違う）
+const EMO_ANIM={wave:'wave',thumbs:'pop',laugh:'shake',wheelie:'tilt',clap:'pulse',bow:'nod',angry:'shake',cry:'drip',dance:'bounce',heart:'pulse',sleep:'float',gg:'spin',
+  think:'tilt',ramen:'nod',yoyu:'tilt',shock:'shake',cool:'pop',peace:'wave',flex:'pulse',fire:'flame',party:'bounce',crowne:'drop',rocket:'fly',hofe:'spin'};
+function emoteBubble(c,x,y,k,e){
+  const E=EMOS[k];if(!E)return;const a=EMO_ANIM[k]||'pop',ps=popS(e),sz=30;
+  c.save();c.translate(x,y);c.scale(ps,ps);
+  c.fillStyle='#fff';c.strokeStyle=OUTL;c.lineWidth=3;c.beginPath();c.arc(0,-sz*.9,sz*.8,0,7);c.moveTo(-6,-sz*.15);c.lineTo(0,sz*.15);c.lineTo(6,-sz*.15);c.fill();c.stroke();
+  c.fillStyle='#fff';c.fillRect(-7,-sz*.3,14,6);
+  let dx=0,dy=0,rot=0,s=1;
+  switch(a){case 'wave':rot=Math.sin(e*12)*.4;break;case 'shake':dx=Math.sin(e*40)*3;break;case 'tilt':rot=Math.sin(e*3)*.25;break;case 'pulse':s=1+.18*Math.abs(Math.sin(e*8));break;
+    case 'nod':dy=Math.abs(Math.sin(e*6))*4;break;case 'bounce':dy=-Math.abs(Math.sin(e*7))*7;break;case 'float':dy=Math.sin(e*3)*3;break;case 'spin':rot=e*5;break;
+    case 'drop':dy=-Math.max(0,1-e*2.5)*18;break;case 'fly':dx=Math.sin(e*4)*4;dy=-Math.abs(Math.sin(e*4))*6;rot=.3;break;case 'flame':s=1+.1*Math.sin(e*20);break;case 'drip':dy=Math.sin(e*10)*1.5;break;}
+  c.save();c.translate(dx,-sz*.9+dy);c.rotate(rot);c.scale(s,s);emoji(c,E.i,0,0,sz*.95);c.restore();
+  // まわりの小さな演出
+  if(a==='pulse'||a==='spin'||k==='gg'||k==='party')for(let i=0;i<5;i++){const q=((e*1.2)+i/5)%1,an=i*1.26+e;c.globalAlpha=1-q;c.fillStyle=['#ffd23f','#ff6fa3','#7cf'][i%3];c.beginPath();c.arc(Math.cos(an)*sz*(.9+q*.6),-sz*.9+Math.sin(an)*sz*(.9+q*.6),2.5,0,7);c.fill();}
+  if(k==='sleep'||k==='laugh'||k==='heart'||k==='angry')for(let i=0;i<2;i++){const q=((e*.9)+i/2)%1;c.globalAlpha=1-q;emoText(c,k==='sleep'?'Z':k==='laugh'?'w':k==='heart'?'♥':'💢',sz*.7+q*8,-sz*1.5-q*sz*.6,9+q*6,k==='heart'?'#ff4081':k==='sleep'?'#9fd4ff':'#fff');}
+  c.restore();
+}
 function speech(c,x,y,s,size){
   c.font='900 '+(size|0)+'px '+FONT;const tw=Math.min(c.measureText(s).width,size*14),pw=tw+size*1.2,ph=size*1.7;
   c.fillStyle='#ffffff';c.strokeStyle=OUTL;c.lineWidth=3;c.beginPath();c.moveTo(x-pw/2+10,y-ph);c.lineTo(x+pw/2-10,y-ph);c.quadraticCurveTo(x+pw/2,y-ph,x+pw/2,y-ph+10);c.lineTo(x+pw/2,y-10);c.quadraticCurveTo(x+pw/2,y,x+pw/2-10,y);
@@ -3569,6 +3892,7 @@ function drawRider(p,team,t,name,alpha){
   const FH=L(FW[0],FW[1],FW[2]),RH=L(0,RW[1],RW[2]),HT=L(0,BR.ht[0],BR.ht[1]),BB=L(0,BR.bb[0],BR.bb[1]),S=L(0,BR.s[0],BR.s[1]),HB=BR.hb?L(0,BR.hb[0],BR.hb[1]):null;
   const bal=Math.sin(t/260)*2.2;
   const GL=BR.g?L(-BR.gw,BR.g[0],BR.g[1]):L(-14,sy-4+bal,sz+1),GR=BR.g?L(BR.gw,BR.g[0],BR.g[1]):L(14,sy-4-bal,sz+1);
+  if(sk.deco||sk.hof)rigBig(p.skin,sk.hof,'pre',L,t,dy,RW);   // ライダーより奥にあるもの（前カゴのかぼちゃ・月・王冠）
   for(const w of front)wheel(w);
   // フレーム
   const fr=BR.fr||'dia';
@@ -3621,7 +3945,7 @@ function drawRider(p,team,t,name,alpha){
     for(let i=0;i<4;i++){const an=t/500+i*Math.PI/2,q=L(Math.cos(an)*13,8+dy+Math.sin(an*1.3)*5,Math.sin(an)*15);ctx.fillStyle='#fff8c4';ctx.beginPath();for(let k=0;k<8;k++){const rr=k%2?.5*q[2]:2.2*q[2],a2=k*Math.PI/4;ctx.lineTo(q[0]+Math.cos(a2)*rr,q[1]+Math.sin(a2)*rr);}ctx.fill();}
     ctx.restore();
   }
-  if(sk.deco&&!BR.okm){const dp=L(0,RW[1]+3.5,RW[2]-3.5);seasonDeco(ctx,p.skin,dp[0],dp[1]-4*dp[2],Math.max(10,9.5*dp[2]),t);}   // 季節スキンの飾り（荷台）
+  if((sk.deco||sk.hof)&&!BR.okm)rigBig(p.skin,sk.hof,'post',L,t,dy,RW);   // 季節スキン・殿堂チャリの大きな飾り
   rigSeg([L(0,BR.s[0]+.4,BR.s[1]-2),L(0,BR.s[0]+.4,BR.s[1]+1.9)],2.4,'#262630');
   const SL=[-7.2,sy,sz],SR=[7.2,sy,sz];
   const sleeve=ft.st==='cape'?'#f3e5ab':ft.c,upper=F.sl==='n'?SKIN_TONE:sleeve,fore=F.sl==='l'?sleeve:SKIN_TONE;
@@ -3748,6 +4072,60 @@ function renderCourseThumb(cvs,i){
   CAM.ok=false;setCam(0,z0,110,0,true);
   try{renderWorld(i,{obs:[{id:1,k:'car',x:56,z:z0+260,vz:-90,d:-1,c:i},{id:2,k:'car',x:-56,z:z0+380,vz:50,d:1,c:i+2}],P:[Object.assign({x:-20,z:z0,v:110,_ph:1},myLook())]},performance.now(),0,null);}catch(e){console.error(e);}
   ctx=sc;W=sW;H=sH;Object.assign(CAM,sCam);Object.assign(CAMW,sCW);CURP=sP;CURCI=sCI;RMz=NaN;
+}
+// 走っている最中（うしろから見た図）の、季節限定・殿堂チャリの大きな目玉パーツ
+// pre=ライダーより奥（前方にあるもの） / post=ライダーより手前
+function rigBig(key,hof,layer,L,t,dy,RW){
+  const k=seasonOf(key),c=ctx,rk=L(0,RW[1]+4,RW[2]-3.5),u=rk[2],lw=Math.max(1,u*.5);
+  c.save();c.lineJoin='round';c.lineCap='round';
+  if(hof){
+    if(layer==='pre'){const cr=L(0,34+dy,9),s=u*9;c.save();c.translate(cr[0],cr[1]+Math.sin(t/300)*u*.5);
+      c.globalCompositeOperation='lighter';c.fillStyle='rgba(255,210,80,.25)';c.beginPath();c.arc(0,-s*.1,s*.9,0,7);c.fill();c.globalCompositeOperation='source-over';
+      c.beginPath();c.moveTo(-s*.45,s*.2);c.lineTo(-s*.5,-s*.3);c.lineTo(-s*.22,-s*.05);c.lineTo(0,-s*.42);c.lineTo(s*.22,-s*.05);c.lineTo(s*.5,-s*.3);c.lineTo(s*.45,s*.2);c.closePath();_f(c,'#ffc107',lw);
+      [['#e53935',0],['#1e88e5',-.28],['#43a047',.28]].forEach(([col,x])=>{c.beginPath();c.arc(x*s,s*.02,s*.07,0,7);_f(c,col,lw*.5);});c.restore();}
+    else{const sp=L(0,27+dy,-6),flap=Math.sin(t/260)*.12;   // 左右に広がる金の翼
+      for(const sd of[-1,1]){c.save();c.translate(sp[0],sp[1]);c.scale(sd,1);c.rotate(-flap);
+        for(let i=8;i>=0;i--){const q=.12+i*.11,bx=q*u*30,by=-Math.sin(q*Math.PI*.6)*u*16,Lf=u*(9+q*14);c.save();c.translate(bx,by);c.rotate(1.25+q*.5);c.beginPath();c.moveTo(0,-u*1.3);c.quadraticCurveTo(Lf*.6,-u*2,Lf,0);c.quadraticCurveTo(Lf*.6,u*2,0,u*1.3);c.closePath();
+          const g=c.createLinearGradient(0,0,Lf,0);g.addColorStop(0,'#fff3b0');g.addColorStop(1,'#ffb300');c.fillStyle=g;c.fill();c.lineWidth=lw*.6;c.strokeStyle=OUTL;c.stroke();c.restore();}
+        c.strokeStyle='#ffe082';c.lineWidth=u*1.5;c.beginPath();for(let i=0;i<=10;i++){const q=i/10;c.lineTo(q*u*30,-Math.sin(q*Math.PI*.6)*u*16);}c.stroke();c.restore();}
+      for(let i=0;i<6;i++){const q=((t/1200)+i/6)%1,a=i*1.05+t/900;c.globalAlpha=1-q;c.fillStyle='#fff3b0';_star(c,sp[0]+Math.cos(a)*u*(14+q*10),sp[1]-u*4+Math.sin(a)*u*(8+q*6),u*(1.8-q),4,.3,0);c.fill();}c.globalAlpha=1;}
+  }
+  if(!String(key).startsWith('ev_')){c.restore();return;}
+  if(layer==='pre'){
+    if(k==='tsukimi'){const m=L(0,48+dy,30),r=m[2]*15;const mg=c.createRadialGradient(m[0],m[1],r*.5,m[0],m[1],r*1.8);mg.addColorStop(0,'rgba(255,245,190,.5)');mg.addColorStop(1,'rgba(255,245,190,0)');c.fillStyle=mg;c.fillRect(m[0]-r*2,m[1]-r*2,r*4,r*4);c.beginPath();c.arc(m[0],m[1],r,0,7);c.fillStyle='#fff6c4';c.fill();}
+    if(k==='halloween'||k==='valentine'){const p=L(0,25+dy,11),s=p[2]*17;
+      if(k==='halloween'){const fl=.75+.25*Math.sin(t/90)*Math.sin(t/37);c.save();c.globalCompositeOperation='lighter';c.fillStyle='rgba(255,150,40,'+(.3*fl)+')';c.beginPath();c.arc(p[0],p[1],s*1.1,0,7);c.fill();c.restore();
+        for(const [dx,ww] of [[-.3,.32],[.3,.32],[-.13,.36],[.13,.36],[0,.33]]){c.beginPath();c.ellipse(p[0]+dx*s,p[1],ww*s,s*.46,0,0,7);_f(c,dx===0?'#ff9800':'#f57c00',lw);}
+        c.strokeStyle='#33691e';c.lineWidth=s*.07;c.beginPath();c.moveTo(p[0],p[1]-s*.42);c.quadraticCurveTo(p[0]+s*.1,p[1]-s*.65,p[0]+s*.25,p[1]-s*.62);c.stroke();}
+      else{_heart(c,p[0],p[1]+s*.1,s*.85);_f(c,'#e91e63',lw);c.fillStyle='#ffd1e3';c.fillRect(p[0]-s*.05,p[1]-s*.3,s*.1,s*.55);}}
+  }else{
+    switch(k){
+      case 'koinobori':{const b=L(0,RW[1]+5,RW[2]-4),tp=L(0,58+dy,RW[2]-4),q=tp[2];c.strokeStyle='#8d6e63';c.lineWidth=q*1.4;c.beginPath();c.moveTo(b[0],b[1]);c.lineTo(tp[0],tp[1]);c.stroke();
+        c.save();c.translate(tp[0],tp[1]);c.rotate(t/150);for(let i=0;i<6;i++){c.rotate(Math.PI/3);c.fillStyle=['#e53935','#ffd23f','#1e88e5'][i%3];c.beginPath();c.moveTo(0,0);c.lineTo(q*3,-q*.8);c.lineTo(q*3,q*.8);c.fill();}c.restore();
+        const sd=Math.sin(t/1500)>0?1:-1;koiFish(c,tp[0],tp[1]+q*5,q*26,'#263238','#90a4ae',t,0,sd);koiFish(c,tp[0],tp[1]+q*12,q*22,'#e53935','#ffcdd2',t,1.3,sd);koiFish(c,tp[0],tp[1]+q*18,q*18,'#1e88e5','#bbdefb',t,2.6,sd);break;}
+      case 'tanabata':{const b=L(0,RW[1]+5,RW[2]-4),tp=L(0,60+dy,RW[2]-4),q=tp[2];c.strokeStyle='#558b2f';c.lineWidth=q*1.2;c.beginPath();c.moveTo(b[0],b[1]);c.lineTo(tp[0],tp[1]);c.stroke();
+        for(let i=0;i<14;i++){const yy=lerp(tp[1],b[1]-q*8,hsh(i,1)),xx=tp[0]+(hsh(i,2)-.5)*q*20;c.save();c.translate(xx,yy);c.rotate(-.7+hsh(i,3)*1.4);c.fillStyle='#7cb342';c.beginPath();c.ellipse(0,0,q*3,q*.7,0,0,7);c.fill();c.restore();}
+        for(let i=0;i<7;i++){const xx=tp[0]+(hsh(i,5)-.5)*q*18,yy=lerp(tp[1]+q*4,b[1]-q*12,hsh(i,6));c.save();c.translate(xx,yy);c.rotate(Math.sin(t/450+i)*.2);c.beginPath();c.rect(-q,0,q*2,q*6);_f(c,['#e53935','#ffd23f','#42a5f5','#ab47bc','#66bb6a'][i%5],lw*.5);c.restore();}
+        _star(c,tp[0],tp[1]-q*2,q*3,5,.45,t/900);_f(c,'#ffe082',lw);break;}
+      case 'ajisai':{const tp=L(0,47+dy,-3),q=tp[2],b=L(0,RW[1]+5,RW[2]-3);c.strokeStyle='#5d4037';c.lineWidth=q*.9;c.beginPath();c.moveTo(b[0],b[1]);c.lineTo(tp[0],tp[1]);c.stroke();
+        c.beginPath();c.moveTo(tp[0]-q*22,tp[1]+q*7);c.quadraticCurveTo(tp[0],tp[1]-q*14,tp[0]+q*22,tp[1]+q*7);for(let i=0;i<6;i++){const a=tp[0]+q*22-i*q*7.33,b2=a-q*7.33;c.quadraticCurveTo((a+b2)/2,tp[1]+q*4,b2,tp[1]+q*7);}c.closePath();
+        const ug=c.createLinearGradient(tp[0]-q*20,0,tp[0]+q*20,0);ug.addColorStop(0,'#5c6bc0');ug.addColorStop(.5,'#9575cd');ug.addColorStop(1,'#42a5f5');c.fillStyle=ug;c.fill();c.lineWidth=lw;c.strokeStyle=OUTL;c.stroke();break;}
+      case 'sakura':case 'momiji':{const a=L(0,RW[1]+5,RW[2]-3),m=L(0,50+dy,-2),f=L(0,34+dy,14),q=m[2];c.strokeStyle='#5d3a24';c.lineWidth=q*1.5;c.beginPath();c.moveTo(a[0],a[1]);c.quadraticCurveTo(m[0]-q*14,m[1]-q*6,f[0]+q*6,f[1]);c.stroke();
+        for(let i=0;i<12;i++){const uu=i/11,x=lerp(a[0],f[0]+q*6,uu)-Math.sin(uu*Math.PI)*q*10+Math.sin(i*2.1)*q*4,y=lerp(a[1],f[1],uu)-Math.sin(uu*Math.PI)*q*22+Math.cos(i*1.3)*q*3;
+          if(k==='sakura')_sakura(c,x,y,q*(2.6+hsh(i,2)),t/2000+i,i%3?'#ffc1d9':'#ffe4ef');else{_maple(c,x,y,q*(3+hsh(i,2)),i);_f(c,['#d84315','#f9a825','#e64a19','#c62828'][i%4],lw*.5);}}break;}
+      case 'newyear':{const kx=rk[0]+Math.sin(t/900)*u*6-u*20,ky=rk[1]-u*40+Math.sin(t/600)*u*2;c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=Math.max(1,u*.3);c.beginPath();c.moveTo(rk[0],rk[1]);c.quadraticCurveTo(rk[0]-u*6,rk[1]-u*12,kx,ky+u*6);c.stroke();
+        c.save();c.translate(kx,ky);c.rotate(-.15);c.beginPath();c.rect(-u*5,-u*6,u*10,u*12);_f(c,'#fffaf0',lw);c.font='900 '+Math.max(8,u*9|0)+'px '+FONT;c.textAlign='center';c.textBaseline='middle';c.fillStyle='#d32f2f';c.fillText('寿',0,u*.4);c.restore();
+        seasonDeco(c,key,rk[0],rk[1]-u*5,u*13,t);break;}
+      case 'hanabi':{for(let j=0;j<2;j++){const per=2200,q=((t+j*1100)%per)/per,bp=L((j?-1:1)*9,58+dy+j*6,-8);if(q<.22)continue;const uu=(q-.22)/.78,rr=bp[2]*(4+uu*14);
+          c.save();c.globalCompositeOperation='lighter';c.globalAlpha=1-uu;for(let i=0;i<18;i++){const a=i*Math.PI/9;c.strokeStyle=['#ff7043','#ffd54f','#4fc3f7','#f06292','#b388ff'][(i+j)%5];c.lineWidth=Math.max(1,bp[2]*.6);c.beginPath();c.moveTo(bp[0]+Math.cos(a)*rr*.5,bp[1]+Math.sin(a)*rr*.5);c.lineTo(bp[0]+Math.cos(a)*rr,bp[1]+Math.sin(a)*rr);c.stroke();}c.restore();}
+        seasonDeco(c,key,rk[0],rk[1]-u*5,u*12,t);break;}
+      case 'hina':seasonDeco(c,key,rk[0],rk[1]-u*6,u*15,t);break;
+      case 'xmas':{const s=u*14;c.beginPath();c.moveTo(rk[0]-s*.5,rk[1]);c.quadraticCurveTo(rk[0]-s*.65,rk[1]-s*.8,rk[0],rk[1]-s*1.05);c.quadraticCurveTo(rk[0]+s*.65,rk[1]-s*.8,rk[0]+s*.5,rk[1]);c.closePath();_f(c,'#c62828',lw);
+        c.beginPath();c.rect(rk[0]-s*.15,rk[1]-s*1.25,s*.3,s*.3);_f(c,'#43a047',lw*.7);c.strokeStyle='#ffd23f';c.lineWidth=s*.06;c.beginPath();c.moveTo(rk[0]-s*.2,rk[1]-s*.95);c.lineTo(rk[0]+s*.2,rk[1]-s*.95);c.stroke();break;}
+      default:seasonDeco(c,key,rk[0],rk[1]-u*5,u*12,t);
+    }
+  }
+  c.restore();
 }
 /* =====================================================================
    ゲーム状態・同期（自分の横移動はクライアント予測で遅延なく・なめらかに）
@@ -4138,8 +4516,9 @@ function ribbon(text,sub,col,size){
 function drawBubbles(t){
   for(let i=0;i<2;i++){
     const b=roomBub[i];if(!b||t-b.t0>3600)continue;
-    const p=D.P[i],a=clamp((3600-(t-b.t0))/400,0,1);ctx.save();ctx.globalAlpha=a;
-    if(p&&p._hx!=null&&p._hx>-40&&p._hx<W+40&&p._hy>30&&p._hy<H){speech(ctx,p._hx,p._hy-p._hr*(i===slot?1.7:2.9),b.s,15);}
+    const p=D.P[i],a=clamp((3600-(t-b.t0))/400,0,1),em=roomEmo[i]&&Math.abs(roomEmo[i].t0-b.t0)<5?roomEmo[i]:null;ctx.save();ctx.globalAlpha=a;
+    if(em&&p&&p._hx!=null&&p._hx>-40&&p._hx<W+40&&p._hy>30&&p._hy<H){emoteBubble(ctx,p._hx,p._hy-p._hr*(i===slot?1.7:2.9),em.k,(t-em.t0)/1000);}
+    else if(p&&p._hx!=null&&p._hx>-40&&p._hx<W+40&&p._hy>30&&p._hy<H){speech(ctx,p._hx,p._hy-p._hr*(i===slot?1.7:2.9),b.s,15);}
     else{const nm=(D.names&&D.names[i])||'相手';speech(ctx,i===slot?W*.32:W*.68,H-120,nm+'：'+b.s,14);}
     ctx.restore();
   }
@@ -4623,7 +5002,8 @@ function showTitle(){
   $('title').classList.remove('hide');
 }
 function hideTitle(){
-  if(!TITLE||TITLE.out)return;initAudio();if(AU.ctx){SFX.bell?SFX.bell():SFX.claim();}
+  if(!TITLE||TITLE.out)return;initAudio();
+  playVoice('nande',1);   // タイトルで「なにが目的なん？」
   TITLE.out=performance.now();$('title').classList.add('fade');
   setTimeout(()=>{$('title').classList.add('hide');$('title').classList.remove('fade');TITLE=null;},450);
 }
@@ -4652,7 +5032,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v12',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v13',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{e.preventDefault();hideTitle();});
