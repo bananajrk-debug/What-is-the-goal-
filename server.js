@@ -1,5 +1,5 @@
-// なにが目的なん？ ONLINE v13 — Express + Socket.io（サーバー権威型）
-// 録音ボイス・全エモートの動き・ガチャ演出強化とラインナップ・季節報酬と殿堂チャリの豪華化・短い引き継ぎコード／タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
+// なにが目的なん？ ONLINE v14 — Express + Socket.io（サーバー権威型）
+// お知らせページ・管理者画面（ユーザー管理／利用停止／警告／個別メッセージ／全員へのお知らせ）・通報（5人以上で管理者に通知）／録音ボイス・全エモートの動き・ガチャ演出強化とラインナップ・季節報酬と殿堂チャリの豪華化・短い引き継ぎコード／タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
 // フレンドは「ユーザー名」で検索・追加。ユーザー名はサーバーの名簿（names.json）で重複しないように管理する
@@ -848,7 +848,122 @@ setInterval(() => {
   }
 }, 1000);
 
+/* =====================================================================
+   運営（管理者）機能：お知らせ・警告・個別メッセージ・利用停止・通報
+   管理者は「アカウントの秘密ID（uid）」で判定する。名前を変えても管理者のまま。
+   ADMIN_HASHES に入っているのは uid をハッシュ化したもの（元の uid は分からない）。
+   ほかの人を管理者にしたいときは、環境変数 ADMIN_UIDS に uid をカンマ区切りで入れる。
+   ※停止・お知らせなどは Upstash（外部DB）を設定していないと、Renderの再起動で消えます
+   ===================================================================== */
+const ADMIN_HASHES = new Set(['c1a56d65affa4e9ef80e2556ad7c292bb8ed6222c723ee9cd57627fa5fb5989e']);   // 運営アカウント
+const adminHash = uid => crypto.createHash('sha256').update('nm-admin:' + uid).digest('hex');
+const isAdminUid = uid => !!uid && (ADMIN_HASHES.has(adminHash(uid)) || (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(uid));
+const REPORT_ALERT = 5;        // ちがうプレイヤー何人から通報されたら管理者画面の一番上に出すか
+const MOD_FILE = process.env.MOD_FILE || path.join(__dirname, 'moderation.json');
+const MOD = { notices: [], bans: {}, warns: {}, pmsg: {}, reports: {}, seen: {}, nid: 1 };
+function loadMod(j) {
+  if (!j || typeof j !== 'object') return;
+  for (const k of ['bans', 'warns', 'pmsg', 'reports', 'seen']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
+  if (Array.isArray(j.notices)) MOD.notices = j.notices.slice(0, 100);
+  MOD.nid = Math.max(1, parseInt(j.nid, 10) || 1);
+}
+const saveMod = saver('mod', MOD_FILE, () => MOD, 2000);
+const KINDS = { update: 'アップデート', maint: 'メンテナンス', info: 'お知らせ', event: 'イベント', important: '重要' };
+const txt = (v, n) => typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b-\u001f\u007f<>]/g, '').trim().slice(0, n) : '';
+const banOf = pk => { const b = pk && MOD.bans[pk]; if (!b) return null; if (b.until && b.until < Date.now()) { delete MOD.bans[pk]; saveMod(); return null; } return b; };
+const repCount = pk => { const r = MOD.reports[pk]; return r ? new Set(r.list.map(x => x.from)).size : 0; };
+const adminSockets = () => [...io.sockets.sockets.values()].filter(s => s.isAdmin);
+function userRow(pk) {
+  const name = nameOfPk(pk), sid = byPk.get(pk), sk = sockOf(sid), seen = MOD.seen[pk] || {}, b = banOf(pk);
+  return { pk, name: name || seen.n || '（名前なし）', lv: (sk && sk.nmLv) || seen.lv || 1, online: !!sk, st: sk ? statusOf(sid) : 'offline', seen: seen.t || 0, since: seen.c || 0,
+    rep: repCount(pk), warn: (MOD.warns[pk] || []).length, ban: b ? { until: b.until || 0, reason: b.reason || '' } : null };
+}
+function flagged() { return Object.keys(MOD.reports).filter(pk => repCount(pk) >= REPORT_ALERT).map(pk => Object.assign(userRow(pk), { reasons: MOD.reports[pk].list.slice(-10) })).sort((a, b) => b.rep - a.rep); }
+// 停止中のユーザーは、お知らせを見る以外の操作をできなくする
+const BAN_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read']);
+function applyBan(sk, b) {
+  if (!sk) return;
+  sk.banned = b;
+  if (b) { try { qRemove(sk.id); leaveRoom(sk); } catch (e) {} sk.emit('banned', { until: b.until || 0, reason: b.reason || '' }); }
+  else sk.emit('unbanned');
+}
+// ログイン時に届けるもの（停止・警告・個別メッセージ・お知らせ）
+function deliverMod(socket) {
+  const pk = socket.nmPk; if (!pk) return;
+  MOD.seen[pk] = Object.assign(MOD.seen[pk] || { c: Date.now() }, { t: Date.now(), n: socket.nmRegName || (MOD.seen[pk] || {}).n || '', lv: socket.nmLv });
+  saveMod();
+  socket.isAdmin = isAdminUid(socket.nmUid);
+  socket.emit('admin', socket.isAdmin);
+  socket.emit('notices', MOD.notices);
+  const ws = (MOD.warns[pk] || []).filter(w => !w.ack); if (ws.length) socket.emit('warns', ws);
+  const ms = MOD.pmsg[pk] || []; if (ms.length) socket.emit('pmsgs', ms);
+  const b = banOf(pk); if (b) applyBan(socket, b); else socket.banned = null;
+}
+
 io.on('connection', socket => {
+  // ===== 運営機能（停止中は使えない操作をはじく） =====
+  socket.use(([ev], next) => { if (socket.banned && !BAN_ALLOW.has(ev)) return; next(); });
+  socket.on('notices_get', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ notices: MOD.notices }); });
+  socket.on('warn_ack', id => { const pk = socket.nmPk, l = pk && MOD.warns[pk]; if (!l) return; for (const w of l) if (w.id === id) w.ack = Date.now(); saveMod(); });
+  socket.on('msg_read', () => { const pk = socket.nmPk, l = pk && MOD.pmsg[pk]; if (!l) return; l.forEach(m => { m.read = 1; }); saveMod(); });
+  // 通報（同じ相手には1日1回・1日20件まで）
+  socket.on('report', (d, cb) => {
+    const me = socket.nmPk, pk = cleanPk(d && d.pk);
+    if (!me || !socket.nmRegName) return rp(cb)({ ok: false, err: 'ユーザー名を登録してから通報できます' });
+    if (!pk || pk === me || !pkKey.has(pk)) return rp(cb)({ ok: false, err: 'このプレイヤーは通報できません' });
+    const now = Date.now(), r = MOD.reports[pk] = MOD.reports[pk] || { list: [] };
+    if (r.list.some(x => x.from === me && now - x.t < 864e5)) return rp(cb)({ ok: false, err: 'このプレイヤーはすでに通報済みです（24時間に1回まで）' });
+    socket.repDay = (socket.repDay || []).filter(t => now - t < 864e5); if (socket.repDay.length >= 20) return rp(cb)({ ok: false, err: '通報の回数が多すぎます' });
+    socket.repDay.push(now);
+    r.list.push({ from: me, fromName: socket.nmRegName, reason: txt(d.reason, 20) || 'その他', text: txt(d.text, 120), where: txt(d.where, 20), t: now });
+    r.list = r.list.slice(-60); saveMod();
+    rp(cb)({ ok: true });
+    if (repCount(pk) >= REPORT_ALERT) for (const s of adminSockets()) s.emit('adm_alert', { name: nameOfPk(pk), n: repCount(pk) });
+  });
+  // ----- ここから管理者だけ -----
+  const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
+  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, online: io.sockets.sockets.size, users: nameReg.size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
+    banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV })));
+  socket.on('adm_users', adm((d, cb) => {
+    const q = typeof d.q === 'string' ? d.q.normalize('NFKC').toLowerCase().trim() : '', pks = new Set([...nameReg.values()].map(e => e.pk));
+    for (const pk of Object.keys(MOD.seen)) pks.add(pk);
+    let list = [...pks].map(userRow);
+    if (q) list = list.filter(u => u.name.normalize('NFKC').toLowerCase().includes(q));
+    const sort = d.sort || 'seen';
+    list.sort((a, b) => sort === 'rep' ? b.rep - a.rep : sort === 'lv' ? b.lv - a.lv : (b.online - a.online) || (b.seen - a.seen));
+    const page = Math.max(0, parseInt(d.page, 10) || 0);
+    cb({ ok: true, total: list.length, page, list: list.slice(page * 50, page * 50 + 50) });
+  }));
+  socket.on('adm_user', adm((d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
+    cb({ ok: true, u: userRow(pk), reports: ((MOD.reports[pk] || {}).list || []).slice(-30).reverse(), warns: (MOD.warns[pk] || []).slice(-20).reverse(), msgs: (MOD.pmsg[pk] || []).slice(-20).reverse() }); }));
+  socket.on('adm_action', adm((d, cb) => {
+    const pk = cleanPk(d.pk), act = d.act, text = txt(d.text, 300), now = Date.now();
+    if (!pk) return cb({ ok: false, err: '相手がいません' });
+    const sk = sockOf(byPk.get(pk));
+    if (act === 'ban') {
+      const days = Number(d.days), until = days > 0 ? now + days * 864e5 : 0;   // 0=無期限
+      MOD.bans[pk] = { until, reason: text || '利用規約違反', by: socket.nmRegName || '運営', t: now }; applyBan(sk, MOD.bans[pk]);
+    } else if (act === 'unban') { delete MOD.bans[pk]; applyBan(sk, null); }
+    else if (act === 'warn') {
+      if (!text) return cb({ ok: false, err: '警告の内容を入れてください' });
+      const w = { id: MOD.nid++, text, t: now }; (MOD.warns[pk] = MOD.warns[pk] || []).push(w); MOD.warns[pk] = MOD.warns[pk].slice(-30); if (sk) sk.emit('warns', [w]);
+    } else if (act === 'msg') {
+      if (!text) return cb({ ok: false, err: 'メッセージを入れてください' });
+      const m = { id: MOD.nid++, title: txt(d.title, 40) || '運営からのお知らせ', text, t: now }; (MOD.pmsg[pk] = MOD.pmsg[pk] || []).push(m); MOD.pmsg[pk] = MOD.pmsg[pk].slice(-30); if (sk) sk.emit('pmsgs', [m]);
+    } else if (act === 'clearrep') delete MOD.reports[pk];
+    else return cb({ ok: false, err: '不明な操作' });
+    saveMod(); cb({ ok: true, u: userRow(pk) });
+  }));
+  // 全員へのお知らせ（アップデート・メンテナンスなど）
+  socket.on('adm_notice', adm((d, cb) => {
+    const title = txt(d.title, 60), body = txt(d.body, 2000), kind = KINDS[d.kind] ? d.kind : 'info';
+    if (!title) return cb({ ok: false, err: 'タイトルを入れてください' });
+    const n = { id: MOD.nid++, kind, title, body, t: Date.now(), pin: !!d.pin };
+    MOD.notices.unshift(n); MOD.notices = MOD.notices.slice(0, 100); saveMod();
+    io.emit('notice_new', n); cb({ ok: true, n });
+  }));
+  socket.on('adm_notice_del', adm((d, cb) => { const id = parseInt(d.id, 10); MOD.notices = MOD.notices.filter(n => n.id !== id); saveMod(); io.emit('notices', MOD.notices); cb({ ok: true }); }));
+
   socket.data = {};
   const rp = cb => (typeof cb === 'function' ? cb : () => {});
   const myRoom = () => rooms.get(socket.data && socket.data.code);
@@ -874,6 +989,7 @@ io.on('connection', socket => {
       restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'), d ? parseInt(d.bestC, 10) : undefined);
     }
     else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
+    deliverMod(socket);   // 停止・警告・お知らせ・管理者かどうか
   });
   // ユーザー名：入力中の空きチェック／登録（変更）／おまかせ候補
   socket.on('name_check', (v, cb) => { const n = validName(v), why = nameProblem(n, socket.nmUid); rp(cb)(why ? { ok: false, reason: why } : { ok: true, name: n }); });
@@ -883,7 +999,7 @@ io.on('connection', socket => {
     const now = Date.now(); if (now - (socket.lastNameT || 0) < 1500) return rp(cb)({ ok: false, reason: 'busy' }); socket.lastNameT = now;
     const n = validName(v), why = nameProblem(n, socket.nmUid);
     if (why) return rp(cb)({ ok: false, reason: why, suggest: suggestName() });
-    claimName(n, socket.nmUid, socket.nmPk); socket.nmRegName = n;
+    claimName(n, socket.nmUid, socket.nmPk); socket.nmRegName = n; if (MOD.seen[socket.nmPk]) MOD.seen[socket.nmPk].n = n;
     restoreBoards(socket.nmId, n, 0, 0, socket.nmLv, 'rookie');   // ランキングの表示名も新しい名前に
     const R = myRoom(); if (R && R.state === 'lobby' && socket.data.slot != null) { R.names[socket.data.slot] = n; sendRoom(R); }
     rp(cb)({ ok: true, name: n });
@@ -1089,7 +1205,7 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000;
 // 保存データを読み込んでから受付開始
 (async () => {
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
