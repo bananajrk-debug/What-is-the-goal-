@@ -291,6 +291,30 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .pvm.now{border-color:#ffd23f}
 .pvm.on{outline:3px solid #8cf08c;outline-offset:-1px;background:#2d3b8a}
 .wreward{cursor:pointer}
+/* お知らせ・管理者 */
+.iconbtn.rel{position:relative}.iconbtn .dot{position:absolute;top:-6px;right:-6px;min-width:1.3em;height:1.3em;border-radius:999px;background:#ff3b30;color:#fff;font-size:.65em;display:grid;place-items:center;border:2px solid var(--ln)}
+.news-head{display:flex;align-items:baseline;gap:.6em;flex-wrap:wrap}.news-head b{font-size:1.2em}
+.news{background:rgba(20,26,66,.9);border:3px solid var(--ln);border-radius:14px;padding:.6em .8em;margin:.45em 0;box-shadow:0 3px 0 var(--ln)}
+.news.unread{border-color:#ffd23f}.news .nh{display:flex;align-items:center;gap:.5em;flex-wrap:wrap}.news .nt{font-weight:900;font-size:1.05em}.news .nd{margin-left:auto;font-size:.8em;opacity:.75}
+.news .nb{white-space:pre-wrap;margin-top:.35em;line-height:1.55;color:#e6eaff}
+.nk{font-size:.75em;font-weight:900;padding:.12em .55em;border-radius:999px;border:2px solid var(--ln);color:#fff}
+.nk.update{background:#1e88e5}.nk.maint{background:#ef6c00}.nk.info{background:#43a047}.nk.event{background:#d81b60}.nk.important{background:#c62828}.nk.personal{background:#8e24aa}.nk.warn{background:#ff9800}
+.adm-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:.6em}@media (max-width:760px){.adm-grid{grid-template-columns:1fr}}
+.adm-grid .panel{display:flex;flex-direction:column;gap:.4em}
+#pg-admin.on,#pg-news.on{display:block}#pg-admin>*{margin-bottom:.6em}.adm-grid>*,.adm-acts>div{min-width:0}.adm-grid .row,.adm-acts .row{flex-wrap:wrap}#au-q{min-width:8em}#adm-alerts:empty{display:none}
+.adm-flag .fl small{opacity:.9}#au-modal .box{max-height:94vh;overflow:auto}
+.adm-flag{background:linear-gradient(90deg,#7f0000,#c62828);border:3px solid var(--ln);border-radius:14px;padding:.5em .7em;margin-bottom:.5em;color:#fff;box-shadow:0 3px 0 var(--ln)}
+.adm-flag .fl{display:flex;align-items:center;gap:.5em;background:rgba(0,0,0,.25);border-radius:10px;padding:.35em .5em;margin-top:.35em;cursor:pointer}
+.au-row{display:flex;align-items:center;gap:.5em;padding:.35em .5em;border-radius:10px;background:rgba(255,255,255,.06);margin:.25em 0;cursor:pointer}
+.au-row:hover{background:rgba(255,255,255,.12)}.au-row .grow small{display:block;opacity:.75;font-weight:700}
+.tagb{font-size:.72em;font-weight:900;padding:.1em .45em;border-radius:999px;background:#c62828;color:#fff}.tagw{background:#ff9800}.tago{background:#43a047}.tagr{background:#7b1fa2}
+.adm-acts{display:grid;grid-template-columns:1fr 1fr;gap:.6em;margin:.5em 0}@media (max-width:760px){.adm-acts{grid-template-columns:1fr}}
+.adm-acts>div{background:rgba(255,255,255,.06);border-radius:12px;padding:.5em;display:flex;flex-direction:column;gap:.35em}
+#au-hist .hi{font-size:.85em;padding:.25em .4em;border-bottom:1px solid rgba(255,255,255,.08)}
+.warnbox{border-color:#ff9800!important}.warnbox #warn-text{white-space:pre-wrap;font-size:1.05em;margin:.5em 0;padding:.6em;background:rgba(255,152,0,.15);border-radius:10px}
+#ban-ov{position:fixed;inset:0;z-index:250;background:rgba(10,6,20,.94);display:grid;place-items:center;padding:1em}
+.banbox{max-width:30em;text-align:center;display:flex;flex-direction:column;gap:.6em;background:#1b1340;border:4px solid #c62828;border-radius:18px;padding:1.2em;color:#fff}.banbox b{font-size:1.3em}
+body.banned-news #ban-ov{display:none}
 /* タイトル画面 */
 #title{position:fixed;inset:0;z-index:200;background:#120c30;cursor:pointer;transition:opacity .45s,transform .45s}
 #title canvas{width:100%;height:100%;display:block}
@@ -375,6 +399,8 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     </nav>
     <div id="lvbox"><b id="lv-num">Lv1</b><div class="xpbar"><i id="xp-fill"></i></div></div>
     <div id="wallet"><span class="coin">NC</span><b id="disp-coin">0</b></div>
+    <button id="news-btn" class="iconbtn rel" aria-label="お知らせ">📢<span class="dot hide" id="news-dot">0</span></button>
+    <button id="adm-btn" class="iconbtn rel hide" aria-label="管理者" style="background:#8a2be2">🛠<span class="dot hide" id="adm-dot">!</span></button>
     <button id="menu-btn" class="iconbtn" aria-label="設定">☰</button>
   </header>
   <main>
@@ -445,6 +471,31 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div id="find-res" class="muted"></div>
       <div class="scroll"><div id="friend-list-container" style="display:flex;flex-direction:column;gap:.35em"></div></div>
     </section>
+    <section id="pg-news" class="pg">
+      <div class="news-head"><b>📢 お知らせ</b><span class="muted">アップデート・メンテナンス・イベントなどのお知らせです</span></div>
+      <div id="news-list"></div>
+    </section>
+    <section id="pg-admin" class="pg">
+      <div id="adm-alerts"></div>
+      <div class="adm-grid">
+        <div class="panel">
+          <b>📊 いまの状況</b><div id="adm-stat" class="muted"></div>
+          <b style="display:block;margin-top:.6em">📢 全ユーザーにお知らせを送る</b>
+          <div class="row"><select id="an-kind" class="tx"><option value="update">アップデート</option><option value="maint">メンテナンス</option><option value="event">イベント</option><option value="info" selected>お知らせ</option><option value="important">重要</option></select><label class="muted"><input type="checkbox" id="an-pin"> 上に固定</label></div>
+          <input id="an-title" class="tx" maxlength="60" placeholder="タイトル（例：v14 アップデートのお知らせ）">
+          <textarea id="an-body" class="tx" maxlength="2000" rows="4" placeholder="本文（改行できます）"></textarea>
+          <button id="an-send" class="btn green">全ユーザーに送信</button>
+          <div id="adm-notices"></div>
+        </div>
+        <div class="panel">
+          <b>👥 ユーザー管理</b>
+          <div class="row"><input id="au-q" class="tx grow" placeholder="ユーザー名で検索"><select id="au-sort" class="tx"><option value="seen">最近ログイン順</option><option value="rep">通報が多い順</option><option value="lv">レベル順</option></select><button id="au-go" class="btn sm blue">検索</button></div>
+          <div id="au-total" class="muted"></div>
+          <div id="au-list"></div>
+          <div class="row"><button id="au-prev" class="btn sm dark">← 前</button><button id="au-next" class="btn sm dark">次 →</button></div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -505,10 +556,26 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <div class="res-row"><div id="res-lv" class="res-lv">1</div><div class="grow"><div class="res-lbl"><b>経験値</b><span id="res-xpd" class="res-d"></span></div><div class="res-bar xp"><i id="res-xpfill"></i><span id="res-xpnum"></span></div></div></div>
     <div class="res-row coins"><span class="coin">NC</span><b class="grow">コイン</b><span id="res-coin" class="res-d"></span></div>
     <div id="res-stats" class="res-stats"></div>
-    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-addf" class="btn big green hide">＋フレンド</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
+    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-addf" class="btn big green hide">＋フレンド</button><button id="res-report" class="btn big dark hide" title="相手を通報">🚩</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
   </div>
   <div id="res-promo" class="res-promo hide"></div>
 </div>
+<div id="au-modal" class="modal hide"><div class="box wide"><div class="row" style="align-items:center"><b class="grow" id="au-name"></b><button id="au-close" class="btn sm dark">閉じる</button></div>
+  <div id="au-info" class="muted"></div>
+  <div class="adm-acts">
+    <div><b>⛔ 利用停止</b><div class="row"><select id="au-days" class="tx"><option value="1">1日</option><option value="3">3日</option><option value="7" selected>7日</option><option value="14">14日</option><option value="30">30日</option><option value="0">無期限</option></select><input id="au-reason" class="tx grow" maxlength="300" placeholder="停止の理由（本人に表示されます）"></div>
+      <div class="row"><button id="au-ban" class="btn sm red">停止する</button><button id="au-unban" class="btn sm">停止を解除</button></div></div>
+    <div><b>⚠️ 警告／✉️ 個別メッセージ</b><textarea id="au-text" class="tx" maxlength="300" rows="2" placeholder="本人に表示される文章"></textarea>
+      <div class="row"><button id="au-warn" class="btn sm" style="background:#ff9800">警告を送る</button><button id="au-msg" class="btn sm blue">メッセージを送る</button><button id="au-clear" class="btn sm dark">通報をクリア</button></div></div>
+  </div>
+  <div id="au-hist"></div></div></div>
+<div id="rep-modal" class="modal hide"><div class="box"><b>🚩 プレイヤーを通報</b><div class="muted" id="rep-who"></div>
+  <div class="chips" id="rep-reasons"></div>
+  <textarea id="rep-text" class="tx" maxlength="120" rows="2" placeholder="くわしい内容（なくてもOK）"></textarea>
+  <div class="muted">通報はほかのプレイヤーには知らされません。うその通報はしないでください。</div>
+  <div class="row"><button id="rep-cancel" class="btn dark grow">やめる</button><button id="rep-send" class="btn red grow">通報する</button></div></div></div>
+<div id="warn-modal" class="modal hide"><div class="box warnbox"><b>⚠️ 運営からの警告</b><div id="warn-text"></div><div class="muted" id="warn-date"></div><button id="warn-ok" class="btn big">確認しました</button></div></div>
+<div id="ban-ov" class="hide"><div class="banbox"><div style="font-size:3em">⛔</div><b>このアカウントは利用停止中です</b><div id="ban-until"></div><div id="ban-reason"></div><div class="muted">停止期間が終わると、また遊べるようになります。お知らせは見られます。</div><button id="ban-news" class="btn blue">📢 お知らせを見る</button></div></div>
 <div id="g-line" class="modal hide"><div class="box wide"><div class="row" style="align-items:center"><b class="grow">📜 ガチャのラインナップ</b><button id="g-line-close" class="btn sm dark">閉じる</button></div>
   <div class="muted" id="g-line-sub"></div><div class="chips" id="g-line-tabs"></div><div class="grid" id="g-line-list"></div></div></div>
 <div id="g-grid" class="modal hide"><div class="box wide" style="position:relative"><b>🎰 10連の結果</b> <span class="muted" id="g-grid-sub">タップでめくる・まとめてめくる</span><div class="grid" id="g-grid-list"></div><div class="row"><button id="g-grid-all" class="btn big purple grow">ぜんぶめくる</button><button id="g-grid-close" class="btn big grow">OK</button></div></div></div>
@@ -527,7 +594,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div id="rm-log"></div>
       <div class="chips" id="rm-phr"></div>
       <div class="row"><input id="rm-text" class="tx grow" maxlength="30" placeholder="メッセージ（30文字まで）"><button id="rm-send" class="btn sm blue">送信</button></div>
-      <div class="row"><button id="rm-addf" class="btn sm green hide grow">＋ 相手にフレンド申請</button><button id="rm-kick" class="btn sm red hide">🚫 キック</button></div>
+      <div class="row"><button id="rm-addf" class="btn sm green hide grow">＋ 相手にフレンド申請</button><button id="rm-kick" class="btn sm red hide">🚫 キック</button><button id="rm-report" class="btn sm dark hide" title="相手を通報">🚩 通報</button></div>
       <button id="rm-go" class="btn big green">準備OK</button>
       <span id="rm-hint" class="muted" style="text-align:center"></span>
     </div>
@@ -568,9 +635,8 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 <script src="/socket.io/socket.io.js"></script>
 <script>
 'use strict';
-/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-   ガチャの設定（ここの数字を変えるだけで、確率・値段・保証が変わります）
-   ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+/* ===== ガチャの設定 ===== */
+// ここの数字を変えるだけで、ガチャの確率・値段・10連の保証・ダブりのNCが変わります（public/index.html の上のほう）
 const GACHA_CONFIG={
   rates:{C:55,R:28,EPIC:12,LEGEND:5},   // 出る確率（%）。合計が100でなくても、割合として計算します
   cost1:30,                              // 1回まわす値段（NC）
@@ -2224,6 +2290,7 @@ function showPage(t){
   document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+t));
   if(t==='home')updateHome();if(t==='locker')renderLocker();if(t==='shop')renderShop();if(t==='quest')renderQuests();
   if(t==='course')renderCourse();if(t==='rank')loadRanking();if(t==='friends'){renderFriends();pollFriends();}
+  if(t==='news')renderNews();if(t==='admin'){if(IS_ADMIN)admOverview();else{showPage('home');return;}}
   updateTop();
 }
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage(b.dataset.t);});
@@ -3044,7 +3111,8 @@ function renderFriends(){
     const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';
     let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}if(PK_RE.test(e.k))socket.emit('friend_remove',e.k);SV.friends=SV.friends.filter(x=>x!==e);save();renderFriends();};
     if(wt){j.textContent='👀 観戦する';j.disabled=false;j.className='btn sm';j.onclick=()=>watchFriend(e);}
-    it.append(fn,j,del);box.appendChild(it);
+    const rpb=document.createElement('button');rpb.className='btn sm dark';rpb.textContent='🚩';rpb.title='通報';rpb.onclick=()=>openReport(e.k,nm,'フレンド');
+    if(PK_RE.test(e.k))it.append(fn,j,rpb,del);else it.append(fn,j,del);box.appendChild(it);
   });
   // 自分が送った申請
   if(SV.fout.length){sec('📨 申請中（相手の承認待ち）');
@@ -3105,7 +3173,7 @@ function handleInvite(){
 }
 
 /* ===== 設定メニュー ===== */
-$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-name').textContent=SV.name+(SV.nameReg?'':'（未登録）');$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859');
+$('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-name').textContent=SV.name+(SV.nameReg?'':'（未登録）');$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859'&&!IS_ADMIN);
   ['bgm','se'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
 $('close-menu-btn').onclick=()=>$('side-menu').classList.add('hide');
 $('side-menu').addEventListener('click',e=>{if(e.target.id==='side-menu')$('side-menu').classList.add('hide');});
@@ -3185,7 +3253,7 @@ function renderRoomControls(){
     $('rm-hint').textContent=!op?'相手の参加を待っています…（フレンドはロビーからワンタップで参加できます）':op.ready?'相手の準備ができました！スタートを押そう':'相手の「準備OK」を待っています';}
   else{const r=ROOM.players[1]&&ROOM.players[1].ready;go.textContent=r?'準備を取り消す':'✔ 準備OK';go.disabled=false;go.className='btn big '+(r?'dark':'green');
     $('rm-hint').textContent=r?'ホストのスタートを待っています…':'準備ができたら「準備OK」を押そう';}
-  const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));
+  const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));$('rm-report').classList.toggle('hide',!opk);
   af.disabled=!!opk&&isPending(opk);af.textContent=!opk?'':isPending(opk)?'📨 フレンド申請中（承認待ち）':inInbox(opk)?'✔ 相手からの申請を承認する':'＋ 相手にフレンド申請';
   if(opk)af.onclick=()=>{const was=inInbox(opk);if(addFriend(opk,op.name))sysLog(was?(op.name||'相手')+' とフレンドになりました':(op.name||'相手')+' にフレンド申請を送りました');renderRoomControls();};
   const ph=$('rm-phr');if(!ph.childElementCount)PHRASES.forEach(p=>{const b=document.createElement('button');b.className='phr';b.textContent=p;b.onclick=()=>sendChat('x',p);ph.appendChild(b);});
@@ -4171,7 +4239,7 @@ function rankPenalty(why){
 function returnLobby(msg){
   if(inGame&&GAME.ranked&&SV.rkPend&&!(D&&D.s==='match'))rankPenalty();
   socket.emit('leave');
-  stopGame();hideRoom();startBGM(SV.eq.bgm,true);
+  stopGame();hideRoom();startBGM(SV.eq.bgm,true);setTimeout(()=>{if(typeof showWarn==='function')showWarn();},900);
   $('lobby').style.display='flex';showPage('home');if(msg)toast(msg,2600);
 }
 function onSnap(s){
@@ -4876,7 +4944,7 @@ function showResult(o){
   const bt=$('res-btns');bt.classList.remove('show');
   $('res-again').textContent=GAME.ranked?'🏆 次のランク戦':'もう一回';$('res-again').disabled=!!(o.oppLeft&&!GAME.ranked);
   $('res-room').classList.toggle('hide',!roomGame);$('res-room').disabled=!!o.oppLeft;
-  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk)||isPending(opk));
+  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk)||isPending(opk));$('res-report').classList.toggle('hide',!opk);
   af.textContent=opk&&inInbox(opk)?'✔ フレンド承認':'＋ フレンド申請';
   af.onclick=()=>{if(addFriend(opk,op.name))af.classList.add('hide');};
   if(AU.ctx){if(win)(SFX.fan||SFX.win)();else SFX.lose();}
@@ -5032,7 +5100,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v13',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v14',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{e.preventDefault();hideTitle();});
@@ -5042,6 +5110,111 @@ function makeFavicon(){try{const f=document.createElement('canvas');f.width=f.he
   g.fillStyle='#2a1b6a';g.beginPath();g.arc(32,32,31,0,7);g.fill();g.lineWidth=4;g.strokeStyle='#ffd23f';g.stroke();
   g.font='900 40px '+LOGO_JP;g.textAlign='center';g.textBaseline='middle';g.lineWidth=7;g.strokeStyle=OUTL;g.lineJoin='round';g.strokeText('？',33,30);g.fillStyle='#ffd23f';g.fillText('？',33,30);
   let l=document.querySelector('link[rel="icon"]');if(!l){l=document.createElement('link');l.rel='icon';document.head.appendChild(l);}l.href=f.toDataURL();}catch(e){}}
+/* =====================================================================
+   お知らせ・警告・利用停止・通報・管理者画面
+   ===================================================================== */
+const KINDN={update:'アップデート',maint:'メンテナンス',info:'お知らせ',event:'イベント',important:'重要',personal:'あなたへ',warn:'警告'};
+let NEWS=[],PMSG=[],WARNQ=[],IS_ADMIN=false,BAN=null;
+const fmtD=t=>{const d=new Date(t);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+function newsSeen(){try{return +LS.get('nm_news_seen','0')||0;}catch(e){return 0;}}
+function allNews(){return NEWS.map(n=>Object.assign({},n)).concat(PMSG.map(m=>({id:'p'+m.id,kind:'personal',title:m.title,body:m.text,t:m.t,read:m.read}))).sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||b.t-a.t);}
+function newsUnread(){const s=newsSeen();return allNews().filter(n=>n.t>s).length;}
+function updateNewsDot(){const n=newsUnread(),d=$('news-dot');d.textContent=n>9?'9+':n;d.classList.toggle('hide',!n);}
+function renderNews(){
+  const box=$('news-list'),s=newsSeen(),L=allNews();box.innerHTML='';
+  if(!L.length){box.innerHTML='<div class="news"><div class="nb">まだお知らせはありません。</div></div>';}
+  for(const n of L){const d=document.createElement('div');d.className='news'+(n.t>s?' unread':'');
+    const h=document.createElement('div');h.className='nh';const k=document.createElement('span');k.className='nk '+n.kind;k.textContent=(n.pin?'📌 ':'')+(KINDN[n.kind]||'お知らせ');
+    const tt=document.createElement('span');tt.className='nt';tt.textContent=n.title;const dd=document.createElement('span');dd.className='nd';dd.textContent=fmtD(n.t)+(n.t>s?'  NEW':'');
+    h.append(k,tt,dd);const b=document.createElement('div');b.className='nb';b.textContent=n.body||'';d.append(h,b);box.appendChild(d);}
+  // 見たら既読
+  const mx=Math.max(0,...L.map(n=>n.t));try{LS.set('nm_news_seen',String(Math.max(s,mx)));}catch(e){}
+  if(PMSG.some(m=>!m.read))socket.emit('msg_read');PMSG.forEach(m=>m.read=1);
+  setTimeout(updateNewsDot,50);
+}
+$('news-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage('news');};
+socket.on('notices',l=>{NEWS=Array.isArray(l)?l:[];updateNewsDot();if(page==='news')renderNews();if(page==='admin')admOverview();});
+socket.on('notice_new',n=>{if(!n)return;NEWS=[n].concat(NEWS.filter(x=>x.id!==n.id));updateNewsDot();if(page==='news')renderNews();
+  if(!inGame)toast('📢 '+(KINDN[n.kind]||'お知らせ')+'：'+n.title,3500);if(AU.ctx)SFX.pop();});
+socket.on('pmsgs',l=>{if(!Array.isArray(l))return;for(const m of l)if(!PMSG.some(x=>x.id===m.id))PMSG.push(m);updateNewsDot();if(page==='news')renderNews();
+  if(l.some(m=>!m.read)&&!inGame)toast('✉️ 運営からメッセージが届きました（📢 お知らせ）',3500);});
+// 警告：確認するまで表示
+socket.on('warns',l=>{if(!Array.isArray(l))return;for(const w of l)if(!WARNQ.some(x=>x.id===w.id))WARNQ.push(w);showWarn();});
+function showWarn(){if(!WARNQ.length||inGame){return;}const w=WARNQ[0];$('warn-text').textContent=w.text;$('warn-date').textContent=fmtD(w.t);$('warn-modal').classList.remove('hide');if(AU.ctx)SFX.slam();}
+$('warn-ok').onclick=()=>{const w=WARNQ.shift();if(w)socket.emit('warn_ack',w.id);$('warn-modal').classList.add('hide');setTimeout(showWarn,300);};
+// 利用停止
+socket.on('banned',b=>{BAN=b||{};if(inGame)returnLobby('');
+  $('ban-until').textContent=BAN.until?('停止期間：'+fmtD(BAN.until)+' まで（あと約'+Math.max(1,Math.ceil((BAN.until-Date.now())/864e5))+'日）'):'停止期間：無期限';
+  $('ban-reason').textContent='理由：'+(BAN.reason||'利用規約違反');document.body.classList.remove('banned-news');$('ban-ov').classList.remove('hide');});
+socket.on('unbanned',()=>{BAN=null;$('ban-ov').classList.add('hide');toast('利用停止が解除されました');});
+$('ban-news').onclick=()=>{document.body.classList.add('banned-news');showPage('news');setTimeout(()=>{if(BAN)document.body.classList.remove('banned-news');},20000);};
+// 通報
+const REP_REASONS=['不適切な名前','暴言・迷惑なチャット','チート・不正','わざと試合を放置','その他'];
+let REP=null;
+function openReport(pk,name,where){
+  if(!pk)return;if(!SV.nameReg){toast('ユーザー名を登録すると通報できます');return;}
+  REP={pk,name,where,reason:null};$('rep-who').textContent='相手：'+(name||'プレイヤー');$('rep-text').value='';
+  const box=$('rep-reasons');box.innerHTML='';REP_REASONS.forEach(r=>{const b=document.createElement('button');b.className='chip';b.textContent=r;b.onclick=()=>{REP.reason=r;box.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));};box.appendChild(b);});
+  $('rep-modal').classList.remove('hide');
+}
+$('rep-cancel').onclick=()=>$('rep-modal').classList.add('hide');
+$('rep-send').onclick=()=>{if(!REP)return;if(!REP.reason){toast('理由を選んでください');return;}
+  socket.emit('report',{pk:REP.pk,reason:REP.reason,text:$('rep-text').value,where:REP.where},r=>{if(r&&r.ok){toast('通報しました。ご協力ありがとうございます');$('rep-modal').classList.add('hide');}else toast((r&&r.err)||'通報できませんでした');});};
+$('res-report').onclick=()=>{const op=GAME.opp||{};openReport(op.pk,op.name,'試合');};
+$('rm-report').onclick=()=>{if(!ROOM)return;const op=ROOM.players[1-ROOM.me];if(op)openReport(op.pk,op.name,'ルーム');};
+
+/* ===== 管理者画面（運営アカウントのときだけ表示） ===== */
+socket.on('admin',v=>{IS_ADMIN=!!v;$('adm-btn').classList.toggle('hide',!IS_ADMIN);if(IS_ADMIN)socket.emit('adm_overview',r=>{if(r&&r.ok)$('adm-dot').classList.toggle('hide',!r.flagged.length);});});
+socket.on('adm_alert',a=>{if(!IS_ADMIN)return;$('adm-dot').classList.remove('hide');toast('🚩 '+a.name+' が '+a.n+'人から通報されています（🛠 管理者画面）',5000);if(page==='admin')admOverview();});
+$('adm-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage('admin');};
+let AU_PAGE=0,AU_CUR=null;
+const ago=t=>{if(!t)return '—';const s=(Date.now()-t)/1000;return s<60?'たった今':s<3600?Math.floor(s/60)+'分前':s<86400?Math.floor(s/3600)+'時間前':Math.floor(s/86400)+'日前';};
+function userTags(u){let h='';if(u.online)h+='<span class="tagb tago">オンライン</span> ';if(u.ban)h+='<span class="tagb">停止中'+(u.ban.until?'〜'+fmtD(u.ban.until):'（無期限）')+'</span> ';if(u.rep)h+='<span class="tagb tagr">通報'+u.rep+'人</span> ';if(u.warn)h+='<span class="tagb tagw">警告'+u.warn+'回</span>';return h;}
+function userRowEl(u){const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent='Lv'+u.lv+'　'+u.name;
+  const sm=document.createElement('small');sm.innerHTML=userTags(u)+' 最終ログイン：'+ago(u.seen);g.append(b,sm);d.appendChild(g);d.onclick=()=>openAdmUser(u.pk);return d;}
+function admOverview(){
+  socket.emit('adm_overview',r=>{if(!r||!r.ok)return;
+    $('adm-stat').innerHTML='オンライン '+r.online+'人 ・ 登録ユーザー '+r.users+'人 ・ 試合中のルーム '+r.rooms+'<br>保存先：'+(r.kv?'Upstash（再起動しても消えません）':'<b style="color:#ff8a80">サーバーのファイル（Renderの再起動で停止・お知らせが消えます。Upstashの設定をおすすめします）</b>');
+    const al=$('adm-alerts');al.innerHTML='';$('adm-dot').classList.toggle('hide',!r.flagged.length);
+    if(r.flagged.length){const f=document.createElement('div');f.className='adm-flag';f.innerHTML='<b>🚩 '+r.flagged.length+'人が'+5+'人以上から通報されています</b>';
+      r.flagged.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（通報'+u.rep+'人）'+(u.ban?' ⛔停止中':'');
+        const rs=document.createElement('small');rs.textContent=[...new Set(u.reasons.map(q=>q.reason))].join('・');x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
+    if(r.banned.length){const f=document.createElement('div');f.className='panel';f.innerHTML='<b>⛔ 停止中のユーザー（'+r.banned.length+'人）</b>';r.banned.forEach(u=>f.appendChild(userRowEl(u)));al.appendChild(f);}
+    const nb=$('adm-notices');nb.innerHTML='<b style="display:block;margin-top:.5em">送信済みのお知らせ</b>';
+    r.notices.forEach(n=>{const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';g.innerHTML='<span class="nk '+n.kind+'">'+(KINDN[n.kind]||'')+'</span> ';const b=document.createElement('b');b.textContent=n.title;g.appendChild(b);const sm=document.createElement('small');sm.textContent=fmtD(n.t);g.appendChild(sm);
+      const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';let dt=0;del.onclick=e=>{e.stopPropagation();if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';return;}socket.emit('adm_notice_del',{id:n.id},()=>admOverview());};d.append(g,del);nb.appendChild(d);});
+  });
+  admUsers();
+}
+function admUsers(){
+  socket.emit('adm_users',{q:$('au-q').value,sort:$('au-sort').value,page:AU_PAGE},r=>{if(!r||!r.ok)return;const box=$('au-list');box.innerHTML='';
+    $('au-total').textContent='全'+r.total+'人中 '+(r.total?r.page*50+1:0)+'〜'+Math.min(r.total,r.page*50+50)+'人目';r.list.forEach(u=>box.appendChild(userRowEl(u)));
+    $('au-prev').disabled=r.page<=0;$('au-next').disabled=(r.page+1)*50>=r.total;});
+}
+$('au-go').onclick=()=>{AU_PAGE=0;admUsers();};$('au-q').addEventListener('keydown',e=>{if(e.key==='Enter'){AU_PAGE=0;admUsers();}});$('au-sort').onchange=()=>{AU_PAGE=0;admUsers();};
+$('au-prev').onclick=()=>{AU_PAGE=Math.max(0,AU_PAGE-1);admUsers();};$('au-next').onclick=()=>{AU_PAGE++;admUsers();};
+$('an-send').onclick=()=>{const title=$('an-title').value.trim();if(!title){toast('タイトルを入れてください');return;}
+  const btn=$('an-send');if(!btn.dataset.c){btn.dataset.c='1';btn.textContent='本当に全員に送る？（もう一度押す）';setTimeout(()=>{btn.dataset.c='';btn.textContent='全ユーザーに送信';},3000);return;}
+  btn.dataset.c='';btn.textContent='全ユーザーに送信';
+  socket.emit('adm_notice',{kind:$('an-kind').value,title,body:$('an-body').value,pin:$('an-pin').checked},r=>{if(r&&r.ok){toast('📢 全ユーザーに送信しました');$('an-title').value='';$('an-body').value='';admOverview();}else toast((r&&r.err)||'送信できませんでした');});};
+function openAdmUser(pk){
+  socket.emit('adm_user',{pk},r=>{if(!r||!r.ok)return;AU_CUR=r.u;const u=r.u;
+    $('au-name').textContent='Lv'+u.lv+'　'+u.name;$('au-info').innerHTML=userTags(u)+'<br>最終ログイン：'+ago(u.seen)+(u.since?' ・ 初ログイン：'+fmtD(u.since):'')+' ・ 状態：'+({online:'ロビー',waiting:'ルーム待機中',playing:'プレイ中',offline:'オフライン'}[u.st]||u.st);
+    $('au-ban').disabled=false;$('au-unban').disabled=!u.ban;
+    const h=$('au-hist');h.innerHTML='';const sec=(t,l,f)=>{if(!l.length)return;const b=document.createElement('b');b.textContent=t;h.appendChild(b);l.forEach(x=>{const d=document.createElement('div');d.className='hi';d.textContent=f(x);h.appendChild(d);});};
+    sec('🚩 通報（新しい順）',r.reports,x=>fmtD(x.t)+'　'+x.fromName+'：'+x.reason+(x.where?'（'+x.where+'）':'')+(x.text?'　「'+x.text+'」':''));
+    sec('⚠️ 警告',r.warns,x=>fmtD(x.t)+'　'+x.text+(x.ack?'（確認済み）':'（未確認）'));
+    sec('✉️ 個別メッセージ',r.msgs,x=>fmtD(x.t)+'　'+x.title+'：'+x.text);
+    $('au-modal').classList.remove('hide');});
+}
+function admAct(act,extra){if(!AU_CUR)return;socket.emit('adm_action',Object.assign({pk:AU_CUR.pk,act},extra||{}),r=>{if(r&&r.ok){toast('完了しました');openAdmUser(AU_CUR.pk);admOverview();}else toast((r&&r.err)||'できませんでした');});}
+$('au-close').onclick=()=>$('au-modal').classList.add('hide');
+$('au-ban').onclick=()=>{const d=+$('au-days').value;if(!confirmTwice($('au-ban'),d?d+'日間停止する？':'無期限で停止する？'))return;admAct('ban',{days:d,text:$('au-reason').value});};
+$('au-unban').onclick=()=>admAct('unban');
+$('au-warn').onclick=()=>admAct('warn',{text:$('au-text').value});
+$('au-msg').onclick=()=>admAct('msg',{text:$('au-text').value,title:'運営からのお知らせ'});
+$('au-clear').onclick=()=>admAct('clearrep');
+function confirmTwice(btn,msg){if(btn.dataset.c){btn.dataset.c='';return true;}const o=btn.textContent;btn.dataset.c='1';btn.textContent=msg+'（もう一度）';setTimeout(()=>{btn.dataset.c='';btn.textContent=o;},3000);return false;}
 </script>
 </body>
 </html>
