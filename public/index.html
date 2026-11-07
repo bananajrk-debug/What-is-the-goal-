@@ -6,6 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d1226">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="なにが目的なん">
+<meta name="description" content="2人対戦の自転車追い越しアクション。前を走る攻撃側と、後ろから抜く追越側を交代しながら4ポイント先取！">
 <meta name="google-site-verification" content="jd3enhWTkhZqJ7XFm9us-cS4NOilaq6dSceClpfOu5o" />
 <title>なにが目的なん？ ONLINE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -313,6 +318,49 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 #au-hist .hi{font-size:.85em;padding:.25em .4em;border-bottom:1px solid rgba(255,255,255,.08)}
 .warnbox{border-color:#ff9800!important}.warnbox #warn-text{white-space:pre-wrap;font-size:1.05em;margin:.5em 0;padding:.6em;background:rgba(255,152,0,.15);border-radius:10px}
 #news-modal,#fb-modal,#gift-modal{z-index:260}
+/* v16 */
+.profbtn{width:2.9em;height:2.9em;flex:none;border-radius:12px;border:3px solid var(--ln);padding:0;overflow:hidden;background:#1d2557;cursor:pointer;box-shadow:0 3px 0 var(--ln)}
+.profbtn canvas{width:100%;height:100%;display:block}
+.tutb{flex:none!important;padding-left:.7em!important;padding-right:.7em!important}
+.sm-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4em}.sm-link{color:#9fb3ff;font-size:.85em;text-align:center}
+.season-bar{display:flex;align-items:center;gap:.6em;flex-wrap:wrap;background:linear-gradient(90deg,rgba(255,210,63,.18),rgba(126,87,194,.18));border:2px solid rgba(255,210,63,.5);border-radius:12px;padding:.35em .7em;font-size:.9em}
+.season-bar b{color:#ffd23f}.season-bar .prev{opacity:.85}
+#rank-list li.clk{cursor:pointer}#rank-list li.clk:active{filter:brightness(1.2)}
+.fn b.clk,.pf-link{cursor:pointer;text-decoration:underline dotted rgba(255,255,255,.5);text-underline-offset:3px}
+.profbox{width:min(46em,95vw);max-height:92vh;overflow:auto}
+.pf-top{display:flex;gap:.8em;align-items:center}.pf-ic{width:5.6em;height:5.6em;flex:none;border-radius:16px;border:4px solid var(--ln);overflow:hidden;box-shadow:0 4px 0 var(--ln)}
+.pf-ic canvas{width:100%;height:100%;display:block}.pf-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2em}
+.pf-name{display:flex;align-items:center;gap:.5em}.pf-name b{font-size:1.35em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-on{font-size:.75em;border-radius:99px;padding:.1em .6em;background:#3a4170}.pf-on.on{background:#2e7d32}
+#pf-plate{width:min(100%,22em);height:auto}.pf-msg{font-weight:900;color:#ffe56b}
+.pf-mid{display:flex;gap:.7em;align-items:stretch;flex-wrap:wrap}.pf-stats{flex:1;min-width:16em;display:grid;grid-template-columns:repeat(auto-fill,minmax(8.2em,1fr));gap:.4em}
+.pf-st{background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:.3em .45em;display:flex;flex-direction:column;min-width:0}
+.pf-st small{opacity:.75;font-size:.72em;white-space:nowrap}.pf-st b{font-size:1.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pf-st.tro b{color:#ffd23f}
+.pf-ride{width:11em;flex:none;display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.2);border-radius:12px;padding:.3em}.pf-ride canvas{width:100%;height:auto}.pf-ride small{opacity:.7;font-size:.72em}
+.pf-btns{flex-wrap:wrap;justify-content:flex-end}
+.pebox>*,.profbox>*,.seabox>*,.lbbox>*,.htbox>*,.shbox>*{flex-shrink:0}
+#sea-badge{width:6.5em;height:6.5em}
+.pebox{max-height:92vh;overflow:auto}.pe-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.2em,1fr));gap:.4em;max-height:13em;overflow:auto}
+.pe-icons canvas{width:100%;aspect-ratio:1;border-radius:10px;border:3px solid transparent;cursor:pointer;background:#1d2557}.pe-icons canvas.on{border-color:#ffd23f}
+.pe-bgs{display:flex;gap:.35em;flex-wrap:wrap}.pe-bgs button{width:2.2em;height:2.2em;border-radius:50%;border:3px solid var(--ln);cursor:pointer}.pe-bgs button.on{outline:3px solid #ffd23f}
+.lbbox{width:min(44em,95vw);align-items:center;text-align:center}.lb-h{display:flex;flex-direction:column}.lb-h b{font-size:1.3em}
+.lb-days{display:grid;grid-template-columns:repeat(7,1fr);gap:.4em;width:100%}
+.lb-d{background:rgba(255,255,255,.07);border:3px solid rgba(255,255,255,.15);border-radius:12px;padding:.35em .2em;display:flex;flex-direction:column;align-items:center;gap:.15em;position:relative}
+.lb-d small{font-size:.7em;opacity:.8}.lb-d .ic{font-size:1.6em;line-height:1.1}.lb-d b{font-size:.8em}
+.lb-d.got{opacity:.45}.lb-d.got::after{content:'✔';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.2em;color:#8cf08c}
+.lb-d.today{border-color:#ffd23f;background:rgba(255,210,63,.18);animation:lbp 1s ease-in-out infinite}.lb-d.d7{background:linear-gradient(180deg,rgba(255,210,63,.25),rgba(126,87,194,.25))}
+@keyframes lbp{50%{transform:translateY(-4px)}}
+.htbox{width:min(46em,95vw)}.ht-body{display:flex;gap:.7em;align-items:center;flex-wrap:wrap}#ht-cv{flex:1 1 18em;min-width:0;max-width:100%;height:auto;border-radius:12px;border:3px solid var(--ln);background:#2a3b2a}
+.ht-text{flex:1 1 14em;line-height:1.6}.ht-text b{color:#ffd23f}
+.seabox{align-items:center;text-align:center;min-width:min(24em,92vw)}.sea-h{font-size:1.3em;font-weight:900}.sea-rew{display:flex;flex-direction:column;gap:.25em;font-weight:900}
+.shbox img{width:100%;border-radius:12px;border:3px solid var(--ln)}
+#blk-list .au-row{cursor:default}
+#tut-tip{position:fixed;left:50%;top:calc(3.6em + var(--st));transform:translateX(-50%);z-index:30;max-width:min(36em,90vw);background:rgba(20,27,69,.92);border:3px solid #ffd23f;border-radius:14px;padding:.45em .9em;font-weight:900;font-size:clamp(12px,1.1vw + .9vh,16px);text-align:center;pointer-events:none;box-shadow:0 4px 0 rgba(0,0,0,.4);animation:tutin .35s ease-out}
+@keyframes tutin{from{opacity:0;transform:translate(-50%,-10px)}}
+.ng-list{display:flex;flex-wrap:wrap;gap:.3em;max-height:6em;overflow:auto}.ng-list span{background:#5a2330;border-radius:99px;padding:.1em .55em;font-size:.85em;cursor:pointer}
+.au-dev{font-size:.85em;line-height:1.5;word-break:break-all}.au-dev b{color:#9fd0ff}
+.adm-eco{border:3px solid #ffb300;background:rgba(255,179,0,.12);border-radius:14px;padding:.5em .7em}.adm-eco .fl{display:flex;gap:.5em;align-items:center;padding:.2em 0;cursor:pointer;border-top:1px solid rgba(255,255,255,.1)}
+.tagb.tagd{background:#37474f}
 .newsbox{width:min(52em,94vw);height:min(86vh,40em);max-height:86vh}
 .newsbox .news-head{align-items:center}#news-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:.2em;min-height:0}
 .news .ngift{display:flex;align-items:center;gap:.5em;margin-top:.45em;background:rgba(255,210,63,.12);border:2px dashed #ffd23f;border-radius:12px;padding:.35em .6em}
@@ -338,6 +386,7 @@ body.banned-news #news-modal{z-index:270}
 .banbox{max-width:30em;text-align:center;display:flex;flex-direction:column;gap:.6em;background:#1b1340;border:4px solid #c62828;border-radius:18px;padding:1.2em;color:#fff}.banbox b{font-size:1.3em}
 body.banned-news #ban-ov{display:none}
 /* タイトル画面 */
+#title-pp{position:absolute;right:calc(.8em + var(--sr));bottom:calc(.5em + var(--sb));color:rgba(255,255,255,.55);font-size:11px;text-decoration:underline;z-index:2}
 #title{position:fixed;inset:0;z-index:200;background:#120c30;cursor:pointer;transition:opacity .45s,transform .45s}
 #title canvas{width:100%;height:100%;display:block}
 #title.fade{opacity:0;transform:scale(1.06)}
@@ -429,11 +478,11 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <section id="pg-home" class="pg on">
       <div class="stage">
         <div class="cvbox"><canvas id="prev"></canvas><div class="emotes" id="home-emotes"></div></div>
-        <div class="namebar"><div class="nameshow"><b id="pname"></b></div><button id="pname-edit" class="btn sm blue">✏️ 名前を変更</button><span class="idchip" id="disp-id"></span></div>
+        <div class="namebar"><button id="prof-me" class="profbtn" title="プロフィール"><canvas id="prof-ic" width="96" height="96"></canvas></button><div class="nameshow"><b id="pname"></b></div><button id="pname-edit" class="btn sm blue">✏️ 名前を変更</button><span class="idchip" id="disp-id"></span></div>
       </div>
       <div class="side">
         <div class="rankwrap"><button id="rankbtn" class="rankbtn"><canvas id="rk-badge" width="120" height="120"></canvas><span class="rk-txt"><b><em>RANKED</em>ランクマッチ</b><small id="rk-sub">ブロンズ III ・ 0 RP</small><span class="rkbar"><i id="rk-fill"></i></span></span></button><button id="rk-info" class="rk-info" aria-label="ランク表">?</button></div>
-        <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>練習・XPかせぎ</small></button></div>
+        <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>XPかせぎ</small></button><button id="tut-btn" class="btn big purple tutb">🔰<small>練習</small></button></div>
         <div class="row"><button id="create" class="btn blue grow">🏠 ルームを作る</button><input id="code" class="tx" style="width:6.4em" maxlength="6" placeholder="6桁コード" inputmode="numeric"><button id="join" class="btn blue">参加</button></div>
         <button id="course-btn" class="coursebtn"><canvas id="course-th" width="192" height="108"></canvas><span class="cb-t"><small>🗺️ コース（タップで変更）</small><b id="cname"></b><small id="cdesc"></small></span><span class="cb-go">変更 ▶</span></button>
         <button id="wk-banner"></button>
@@ -476,11 +525,12 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="row" style="margin-top:.3em"><b class="grow">📆 ウィークリークエスト</b><span class="muted" id="qw-timer"></span></div>
       <div class="wreward"><canvas id="qw-cv" width="300" height="180"></canvas><div class="grow"><div class="qwt"><canvas id="qw-emb" width="72" height="72"></canvas><b id="qw-title"></b></div><div class="muted" id="qw-desc"></div><div class="qbar"><i id="qw-fill"></i></div><span id="qw-prog" class="muted"></span></div><button id="qw-claim" class="btn dark">受け取る</button></div>
       <div id="q-weekly" style="display:flex;flex-direction:column;gap:.45em"></div>
-      <b class="sec-title">🏅 アチーブメント</b>
+      <b class="sec-title">🏆 トロフィー <span id="tro-count" class="muted"></span></b>
       <div id="q-ach" style="display:flex;flex-direction:column;gap:.45em"></div>
     </section>
     <section id="pg-rank" class="pg">
       <div class="row"><div class="chips grow" id="rank-tabs"><button class="chip on" data-k="run">🏃 エンドレスラン</button><button class="chip" data-k="rp">🏆 チャリランク</button></div><span id="my-best" class="muted"></span><button id="rank-reload" class="btn sm blue">更新</button></div>
+      <div id="season-bar" class="season-bar hide"></div>
       <div class="scroll"><ol id="rank-list"></ol></div>
     </section>
     <section id="pg-course" class="pg"><div class="scroll"><div class="grid" id="co-list" style="grid-template-columns:repeat(auto-fill,minmax(12em,1fr))"></div></div></section>
@@ -496,6 +546,12 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <section id="pg-admin" class="pg">
       <div id="adm-alerts"></div>
       <div class="adm-grid">
+        <div class="panel" id="adm-ng-panel">
+          <b>🚫 NGワード <small class="muted" id="ng-base"></small></b>
+          <div class="row"><input id="ng-w" class="tx grow" maxlength="20" placeholder="追加する言葉（ひらがな・カタカナは同じ扱い）"><button id="ng-add" class="btn sm red">追加</button></div>
+          <div id="ng-list" class="ng-list"></div>
+          <div class="row"><input id="ng-test" class="tx grow" maxlength="100" placeholder="ためしに文章を入れて確認"><button id="ng-try" class="btn sm dark">確認</button></div><div id="ng-out" class="muted"></div>
+        </div>
         <div class="panel" id="adm-maint-panel">
           <b>🛠 メンテナンス</b><div id="am-state" class="muted"></div>
           <div class="row" style="align-items:center"><span>再開予定</span><input id="am-time" type="time" class="tx"><label class="muted"><input type="checkbox" id="am-auto" checked> その時間に自動で終了</label></div>
@@ -588,7 +644,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <div class="res-row"><div id="res-lv" class="res-lv">1</div><div class="grow"><div class="res-lbl"><b>経験値</b><span id="res-xpd" class="res-d"></span></div><div class="res-bar xp"><i id="res-xpfill"></i><span id="res-xpnum"></span></div></div></div>
     <div class="res-row coins"><span class="coin">NC</span><b class="grow">コイン</b><span id="res-coin" class="res-d"></span></div>
     <div id="res-stats" class="res-stats"></div>
-    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-addf" class="btn big green hide">＋フレンド</button><button id="res-report" class="btn big dark hide" title="相手を通報">🚩</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
+    <div id="res-btns" class="res-btns"><button id="res-again" class="btn big">もう一回</button><button id="res-addf" class="btn big green hide">＋フレンド</button><button id="res-report" class="btn big dark hide" title="相手を通報">🚩</button><button id="res-prof" class="btn big dark hide" title="相手のプロフィール">👤</button><button id="res-share" class="btn big purple">📸 シェア</button><button id="res-room" class="btn big purple">ルームへ</button><button id="res-lobby" class="btn big blue">ロビーへ</button></div>
   </div>
   <div id="res-promo" class="res-promo hide"></div>
 </div>
@@ -601,6 +657,12 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="row"><button id="au-warn" class="btn sm" style="background:#ff9800">警告を送る</button><button id="au-msg" class="btn sm blue">メッセージを送る</button><button id="au-clear" class="btn sm dark">通報をクリア</button></div></div>
     <div><b>🎁 NCをプレゼント</b><div class="row" style="align-items:center"><input id="au-gift" class="tx" type="number" min="1" max="100000" step="50" value="300" style="width:7em"><span>NC</span><button id="au-gift-send" class="btn sm green">プレゼントする</button></div><div class="muted">上の文章欄の内容がメッセージとして一緒に届きます（空なら「運営からのプレゼント」）</div></div>
   </div>
+  <div class="adm-acts">
+    <div><b>📱 端末情報</b><div id="au-dev" class="au-dev"></div></div>
+    <div><b>💰 NCの検算</b><div id="au-eco" class="au-dev"></div>
+      <div class="row" style="align-items:center"><input id="au-nc" class="tx" type="number" min="0" step="10" style="width:7em"><span>NCに</span><button id="au-ncfix" class="btn sm red">修正する</button><button id="au-ncok" class="btn sm green">問題なし</button></div></div>
+  </div>
+  <div id="au-same"></div>
   <div id="au-hist"></div></div></div>
 <div id="rep-modal" class="modal hide"><div class="box"><b>🚩 プレイヤーを通報</b><div class="muted" id="rep-who"></div>
   <div class="chips" id="rep-reasons"></div>
@@ -608,6 +670,35 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   <div class="muted">通報はほかのプレイヤーには知らされません。うその通報はしないでください。</div>
   <div class="row"><button id="rep-cancel" class="btn dark grow">やめる</button><button id="rep-send" class="btn red grow">通報する</button></div></div></div>
 <div id="warn-modal" class="modal hide"><div class="box warnbox"><b>⚠️ 運営からの警告</b><div id="warn-text"></div><div class="muted" id="warn-date"></div><button id="warn-ok" class="btn big">確認しました</button></div></div>
+<div id="prof-modal" class="modal hide"><div class="box profbox">
+  <div class="pf-top"><div class="pf-ic"><canvas id="pf-ic" width="200" height="200"></canvas></div>
+    <div class="pf-id"><div class="pf-name"><b id="pf-name"></b><span id="pf-on" class="pf-on"></span></div><canvas id="pf-plate" width="560" height="80"></canvas><div id="pf-msg" class="pf-msg"></div></div>
+    <button id="pf-close" class="iconbtn">✕</button></div>
+  <div class="pf-mid"><div id="pf-stats" class="pf-stats"></div><div class="pf-ride"><canvas id="pf-ride" width="320" height="200"></canvas><small>いま乗っている自転車</small></div></div>
+  <div id="pf-btns" class="row pf-btns"></div></div></div>
+<div id="pe-modal" class="modal hide"><div class="box wide pebox"><div class="row" style="align-items:center"><b class="grow">✏️ プロフィールを編集</b><button id="pe-ok" class="btn sm green">完了</button></div>
+  <div class="muted">アイコンは持っているアイテムから自由に選べます（実際の装備とは別です）</div>
+  <div class="chips" id="pe-cats"></div><div id="pe-icons" class="pe-icons"></div>
+  <b>背景の色</b><div id="pe-bgs" class="pe-bgs"></div>
+  <b>ひとこと</b><div id="pe-msgs" class="chips"></div></div></div>
+<div id="lb-modal" class="modal hide"><div class="box lbbox"><div class="lb-h"><b>📅 ログインボーナス</b><span id="lb-sub" class="muted"></span></div>
+  <div id="lb-days" class="lb-days"></div><button id="lb-ok" class="btn big green">受け取る</button></div></div>
+<div id="howto-modal" class="modal hide"><div class="box htbox"><div class="row" style="align-items:center"><b class="grow" id="ht-title">📖 遊び方</b><span id="ht-page" class="muted"></span><button id="ht-close" class="iconbtn">✕</button></div>
+  <div class="ht-body"><canvas id="ht-cv" width="560" height="300"></canvas><div id="ht-text" class="ht-text"></div></div>
+  <div class="row"><button id="ht-prev" class="btn dark">← 前へ</button><span class="grow"></span><button id="ht-tut" class="btn purple hide">🔰 練習してみる</button><button id="ht-next" class="btn green">次へ →</button></div></div></div>
+<div id="tut-intro" class="modal hide"><div class="box" style="text-align:center;align-items:center"><div style="font-size:2.6em">🚲</div><b style="font-size:1.25em">はじめまして！</b>
+  <div>「なにが目的なん？」は、前を走る<b style="color:#ff9a8f">攻撃側</b>と、後ろから抜く<b style="color:#8fd0ff">追越側</b>を交代しながら戦う自転車バトルです。</div>
+  <div class="row" style="width:100%"><button id="ti-howto" class="btn blue grow">📖 遊び方を見る</button><button id="ti-tut" class="btn purple grow">🔰 練習する</button></div><button id="ti-skip" class="btn sm dark">あとで</button></div></div>
+<div id="season-modal" class="modal hide"><div class="box seabox"><div class="sea-h">🗓️ <span id="sea-title"></span></div><canvas id="sea-badge" width="160" height="160"></canvas>
+  <div id="sea-text"></div><div id="sea-rew" class="sea-rew"></div><button id="sea-ok" class="btn big green">受け取る</button></div></div>
+<div id="share-modal" class="modal hide"><div class="box wide shbox"><div class="row" style="align-items:center"><b class="grow">📸 結果をシェア</b><button id="sh-close" class="iconbtn">✕</button></div>
+  <img id="sh-img" alt="シェア画像"><div class="row"><button id="sh-share" class="btn green grow">📤 シェアする</button><button id="sh-x" class="btn dark grow">𝕏 でポスト</button><button id="sh-dl" class="btn blue grow">💾 画像を保存</button></div>
+  <div class="muted">ハッシュタグ「#なにが目的なん」をつけてシェアしよう！</div></div></div>
+<div id="blk-modal" class="modal hide"><div class="box"><div class="row" style="align-items:center"><b class="grow">🚫 ブロックしたプレイヤー</b><button id="blk-close" class="iconbtn">✕</button></div>
+  <div class="muted">ブロックした相手とは、チャット・エモートが届かず、ランクマッチで当たらず、ルームにも入れなくなります。</div><div id="blk-list"></div></div></div>
+<div id="pwa-modal" class="modal hide"><div class="box"><div class="row" style="align-items:center"><b class="grow">📲 ホーム画面に追加</b><button id="pwa-close" class="iconbtn">✕</button></div>
+  <div id="pwa-text"></div></div></div>
+<div id="tut-tip" class="hide"><span id="tut-tip-t"></span></div>
 <div id="news-modal" class="modal hide"><div class="box newsbox">
   <div class="news-head"><b>📢 お知らせ</b><span class="muted grow">アップデート・メンテナンス・イベントなど</span><button id="news-fb" class="btn sm green">💡 フィードバック</button><button id="news-close" class="iconbtn">✕</button></div>
   <div id="news-list"></div></div></div>
@@ -642,7 +733,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div id="rm-log"></div>
       <div class="chips" id="rm-phr"></div>
       <div class="row"><input id="rm-text" class="tx grow" maxlength="30" placeholder="メッセージ（30文字まで）"><button id="rm-send" class="btn sm blue">送信</button></div>
-      <div class="row"><button id="rm-addf" class="btn sm green hide grow">＋ 相手にフレンド申請</button><button id="rm-kick" class="btn sm red hide">🚫 キック</button><button id="rm-report" class="btn sm dark hide" title="相手を通報">🚩 通報</button></div>
+      <div class="row"><button id="rm-addf" class="btn sm green hide grow">＋ 相手にフレンド申請</button><button id="rm-kick" class="btn sm red hide">🚫 キック</button><button id="rm-report" class="btn sm dark hide" title="相手を通報">🚩 通報</button><button id="rm-prof" class="btn sm dark hide">👤 プロフィール</button></div>
       <button id="rm-go" class="btn big green">準備OK</button>
       <span id="rm-hint" class="muted" style="text-align:center"></span>
     </div>
@@ -659,6 +750,12 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   </div>
   <button id="btn-fs" class="btn blue">⛶ 全画面にする（横向き固定）</button>
   <button id="btn-fb" class="btn green">💡 ご意見・フィードバックを送る</button>
+  <div class="sm-grid">
+    <button id="sm-prof" class="btn sm blue">👤 プロフィール</button><button id="sm-howto" class="btn sm blue">📖 遊び方</button>
+    <button id="sm-tut" class="btn sm purple">🔰 練習モード</button><button id="sm-lb" class="btn sm blue">📅 ログインボーナス</button>
+    <button id="sm-block" class="btn sm dark">🚫 ブロックリスト</button><button id="sm-pwa" class="btn sm green">📲 ホーム画面に追加</button>
+  </div>
+  <a href="privacy.html" target="_blank" rel="noopener" class="sm-link">🔒 プライバシーポリシー・利用規約・お問い合わせ</a>
   <div class="sm-sec">
     <b>アカウント（この端末専用）</b>
     <div class="muted">ログイン不要。この端末のブラウザに自動保存しています（2か所に二重保存）。<br>ログインID（端末アカウント・引き継ぎ用。人には教えないでください）：<b id="sm-id" style="color:#fff"></b><br>ユーザー名（公開・重複不可）：<b id="sm-name" style="color:#9fe0ff"></b><br>　レベル：<b id="sm-lv" style="color:#fff"></b></div>
@@ -678,7 +775,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 <div id="lvup" class="hide"><div class="lvup-in"><b>LEVEL UP!</b><span id="lvup-n"></span><span id="lvup-r" class="muted"></span><span id="lvup-u" style="color:#8cf08c;font-size:.85em;text-align:center"></span></div></div>
 <div id="rotate"><div class="ph"></div><b>スマホを横向きにしてください</b><span class="muted">横画面専用です</span></div>
 <div id="boot" class="modal"><b>読み込み中…</b></div>
-<div id="title" class="hide"><canvas id="tcv"></canvas></div>
+<div id="title" class="hide"><canvas id="tcv"></canvas><a id="title-pp" href="privacy.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">プライバシーポリシー・利用規約</a></div>
 <div id="toast"></div>
 <audio id="custom-crash-audio" src="マイ録音.m4a" preload="auto"></audio>
 <script src="/socket.io/socket.io.js"></script>
@@ -693,6 +790,9 @@ const GACHA_CONFIG={
   guarantee10:2,                         // 10連で1つ確定するレア度（2=R以上 / 3=EPIC以上 / 4=LEGEND / 0=保証なし）
   refund:{C:5,R:10,EPIC:20,LEGEND:40}    // ダブったときにもらえるNC
 };
+/* ===== プロフィールの「ひとこと」と背景の色（サーバーの PROF_MSG と数を合わせる） ===== */
+const PROF_MSGS=['よろしく！','フレンド募集中','ランク上げ中！','エンジョイ勢','ガチ勢','まったり勢','エンドレス職人','ガチャ大好き','コレクター','初心者です','毎日ログイン','対戦しよう！','負けず嫌い','追い越しが得意','ブレーキの名人','夜にいます','週末にいます','殿堂入りを目指す','チャリが好き','なにが目的なん？'];
+const PROF_BGS=['#3949ab','#1e88e5','#00897b','#43a047','#7cb342','#fdd835','#fb8c00','#e53935','#d81b60','#8e24aa','#5d4037','#263238'];
 /* =====================================================================
    基本ユーティリティ
    ===================================================================== */
@@ -768,7 +868,11 @@ const SKINS={
  ev_tsukimi:{n:'お月見チャリ',c:'#37474f',a:'#ffe082',rim:'#ffe082',deco:'🎑',ev:9,r:4,pf:'✨'},
  ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4,pf:'🦇'},
  ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4,pf:'🍂'},
- ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4,pf:'❄️'}};
+ ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4,pf:'❄️'},
+ // ▼ シーズン報酬（シーズン終了時のランクで解放。sea=必要なランク）
+ sea_gold:{n:'シーズン・ゴールド',c:'#ffca28',a:'#5d4037',str:1,rim:'#ffe082',sea:2,r:3,d:'シーズン終了時にゴールド以上でもらえる'},
+ sea_dia:{n:'シーズン・ダイヤ',c:'#4fc3f7',a:'#e1f5fe',chrome:1,rim:'#b3e5fc',sea:4,r:4,d:'シーズン終了時にダイヤモンド以上でもらえる'},
+ sea_master:{n:'シーズン・マスター',c:'#5e35b1',a:'#e0b0ff',gx:1,rim:'#e0b0ff',sea:5,r:4,d:'シーズン終了時にマスター以上でもらえる'}};
 /* ※各アイテムのリストに新しいアイテムを足すときは、必ず末尾に追加すること（引き継ぎコードの持ち物がずれないように） */
 /* ===== 自転車の種類（車体の形）。見た目だけで、速さや当たり判定はどれも同じ
    so=ショップ限定（ガチャには出ない） ===== */
@@ -959,8 +1063,8 @@ const isLegacyF=k=>FID_RE.test(k)||LEGACY_RE.test(k);
 // ユーザー名のルール（サーバーと同じ）：2〜10文字、文字・数字・「ー・_-」のみ
 function validName(v){if(typeof v!=='string')return '';const n=v.normalize('NFKC').trim(),len=[...n].length;if(len<2||len>10)return '';try{if(!/^[\p{L}\p{N}ー・_\-]+$/u.test(n))return '';}catch(e){if(/[\s<>&"'`\\]/.test(n))return '';}return n;}
 const NAME_RULE='2〜10文字。ひらがな・カタカナ・漢字・英数字と「ー・_-」が使えます（スペース・絵文字は不可）';
-const NAME_WHY={invalid:NAME_RULE,taken:'その名前は他のプレイヤーが使っています',reserved:'その名前は使えません',busy:'少し待ってからもう一度どうぞ',nohello:'サーバーに接続中です…',offline:'サーバーに接続できません'};
-function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,fav:[],fout:[],created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
+const NAME_WHY={ng:'その名前には使えない言葉が入っています',invalid:NAME_RULE,taken:'その名前は他のプレイヤーが使っています',reserved:'その名前は使えません',busy:'少し待ってからもう一度どうぞ',nohello:'サーバーに接続中です…',offline:'サーバーに接続できません'};
+function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,fav:[],blocks:[],prof:{ic:null,msg:0,bg:0},lb:{d:0,last:'',total:0},tk:0,tut:0,season:'',sBest:0,sPlay:0,seaTop:-1,seaN:0,sHist:[],fout:[],created:Date.now(),name:'プレイヤー',coins:0,xp:0,lv:1,
   inv:{bike:['std'],skin:['default'],hair:['default'],fit:['default'],acc:['none'],trail:['none'],emote:['wave','thumbs','laugh','wheelie'],se:['none','bell'],bgm:['default'],wfx:['confetti']},
   eq:{bike:'std',skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
@@ -992,6 +1096,13 @@ function fixSave(s){
   o._inboxSeen=isFinite(+o._inboxSeen)?+o._inboxSeen:0;
   if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid='';   // 旧フレンドID：自分を登録してくれていた人の移行用にだけ残す
   o.nameReg=!!o.nameReg;
+  // v16：ブロック・プロフィール・ログインボーナス・ガチャ券・練習・シーズン
+  o.blocks=(Array.isArray(o.blocks)?o.blocks:[]).filter(e=>e&&typeof e==='object'&&PK_RE.test(e.k)).map(e=>({k:e.k,n:String(e.n||'').slice(0,10)})).slice(0,200);
+  const pf=o.prof&&typeof o.prof==='object'?o.prof:{};o.prof={ic:pf.ic&&CAT[pf.ic.c]&&CAT[pf.ic.c][pf.ic.k]?{c:pf.ic.c,k:pf.ic.k}:null,msg:num(pf.msg,0,PROF_MSGS.length-1,0),bg:num(pf.bg,0,PROF_BGS.length-1,0)};
+  const lb=o.lb&&typeof o.lb==='object'?o.lb:{};o.lb={d:num(lb.d,0,6,0),last:typeof lb.last==='string'?lb.last:'',total:num(lb.total,0,1e6,0)};
+  o.tk=num(o.tk,0,9999,0);o.tut=num(o.tut,0,9,0);o.season=typeof o.season==='string'?o.season.slice(0,10):'';
+  o.sBest=num(o.sBest,0,99999,0);o.sPlay=num(o.sPlay,0,1e6,0);o.seaTop=num(o.seaTop,-1,6,-1);o.seaN=num(o.seaN,0,9999,0);
+  o.sHist=(Array.isArray(o.sHist)?o.sHist:[]).filter(h=>h&&typeof h.id==='string').map(h=>({id:h.id.slice(0,10),best:num(h.best,0,99999,0),ti:num(h.ti,0,6,0)})).slice(-24);
   o.fav=(Array.isArray(o.fav)?o.fav:[]).filter(x=>{if(typeof x!=='string')return false;const[c,k]=x.split(':');return CAT[c]&&CAT[c][k];}).slice(0,200);   // ロッカーのお気に入り（★）
   o.slots=(Array.isArray(o.slots)?o.slots:d.slots).filter(k=>o.inv.emote.includes(k)).slice(0,4);
   for(const k of d.slots)if(o.slots.length<4&&!o.slots.includes(k))o.slots.push(k);
@@ -1021,7 +1132,8 @@ function migrateV3(data){ // 旧バージョン（v3以前）のデータを引�
   return s;
 }
 let SV=null,saveTimer=null;
-function saveNow(){if(!SV)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);IDB.put(SAVE_KEY,j);}
+function saveNow(){if(!SV)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);IDB.put(SAVE_KEY,j);
+  try{ecoSoon();pushProfile();}catch(e){}}   // NCの検算・プロフィールの更新（v16）
 function save(){if(!saveTimer)saveTimer=setTimeout(saveNow,250);}
 async function loadSave(){
   const parse=j=>{try{const o=JSON.parse(j);return o&&o.v>=4?o:null;}catch(e){return null;}};
@@ -1085,7 +1197,17 @@ const ACH=[
  {id:'near',n:'ニアミス累計',i:'💨',k:'near',tiers:[50,300,1000],c:[50,150,400]},
  {id:'cop',n:'パトカー回避',i:'🚓',k:'cop',tiers:[10,50,200],c:[50,150,300]},
  {id:'friend',n:'フレンド登録',i:'🤝',k:'friends',tiers:[1,5,10],c:[30,100,200]},
- {id:'rank',n:'チャリランク到達',i:'🏆',k:'rktop',tiers:[2,4,6],c:[100,300,1000],lbl:['ゴールド','ダイヤモンド','殿堂自転車']}];
+ {id:'rank',n:'チャリランク到達',i:'🏆',k:'rktop',tiers:[2,4,6],c:[100,300,1000],lbl:['ゴールド','ダイヤモンド','殿堂自転車']},
+ // ▼ v16で追加したトロフィー（末尾に追加）
+ {id:'login',n:'ログイン日数',i:'📅',k:'login',tiers:[3,10,30],c:[50,150,400]},
+ {id:'plays',n:'試合をプレイ',i:'🎮',k:'plays',tiers:[10,50,200],c:[50,150,400]},
+ {id:'over',n:'追い抜き成功',i:'💨',k:'overtake',tiers:[10,50,200],c:[50,150,400]},
+ {id:'bhit',n:'急ブレーキ命中',i:'🛑',k:'brakehit',tiers:[5,30,100],c:[50,150,400]},
+ {id:'gacha',n:'ガチャを回す',i:'🎰',k:'gacha',tiers:[10,50,200],c:[50,150,400]},
+ {id:'season',n:'シーズン報酬を受け取る',i:'🗓️',k:'seasons',tiers:[1,3,6],c:[100,300,600]},
+ {id:'tut',n:'練習モードをクリア',i:'🔰',k:'tut',tiers:[1],c:[100]}];
+const trophies=()=>ACH.reduce((s,a)=>s+Math.min(a.tiers.length,SV.ach[a.id]||0),0);   // トロフィー＝実績の★の合計
+const trophyMax=()=>ACH.reduce((s,a)=>s+a.tiers.length,0);
 const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
 const weekStart=()=>{const d=new Date(),k=(d.getDay()+6)%7;return new Date(d.getFullYear(),d.getMonth(),d.getDate()-k);};   // 今週の月曜 0:00
 const weekKey=()=>{const m=weekStart();return 'W'+m.getFullYear()+'-'+(m.getMonth()+1)+'-'+m.getDate();};
@@ -1103,7 +1225,7 @@ function ensureDaily(){
   while(ids.length<3)ids.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
   SV.daily={date:k,ids,prog:{},claimed:{}};save();return true;
 }
-const statVal=k=>k==='lv'?SV.lv:k==='best'?SV.best:k==='items'?itemCount():k==='friends'?SV.friends.length:k==='rktop'?SV.rkTop:(SV.stats[k]||0);
+const statVal=k=>k==='login'?SV.lb.total:k==='seasons'?SV.seaN:k==='tut'?(SV.tut>=2?1:0):k==='lv'?SV.lv:k==='best'?SV.best:k==='items'?itemCount():k==='friends'?SV.friends.length:k==='rktop'?SV.rkTop:(SV.stats[k]||0);
 function dailyItems(){return SV.daily.ids.map(id=>{const q=DAILY.find(x=>x.id===id);if(!q)return null;const v=SV.daily.prog[q.k]||0;return {q,v:Math.min(v,q.goal),done:v>=q.goal,claimed:!!SV.daily.claimed[id]};}).filter(Boolean);}
 function achItems(){return ACH.map(a=>{const t=SV.ach[a.id]||0,v=statVal(a.k);return {a,t,v,goal:a.tiers[Math.min(t,a.tiers.length-1)],done:t<a.tiers.length&&v>=a.tiers[t],max:t>=a.tiers.length};});}
 const claimable=()=>dailyItems().filter(d=>d.done&&!d.claimed).length+weeklyItems().filter(d=>d.done&&!d.claimed).length+(weeklyAllDone()&&!SV.weekly.rw?1:0)+achItems().filter(a=>a.done).length;
@@ -1139,12 +1261,13 @@ function rpDelta(win,myRp,oppRp,bot,streak){
 const TITLES={
  rookie:{n:'ルーキー',lv:1},commuter:{n:'通学チャリダー',lv:3},hill:{n:'坂道の勇者',lv:5},mama:{n:'ママチャリ職人',lv:8},wind:{n:'風を切る者',lv:10},
  touge:{n:'峠の走り屋',lv:15},star:{n:'チャリ界の星',lv:20},legend:{n:'伝説のペダル',lv:30},meister:{n:'ペダルマイスター',lv:40},god:{n:'チャリ神',lv:50},
+ s2:{n:'シーズンゴールド',sea:2},s4:{n:'シーズンダイヤ',sea:4},s5:{n:'シーズンマスター',sea:5},s6:{n:'シーズン殿堂',sea:6},
  r1:{n:'シルバーライダー',rk:1},r2:{n:'ゴールドライダー',rk:2},r3:{n:'プラチナライダー',rk:3},r4:{n:'ダイヤモンドライダー',rk:4},r5:{n:'マスターライダー',rk:5},r6:{n:'殿堂入りライダー',rk:6}};
 const PLATES={auto:{n:'自動（いちばん豪華なもの）'},normal:{n:'ノーマル',lv:1},bronze:{n:'ブロンズ',lv:5},silver:{n:'シルバー',lv:10},gold:{n:'ゴールド',lv:20},
  crystal:{n:'クリスタル',lv:30},legend:{n:'レジェンド',lv:50},hof:{n:'殿堂',rk:6}};
-const unlockOk=o=>!o||((o.lv==null||SV.lv>=o.lv)&&(o.rk==null||SV.rkTop>=o.rk));
-const reqText=o=>o.ev?'📅 '+o.ev+'月のウィークリー完走報酬':o.rk!=null?'🏆 '+RANKS[o.rk].n+'到達で解放':o.lv!=null?'🎖️ Lv'+o.lv+'で解放':'';
-const isSpecial=it=>it.lv!=null||it.rk!=null||!!it.ev;
+const unlockOk=o=>!o||((o.lv==null||SV.lv>=o.lv)&&(o.rk==null||SV.rkTop>=o.rk)&&(o.sea==null||SV.seaTop>=o.sea));
+const reqText=o=>o.sea!=null?'🗓️ シーズン終了時に'+RANKS[o.sea].n+'以上で解放':o.ev?'📅 '+o.ev+'月のウィークリー完走報酬':o.rk!=null?'🏆 '+RANKS[o.rk].n+'到達で解放':o.lv!=null?'🎖️ Lv'+o.lv+'で解放':'';
+const isSpecial=it=>it.lv!=null||it.rk!=null||it.sea!=null||!!it.ev;
 function autoPlate(lv,rkTop){if(rkTop>=6)return 'hof';let b='normal';for(const k of['bronze','silver','gold','crystal','legend'])if(lv>=PLATES[k].lv)b=k;return b;}
 const myPlate=()=>SV.plate==='auto'||!unlockOk(PLATES[SV.plate])?autoPlate(SV.lv,SV.rkTop):SV.plate;
 const myTitle=()=>unlockOk(TITLES[SV.title])?SV.title:'rookie';
@@ -1152,7 +1275,7 @@ const coinBoost=lv=>Math.min(.5,(lv-1)*.01);   // レベルが上がるほどコ
 // レベル・ランクで解放されるアイテムを付与（解放済みの名前を返す）
 function grantUnlocks(){
   const got=[];
-  for(const c in CAT)for(const k in CAT[c]){const it=CAT[c][k];if((it.lv!=null||it.rk!=null)&&unlockOk(it)&&!SV.inv[c].includes(k)){SV.inv[c].push(k);got.push(it.n);}}
+  for(const c in CAT)for(const k in CAT[c]){const it=CAT[c][k];if((it.lv!=null||it.rk!=null||it.sea!=null)&&unlockOk(it)&&!SV.inv[c].includes(k)){SV.inv[c].push(k);got.push(it.n);}}
   if(got.length)save();return got;
 }
 /* =====================================================================
@@ -2354,7 +2477,7 @@ function updateHome(){
   courseBtn();$('home-best').textContent='ベスト '+SV.best.toLocaleString();
   const ri=rankInfo(SV.rp);$('rk-sub').textContent=ri.name+' ・ '+SV.rp+' RP'+(SV.rkStreak>1?' ・ 🔥'+SV.rkStreak+'連勝':'');$('rk-fill').style.width=(ri.prog*100)+'%';
   const bc=$('rk-badge'),bg=bc.getContext('2d');bg.setTransform(1,0,0,1,0,0);bg.clearRect(0,0,120,120);drawRankBadge(bg,60,62,96,ri.i,performance.now(),ri.div);
-  $('pname').textContent=SV.name;$('disp-id').textContent=SV.nameReg?'✔ ユーザー名 登録済み':'⚠ ユーザー名 未登録';$('disp-id').classList.toggle('warn',!SV.nameReg);
+  $('pname').textContent=SV.name;drawHomeIcon();$('disp-id').textContent=SV.nameReg?'✔ ユーザー名 登録済み':'⚠ ユーザー名 未登録';$('disp-id').classList.toggle('warn',!SV.nameReg);
   const wd=weeklyItems().filter(d=>d.done).length,sn=seasonNow(),wb=$('wk-banner');
   wb.innerHTML='';const wi=document.createElement('canvas');wi.width=wi.height=56;wi.style.cssText='width:1.7em;height:1.7em;flex:0 0 auto';seasonEmblem(wi.getContext('2d'),sn.key,28,28,26,600);const wt=document.createElement('span');wt.className='grow';
   wt.textContent=SV.weekly.rw?'今週のウィークリー完走！ 来週もがんばろう':'ウィークリー '+wd+'/5 クリアで「'+SKINS[sn.key].n+'」';wb.append(wi,wt);
@@ -2625,8 +2748,9 @@ function rollOne(minR){
 function pull(n,w0){
   initAudio();if(G.phase==='spin')return false;
   const cost=n===10?GACHA_CONFIG.cost10:GACHA_CONFIG.cost1,gr=GACHA_CONFIG.guarantee10|0;
-  if(SV.coins<cost){$('g-res').textContent='コインが足りません（'+cost+' NC）';toast('コインが足りません');return false;}
-  SV.coins-=cost;G.res=[];for(let i=0;i<n;i++)G.res.push(rollOne(n===10&&i===9&&gr>1&&G.res.every(r=>r.r<gr)?gr:0));   // 10連の保証
+  const tk=n===1&&SV.tk>0;   // ガチャ券があれば1回分に使う
+  if(!tk&&SV.coins<cost){$('g-res').textContent='コインが足りません（'+cost+' NC）';toast('コインが足りません');return false;}
+  if(tk)SV.tk--;else SV.coins-=cost;setTimeout(updateTicketUI,0);G.res=[];for(let i=0;i<n;i++)G.res.push(rollOne(n===10&&i===9&&gr>1&&G.res.every(r=>r.r<gr)?gr:0));   // 10連の保証
   bump('gacha',n);save();updateTop();
   G.phase='spin';G.t0=performance.now();G.w=Math.max(G.w,w0||0);$('g-res').textContent='';G.big=G.res.reduce((a,b)=>b.r>a.r?b:a);
   G.om=Object.assign(omenPlan(G.big.r),{t0:G.t0+550});   // 予告演出は回っている途中から始まる
@@ -2641,7 +2765,7 @@ function gachaTexts(){
   $('g-rates').innerHTML='排出：自転車の種類／自転車カラー／髪型／服装／アクセ／軌跡／エモート／ボイス／BGM／勝利演出（ガチャ限定アイテムあり・ショップ限定は出ません）<br>'+
     [1,2,3,4].map(r=>RN[r]+' '+fmtP(RW[r])).join(' ・ ')+(C.guarantee10>1?'　<b>10連は'+RN[C.guarantee10]+(C.guarantee10<4?'以上':'')+'1つ確定！</b>':'')+'　ダブりはNCに変換<br>回っている途中で光の色が変わったら…？ 虹色なら<b>LEGEND確定</b>！';
 }
-gachaTexts();
+gachaTexts();setTimeout(updateTicketUI,0);
 // ラインナップ（レア度ごとの全アイテムと、1つあたりの確率）
 let lineR=4;
 function openLineup(){
@@ -2868,7 +2992,7 @@ function renderQuests(){
     b.onclick=()=>{SV.ach[a.id]=t+1;SV.coins+=a.c[t];if(AU.ctx)SFX.claim();toast('+'+a.c[t]+' NC を受け取りました');save();updateTop();renderQuests();};
     el.querySelector('.qr').appendChild(b);ab.appendChild(el);
   });
-  renderClaimAll();
+  renderClaimAll();$('tro-count').textContent='（'+trophies()+' / '+trophyMax()+'）';
   updateTop();lastClaimable=claimable();
 }
 /* ===== 報酬の一括受け取り（デイリー・ウィークリー・完走報酬・アチーブメント） ===== */
@@ -3037,11 +3161,13 @@ document.querySelectorAll('#rank-tabs .chip').forEach(b=>b.onclick=()=>{rankKind
 function loadRanking(){
   const rp=rankKind==='rp';
   $('my-best').textContent=rp?'あなた：'+rankInfo(SV.rp).name+'（'+SV.rp+' RP）':'あなたのベスト：'+SV.best.toLocaleString();
+  renderSeasonBar();
   socket.emit(rp?'rank_top':'ranking',{},r=>{
+    if(r&&r.season){SEASONI=r.season;renderSeasonBar();}
     const ol=$('rank-list');ol.innerHTML='';const top=(r&&r.top)||[];
     if(!top.length){const li=document.createElement('li');li.textContent=rp?'まだ記録がありません。ランクマッチで最初の殿堂入りを目指そう！':'まだ記録がありません。最初の1位を狙おう！';ol.appendChild(li);return;}
     top.forEach((e,i)=>{
-      const li=document.createElement('li');if(e.me)li.className='me';
+      const li=document.createElement('li');li.className='clk'+(e.me?' me':'');li.onclick=()=>openProfile(e.me?{self:true}:{name:e.name});   // タップでプロフィール
       const rk=document.createElement('span');rk.className='rk';rk.textContent=i<3?['🥇','🥈','🥉'][i]:(i+1);
       const nm=document.createElement('span');nm.className='nm';nm.textContent='Lv'+(e.lv||1)+'　'+e.name+(rp&&TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':'')+(e.me?'（あなた）':'');
       const sc=document.createElement('span');sc.className='scv';sc.textContent=rp?rankInfo(e.rp).name+'　'+e.rp+' RP':Number(e.score).toLocaleString();
@@ -3167,7 +3293,7 @@ function renderFriends(){
   if(!SV.friends.length){const p=document.createElement('div');p.className='muted';p.textContent='フレンドがいません。上の検索で相手のユーザー名を入れて追加しよう。';box.appendChild(p);}
   SV.friends.forEach(e=>{
     const st=fst(e),nm=fname(e),leg=isLegacyF(e.k),it=document.createElement('div');it.className='friend-item';
-    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=nm||'（名前を確認中）';
+    const fn=document.createElement('div');fn.className='fn';const b=document.createElement('b');b.textContent=nm||'（名前を確認中）';if(PK_RE.test(e.k)){b.className='clk';b.onclick=()=>openProfile({pk:e.k,name:nm});}
     const wt=fwatch(e),sm=document.createElement('small');sm.textContent=(wt?'🔴 '+WL[wt]:FL[st])+(leg?'　※以前のフレンド登録：相手が新バージョンでログインすると自動で切り替わります':'');fn.append(b,sm);
     const j=document.createElement('button');j.className='btn sm green';j.textContent='ワンタップ参加';j.disabled=st!=='waiting'||leg;j.onclick=()=>joinFriend(e);
     const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';
@@ -3315,7 +3441,7 @@ function renderRoomControls(){
     $('rm-hint').textContent=!op?'相手の参加を待っています…（フレンドはロビーからワンタップで参加できます）':op.ready?'相手の準備ができました！スタートを押そう':'相手の「準備OK」を待っています';}
   else{const r=ROOM.players[1]&&ROOM.players[1].ready;go.textContent=r?'準備を取り消す':'✔ 準備OK';go.disabled=false;go.className='btn big '+(r?'dark':'green');
     $('rm-hint').textContent=r?'ホストのスタートを待っています…':'準備ができたら「準備OK」を押そう';}
-  const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));$('rm-report').classList.toggle('hide',!opk);
+  const af=$('rm-addf'),opk=op&&op.pk;af.classList.toggle('hide',!opk||isFriend(opk));$('rm-report').classList.toggle('hide',!opk);$('rm-prof').classList.toggle('hide',!opk);
   af.disabled=!!opk&&isPending(opk);af.textContent=!opk?'':isPending(opk)?'📨 フレンド申請中（承認待ち）':inInbox(opk)?'✔ 相手からの申請を承認する':'＋ 相手にフレンド申請';
   if(opk)af.onclick=()=>{const was=inInbox(opk);if(addFriend(opk,op.name))sysLog(was?(op.name||'相手')+' とフレンドになりました':(op.name||'相手')+' にフレンド申請を送りました');renderRoomControls();};
   const ph=$('rm-phr');if(!ph.childElementCount)PHRASES.forEach(p=>{const b=document.createElement('button');b.className='phr';b.textContent=p;b.onclick=()=>sendChat('x',p);ph.appendChild(b);});
@@ -4720,7 +4846,8 @@ function drawGame(dt,t){
 /* =====================================================================
    通信
    ===================================================================== */
-function hello(){if(SV)socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv,best:SV.best,bestC:SV.bestC,rp:SV.rp,ttl:myTitle()});}
+function hello(){if(!SV)return;socket.emit('hello',{id:SV.id,uid:SV.uid,fid:SV.fid||undefined,name:SV.name,lv:SV.lv,best:SV.best,bestC:SV.bestC,rp:SV.rp,ttl:myTitle(),dv:DV,season:SV.season,blocks:SV.blocks.map(b=>b.k)});
+  calcMyPk();setTimeout(()=>{pushProfile();ecoReport();},2500);}
 socket.on('connect',hello);
 /* ===== ランキングの端末バックアップ
    サーバーが再起動して記録が消えても、みんなの端末に残した「サーバーの署名つきランキング」から復元する。
@@ -4921,12 +5048,12 @@ function loop(t){
    ===================================================================== */
 function applyRank(win,oppRp,bot){
   const rp0=SV.rp,ti0=tierOf(rp0),d=rpDelta(win,rp0,oppRp,bot,SV.rkStreak);
-  SV.rp=rp0+d;SV.rpBest=Math.max(SV.rpBest,SV.rp);SV.rkStreak=win?SV.rkStreak+1:0;SV.rkPlay++;if(win)SV.rkWin++;SV.rkPend=null;
+  SV.rp=rp0+d;SV.rpBest=Math.max(SV.rpBest,SV.rp);SV.sBest=Math.max(SV.sBest,SV.rp);SV.sPlay++;   // シーズン中の最高SV.rkStreak=win?SV.rkStreak+1:0;SV.rkPlay++;if(win)SV.rkWin++;SV.rkPend=null;
   bump('rkplay');if(win)bump('rkwin');
   const ti1=tierOf(SV.rp);let promo=null,bonus=0;
   if(win&&ti1>SV.rkTop){for(let i=SV.rkTop+1;i<=ti1;i++)bonus+=RANKS[i].bonus;SV.rkTop=ti1;SV.coins+=bonus;promo=RANKS[ti1].n;grantUnlocks();}
   saveNow();questChanged();updateTop();
-  socket.emit('rank_report',{id:SV.id,name:SV.name,rp:SV.rp,lv:SV.lv,ttl:myTitle()},()=>setTimeout(rankBackup,300));
+  socket.emit('rank_report',{id:SV.id,name:SV.name,rp:SV.rp,lv:SV.lv,ttl:myTitle(),season:SV.season},()=>setTimeout(rankBackup,300));
   return {rp0,rp1:SV.rp,d,ti0,ti1,promo,bonus,streak:SV.rkStreak,win};
 }
 function startRankQueue(){
@@ -5006,7 +5133,7 @@ function showResult(o){
   const bt=$('res-btns');bt.classList.remove('show');
   $('res-again').textContent=GAME.ranked?'🏆 次のランク戦':'もう一回';$('res-again').disabled=!!(o.oppLeft&&!GAME.ranked);
   $('res-room').classList.toggle('hide',!roomGame);$('res-room').disabled=!!o.oppLeft;
-  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk)||isPending(opk));$('res-report').classList.toggle('hide',!opk);
+  const opk=v&&op.pk&&!op.bot&&!op.cpu?op.pk:'',af=$('res-addf');af.classList.toggle('hide',!opk||isFriend(opk)||isPending(opk));$('res-report').classList.toggle('hide',!opk);$('res-prof').classList.toggle('hide',!opk);
   af.textContent=opk&&inInbox(opk)?'✔ フレンド承認':'＋ フレンド申請';
   af.onclick=()=>{if(addFriend(opk,op.name))af.classList.add('hide');};
   if(AU.ctx){if(win)(SFX.fan||SFX.win)();else SFX.lose();}
@@ -5162,10 +5289,10 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v15',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v16',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
-$('title').addEventListener('pointerdown',e=>{e.preventDefault();hideTitle();});
+$('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
 window.addEventListener('keydown',e=>{if(TITLE&&!TITLE.out&&(e.code==='Space'||e.code==='Enter')){e.preventDefault();hideTitle();}});
 // ロゴからファビコンを作る
 function makeFavicon(){try{const f=document.createElement('canvas');f.width=f.height=64;const g=f.getContext('2d');
@@ -5366,27 +5493,33 @@ const RUN=(()=>{
 let ADM_FLAG=0,ADM_FBN=0;
 const admDot=()=>$('adm-dot').classList.toggle('hide',!(ADM_FLAG||ADM_FBN));
 socket.on('admin',v=>{IS_ADMIN=!!v;$('adm-btn').classList.toggle('hide',!IS_ADMIN);
-  if(IS_ADMIN){$('maint-ov').classList.add('hide');socket.emit('adm_overview',r=>{if(r&&r.ok){ADM_FLAG=r.flagged.length;ADM_FBN=r.fbNew;admDot();}});}});
-socket.on('adm_alert',a=>{if(!IS_ADMIN)return;ADM_FLAG=Math.max(1,ADM_FLAG);admDot();toast('🚩 '+a.name+' が '+a.n+'人から通報されています（🛠 管理者画面）',5000);if(page==='admin')admOverview();});
+  if(IS_ADMIN){$('maint-ov').classList.add('hide');socket.emit('adm_overview',r=>{if(r&&r.ok){ADM_FLAG=r.flagged.length+((r.ecoFlags||[]).length);ADM_FBN=r.fbNew;admDot();}});}});
+socket.on('adm_alert',a=>{if(!IS_ADMIN)return;ADM_FLAG=Math.max(1,ADM_FLAG);admDot();toast(a.eco?'💰 '+a.name+' のNCが多すぎます（不正の疑い・🛠 管理者画面）':'🚩 '+a.name+' が '+a.n+'人から通報されています（🛠 管理者画面）',5000);if(page==='admin')admOverview();});
 socket.on('adm_fb',a=>{if(!IS_ADMIN)return;toast('💡 '+a.name+' からフィードバック（'+a.cat+'）が届きました',4000);if(page==='admin')admFb();});
 function setFbn(n){ADM_FBN=+n||0;admDot();const b=$('afb-n');b.textContent='未対応 '+ADM_FBN;b.classList.toggle('hide',!ADM_FBN);}
 socket.on('adm_fbn',setFbn);
 $('adm-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage('admin');};
 let AU_CUR=null;
 const ago=t=>{if(!t)return '—';const s=(Date.now()-t)/1000;return s<60?'たった今':s<3600?Math.floor(s/60)+'分前':s<86400?Math.floor(s/3600)+'時間前':Math.floor(s/86400)+'日前';};
-function userTags(u){let h='';if(u.online)h+='<span class="tagb tago">オンライン</span> ';if(u.reg===false)h+='<span class="tagb">名前未登録</span> ';if(u.ban)h+='<span class="tagb">停止中'+(u.ban.until?'〜'+fmtD(u.ban.until):'（無期限）')+'</span> ';if(u.rep)h+='<span class="tagb tagr">通報'+u.rep+'人</span> ';if(u.warn)h+='<span class="tagb tagw">警告'+u.warn+'回</span>';return h;}
+function userTags(u){let h='';if(u.eco)h+='<span class="tagb" style="background:#b26a00">💰NC疑い</span> ';if(u.online)h+='<span class="tagb tago">オンライン</span> ';if(u.reg===false)h+='<span class="tagb">名前未登録</span> ';if(u.ban)h+='<span class="tagb">停止中'+(u.ban.until?'〜'+fmtD(u.ban.until):'（無期限）')+'</span> ';if(u.rep)h+='<span class="tagb tagr">通報'+u.rep+'人</span> ';if(u.warn)h+='<span class="tagb tagw">警告'+u.warn+'回</span>';return h;}
 function userRowEl(u){const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent='Lv'+u.lv+'　'+u.name;
-  const sm=document.createElement('small');sm.innerHTML=userTags(u)+' 最終ログイン：'+ago(u.seen);g.append(b,sm);d.appendChild(g);d.onclick=()=>openAdmUser(u.pk);return d;}
+  const sm=document.createElement('small');sm.innerHTML=userTags(u)+' 最終ログイン：'+ago(u.seen)+' ・ <span class="tagb tagd">#'+u.pk.slice(0,6)+'</span>';
+  if(u.dv){const dv=document.createElement('span');dv.textContent=' 📱'+u.dv+(u.net?'（回線 '+u.net+'）':'');sm.appendChild(dv);}
+  g.append(b,sm);d.appendChild(g);d.onclick=()=>openAdmUser(u.pk);return d;}
 function admMaintState(){const m=MAINT,e=$('am-state');
   e.innerHTML=m.on?'<b style="color:#ff8a80">● メンテナンス中</b>（'+(m.until?fmtHM(m.until)+' 再開予定'+(m.auto?'・自動で終了':''):'再開時刻なし')+'）':'<b style="color:#8cf08c">● 通常運転中</b>';
   $('am-start').textContent=m.on?'内容を更新する':'メンテナンス開始';$('am-end').disabled=!m.on;}
 function admOverview(){
   socket.emit('adm_overview',r=>{if(!r||!r.ok)return;MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
     $('adm-stat').innerHTML='オンライン '+r.online+'人 ・ ユーザー '+r.users+'人 ・ 試合中のルーム '+r.rooms+'<br>保存先：'+(r.kv?'Upstash（再起動しても消えません）':'<b style="color:#ff8a80">サーバーのファイル（Renderの再起動で停止・お知らせが消えます。Upstashの設定をおすすめします）</b>');
-    const al=$('adm-alerts');al.innerHTML='';ADM_FLAG=r.flagged.length;admDot();
+    const al=$('adm-alerts');al.innerHTML='';ADM_FLAG=r.flagged.length+((r.ecoFlags||[]).length);admDot();
     if(r.flagged.length){const f=document.createElement('div');f.className='adm-flag';f.innerHTML='<b>🚩 '+r.flagged.length+'人が5人以上から通報されています</b>';
       r.flagged.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（通報'+u.rep+'人）'+(u.ban?' ⛔停止中':'');
         const rs=document.createElement('small');rs.textContent=[...new Set(u.reasons.map(q=>q.reason))].join('・');x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
+    if(r.ecoFlags&&r.ecoFlags.length){const f=document.createElement('div');f.className='adm-eco';f.innerHTML='<b>💰 NCが多すぎるユーザー（書き換えの疑い） '+r.ecoFlags.length+'人</b><div class="muted">サーバーが知っている「もらえたはずのNC」より多い人です。タップして確認し、「修正する」か「問題なし」を選んでください。</div>';
+      r.ecoFlags.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（所持 '+(u.coins||0).toLocaleString()+' NC）';
+        const rs=document.createElement('small');rs.textContent='価値 '+u.w.toLocaleString()+' ／ 上限の目安 '+u.bound.toLocaleString();x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
+    renderNg(r.ng||[]);$('ng-base').textContent='（基本 '+r.ngBase+'語 ＋ 追加 '+(r.ng||[]).length+'語）';
     if(r.banned.length){const f=document.createElement('div');f.className='panel';f.innerHTML='<b>⛔ 停止中のユーザー（'+r.banned.length+'人）</b>';r.banned.forEach(u=>f.appendChild(userRowEl(u)));al.appendChild(f);}
     const nb=$('adm-notices');nb.innerHTML='<b style="display:block;margin-top:.5em">送信済みのお知らせ</b>';
     r.notices.forEach(n=>{const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';g.innerHTML='<span class="nk '+n.kind+'">'+(KINDN[n.kind]||'')+'</span> ';const b=document.createElement('b');b.textContent=n.title+(n.gift?'（🎁'+n.gift+'NC）':'');g.appendChild(b);const sm=document.createElement('small');sm.textContent=fmtD(n.t);g.appendChild(sm);
@@ -5431,6 +5564,17 @@ function openAdmUser(pk){
     $('au-name').textContent='Lv'+u.lv+'　'+u.name;$('au-info').innerHTML=userTags(u)+'<br>最終ログイン：'+ago(u.seen)+(u.since?' ・ 初ログイン：'+fmtD(u.since):'')+' ・ 状態：'+({online:'ロビー',waiting:'ルーム待機中',playing:'プレイ中',offline:'オフライン'}[u.st]||u.st);
     $('au-ban').disabled=false;$('au-unban').disabled=!u.ban;
     const h=$('au-hist');h.innerHTML='';const sec=(t,l,f)=>{if(!l.length)return;const b=document.createElement('b');b.textContent=t;h.appendChild(b);l.forEach(x=>{const d=document.createElement('div');d.className='hi';d.textContent=f(x);h.appendChild(d);});};
+    const dv=r.dv,de=$('au-dev');de.innerHTML='';
+    if(dv){const L=[['機種',dv.model||'不明'],['OS',dv.os],['ブラウザ',dv.br+(dv.pwa?'（ホーム画面から）':'')],['画面',dv.scr+(dv.dpr?' ×'+dv.dpr:'')],['言語・地域',dv.lang+' / '+dv.tz],['回線ID',dv.net+'（同じWi-Fiなどだと同じになります）'],['最終接続',fmtD(dv.t)],['UA',dv.ua]];
+      L.forEach(([a,b])=>{const d=document.createElement('div');d.innerHTML='<b></b> ';d.firstChild.textContent=a+'：';d.appendChild(document.createTextNode(b||'—'));de.appendChild(d);});
+      if(r.dvs&&r.dvs.length>1){const d=document.createElement('div');d.innerHTML='<b>使ったことのある端末：</b>';d.appendChild(document.createTextNode(r.dvs.map(x=>x.s+'（回線 '+x.net+'・'+fmtD(x.t)+'）').join(' ／ ')));de.appendChild(d);}}
+    else de.textContent='まだ情報がありません（v16以降にログインすると記録されます）';
+    const e=r.eco,ee=$('au-eco');ee.innerHTML='';
+    if(e){ee.innerHTML='所持 <b></b> NC ／ NC＋持ち物の価値 <b></b> ／ 上限の目安 <b></b>'+(e.flag?'<br><span style="color:#ffb300">⚠ 上限をこえています（'+fmtD(e.flag.t)+'から）</span>':'<br><span style="color:#8cf08c">✔ 問題なし</span>')+(e.fix!=null?'<br>修正待ち：'+e.fix+' NC（次にログインしたときに反映）':'');
+      const bs=ee.querySelectorAll('b');bs[0].textContent=(e.c||0).toLocaleString();bs[1].textContent=(e.w||0).toLocaleString();bs[2].textContent=(e.bound||0).toLocaleString();
+      $('au-nc').value=Math.max(0,Math.min(e.c||0,(e.c||0)-((e.w||0)-(e.bound||0))));}
+    else{ee.textContent='まだ報告がありません';$('au-nc').value='';}
+    const sm=$('au-same');sm.innerHTML='';if(r.same&&r.same.length){const b=document.createElement('b');b.textContent='📶 同じ回線のユーザー（'+r.same.length+'人・サブ垢の確認に）';sm.appendChild(b);r.same.forEach(u=>sm.appendChild(userRowEl(u)));}
     sec('🚩 通報（新しい順）',r.reports,x=>fmtD(x.t)+'　'+x.fromName+'：'+x.reason+(x.where?'（'+x.where+'）':'')+(x.text?'　「'+x.text+'」':''));
     sec('⚠️ 警告',r.warns,x=>fmtD(x.t)+'　'+x.text+(x.ack?'（確認済み）':'（未確認）'));
     sec('✉️ 個別メッセージ',r.msgs,x=>fmtD(x.t)+'　'+x.title+'：'+x.text);
@@ -5443,11 +5587,316 @@ $('au-unban').onclick=()=>admAct('unban');
 $('au-warn').onclick=()=>admAct('warn',{text:$('au-text').value});
 $('au-msg').onclick=()=>admAct('msg',{text:$('au-text').value,title:'運営からのお知らせ'});
 $('au-clear').onclick=()=>admAct('clearrep');
+$('au-ncfix').onclick=()=>{const v=Math.round(+$('au-nc').value);if(!(v>=0)){toast('NCの数を入れてください');return;}if(!confirmTwice($('au-ncfix'),v+'NCにする？'))return;admAct('ncfix',{amount:v});};
+$('au-ncok').onclick=()=>admAct('ncok');
+// NGワード
+function renderNg(list){const b=$('ng-list');b.innerHTML='';if(!list.length){b.innerHTML='<span class="muted" style="background:none">追加した言葉はありません</span>';return;}
+  list.forEach(w=>{const s=document.createElement('span');s.textContent=w+' ✕';s.title='タップで削除';s.onclick=()=>socket.emit('adm_ng',{act:'del',w},r=>{if(r&&r.ok)renderNg(r.ng);});b.appendChild(s);});}
+$('ng-add').onclick=()=>{const w=$('ng-w').value.trim();if(!w)return;socket.emit('adm_ng',{act:'add',w},r=>{if(r&&r.ok){$('ng-w').value='';renderNg(r.ng);toast('NGワードに追加しました');}});};
+$('ng-try').onclick=()=>socket.emit('adm_ngtest',{text:$('ng-test').value},r=>{if(r&&r.ok)$('ng-out').textContent='→ '+r.out;});
 $('au-gift-send').onclick=()=>{const a=Math.round(+$('au-gift').value||0);if(a<=0){toast('NCの数を入れてください');return;}if(!confirmTwice($('au-gift-send'),a+'NC贈る？'))return;admAct('gift',{amount:a,text:$('au-text').value});};
 function confirmTwice(btn,msg){
   if(btn.dataset.c){clearTimeout(+btn.dataset.tm);btn.dataset.c='';btn.textContent=btn.dataset.o;return true;}
   btn.dataset.o=btn.textContent;btn.dataset.c='1';btn.textContent=msg+'（もう一度）';
   btn.dataset.tm=setTimeout(()=>{btn.dataset.c='';btn.textContent=btn.dataset.o;},3000);return false;}
+
+/* =====================================================================
+   v16：端末情報・ブロック・プロフィール・ログインボーナス・シーズン・トロフィー・
+        シェア画像・遊び方／練習モード・ホーム画面に追加（PWA）・NCの検算
+   ===================================================================== */
+
+/* ----- 端末の情報（管理者が「おまかせ名前」の人を見分けるため。ほかのプレイヤーには見えません） ----- */
+const DV={scr:(screen.width|0)+'x'+(screen.height|0),dpr:Math.round((devicePixelRatio||1)*100)/100,lang:navigator.language||'',
+  tz:(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){return '';}})(),touch:(navigator.maxTouchPoints||0)>0,
+  pwa:!!((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone),model:''};
+try{if(navigator.userAgentData&&navigator.userAgentData.getHighEntropyValues)navigator.userAgentData.getHighEntropyValues(['model']).then(v=>{if(v&&v.model)DV.model=String(v.model).slice(0,30);}).catch(()=>{});}catch(e){}
+
+/* ----- ブロック ----- */
+const isBlocked=pk=>!!pk&&SV.blocks.some(b=>b.k===pk);
+function sendBlocks(){if(socket.connected)socket.emit('blocks_set',SV.blocks.map(b=>b.k));}
+function blockUser(pk,name){if(!PK_RE.test(pk)||isBlocked(pk))return;SV.blocks.unshift({k:pk,n:String(name||'').slice(0,10)});SV.blocks=SV.blocks.slice(0,200);saveNow();sendBlocks();toast('🚫 '+(name||'プレイヤー')+' をブロックしました');}
+function unblockUser(pk){SV.blocks=SV.blocks.filter(b=>b.k!==pk);saveNow();sendBlocks();toast('ブロックを解除しました');}
+function renderBlocks(){const box=$('blk-list');box.innerHTML='';
+  if(!SV.blocks.length){box.innerHTML='<div class="muted" style="padding:.8em;text-align:center">ブロックしているプレイヤーはいません</div>';return;}
+  SV.blocks.forEach(b=>{const d=document.createElement('div');d.className='au-row';const n=document.createElement('b');n.className='grow pf-link';n.textContent=b.n||'プレイヤー';n.onclick=()=>openProfile({pk:b.k,name:b.n});
+    const u=document.createElement('button');u.className='btn sm';u.textContent='解除';u.onclick=()=>{unblockUser(b.k);renderBlocks();};d.append(n,u);box.appendChild(d);});}
+$('sm-block').onclick=()=>{$('side-menu').classList.add('hide');renderBlocks();$('blk-modal').classList.remove('hide');};
+$('blk-close').onclick=()=>$('blk-modal').classList.add('hide');
+
+/* ----- NCの検算：端末の「NC＋持ち物の価値」をサーバーに知らせる（書き換えの発見用） ----- */
+const DEFAULT_INV=newSave().inv;
+function invWorth(){let s=0;const g10=GACHA_CONFIG.cost10/10;
+  for(const c in CAT)for(const k of SV.inv[c]){const it=CAT[c][k];if(!it||DEFAULT_INV[c].includes(k)||isSpecial(it))continue;
+    if(it.g)s+=g10;else if(it.p>0)s+=it.so?Math.round(it.p*.8):Math.min(Math.round(it.p*.8),g10);}
+  return Math.floor(s);}
+let ecoT=0,ecoTm=null;
+function ecoReport(){clearTimeout(ecoTm);ecoTm=null;if(!SV||!socket.connected)return;ecoT=Date.now();
+  socket.emit('eco',{coins:SV.coins,inv:invWorth(),lv:SV.lv,rk:SV.rkTop,ach:trophies(),pulls:SV.stats.gacha||0,sea:SV.seaN});}
+function ecoSoon(){if(ecoTm)return;ecoTm=setTimeout(ecoReport,Math.max(2000,15000-(Date.now()-ecoT)));}
+socket.on('nc_fix',d=>{if(!d||!isFinite(d.coins))return;SV.coins=Math.max(0,Math.floor(d.coins));saveNow();updateTop();socket.emit('nc_fix_ok');
+  toast('💰 運営によってNCが '+SV.coins.toLocaleString()+' NC に修正されました',4500);});
+
+/* ----- プロフィール（ブロスタ風。アイコンは持っているアイテムから選べる。実際の装備とは別） ----- */
+const DEF_LOOK={bike:'std',skin:'default',hair:'default',fit:'default',acc:'none',trail:'none'};
+function drawProfIcon(cv,ic,bg,t){
+  const g=cv.getContext('2d'),w=cv.width,h=cv.height;g.setTransform(1,0,0,1,0,0);
+  const col=PROF_BGS[bg|0]||PROF_BGS[0],gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,col);gr.addColorStop(1,'#0e1433');g.fillStyle=gr;g.fillRect(0,0,w,h);
+  g.fillStyle='rgba(255,255,255,.12)';g.beginPath();g.arc(w/2,h*.55,w*.42,0,7);g.fill();
+  const c=ic&&CAT[ic.c]&&CAT[ic.c][ic.k]?ic.c:'hair',k=c===(ic&&ic.c)?ic.k:'default',lk=Object.assign({},DEF_LOOK);
+  if(c==='hair'||c==='acc'||!ic){lk[c]=k;const r=h*.27;g.fillStyle=(OUTFITS[lk.fit]||OUTFITS.default).c;g.beginPath();g.ellipse(w/2-r*.1,h*1.02,r*1.25,r*.75,0,0,7);g.fill();g.lineWidth=Math.max(2,w/48);g.strokeStyle=OUTL;g.stroke();
+    headSide(g,w/2-r*.15,h*.55,r,lk,t||0,'normal');}
+  else if(LOOKC.has(c)){lk[c]=k;drawSide(g,w,h,lk,t||0,c==='fit'?1.12:1.05,{idle:true});}
+  else drawIcon(g,w,h,c,k,CAT[c][k].r,t||0);
+}
+function myProf(){
+  return {lv:SV.lv,ic:SV.prof.ic,msg:SV.prof.msg,bg:SV.prof.bg,look:myLook(),ttl:myTitle(),pl:myPlate(),rp:SV.rp,sBest:SV.sBest,rkTop:SV.rkTop,seaTop:SV.seaTop,tro:trophies(),
+    st:{wins:SV.stats.wins||0,plays:SV.stats.plays||0,best:SV.best,dist:SV.stats.dist||0,items:itemCount(),login:SV.lb.total,over:SV.stats.overtake||0,fr:SV.friends.length}};
+}
+let profTm=null;
+function pushProfile(){clearTimeout(profTm);profTm=setTimeout(()=>{if(SV&&socket.connected)socket.emit('profile_set',myProf());},3000);}
+function drawHomeIcon(){const cv=$('prof-ic');if(cv&&SV)drawProfIcon(cv,SV.prof.ic,SV.prof.bg,600);}
+$('prof-me').onclick=()=>{initAudio();if(AU.ctx)SFX.click();openProfile({self:true});};
+$('sm-prof').onclick=()=>{$('side-menu').classList.add('hide');openProfile({self:true});};
+let PF=null;
+function openProfile(o){
+  initAudio();
+  if(o.self||(o.pk&&o.pk===MYPK())){PF={self:true,pk:MYPK(),name:SV.name,reg:SV.nameReg,online:true,p:myProf()};renderProfile();$('prof-modal').classList.remove('hide');return;}
+  if(!socket.connected){toast(NAME_WHY.offline);return;}
+  socket.emit('profile_get',{pk:o.pk||'',name:o.pk?'':(o.name||'')},r=>{
+    if(!r||!r.ok){toast((r&&r.err)||'プロフィールを読み込めませんでした');return;}
+    PF={self:false,pk:r.pk,name:r.name,reg:r.reg,online:r.online,st:r.st,p:r.p};renderProfile();$('prof-modal').classList.remove('hide');});
+}
+const MYPK=()=>window.__mypk||'';
+// 自分の公開キー（フレンド用）をこの端末でも計算しておく（サーバーと同じ式）
+async function calcMyPk(){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('nm-friend:'+SV.uid));window.__mypk=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('').slice(0,16);}catch(e){}}
+const fmtN=n=>(+n||0).toLocaleString();
+function renderProfile(){
+  const P=PF,p=P.p||{lv:1,st:{},look:DEF_LOOK},st=p.st||{},t=performance.now();
+  drawProfIcon($('pf-ic'),p.ic,p.bg,t);
+  $('pf-name').textContent=P.name||'プレイヤー';const on=$('pf-on');on.textContent=P.self?'あなた':P.online?({playing:'🔴 プレイ中',waiting:'🏠 ルーム待機中'}[P.st]||'🟢 オンライン'):'オフライン';on.classList.toggle('on',!!P.online);
+  const pc=$('pf-plate'),pg=pc.getContext('2d');pg.clearRect(0,0,pc.width,pc.height);drawPlate(pg,6,6,pc.width-12,pc.height-14,{lv:p.lv||1,name:P.name||'',ttl:p.ttl||'rookie',pl:p.pl||'normal'},t);
+  $('pf-msg').textContent=P.p?'💬 '+(PROF_MSGS[p.msg|0]||''):'まだプロフィールがありません（新しいバージョンで遊ぶと表示されます）';
+  const ri=rankInfo(p.rp||0),hi=RANKS[Math.min(6,p.rkTop||0)];
+  const tiles=[['🏆 トロフィー',fmtN(p.tro)+' / '+trophyMax(),'tro'],['🚲 いまのランク',ri.name],['📈 今シーズン最高',rankInfo(p.sBest||0).name],['👑 最高ランク',hi.n],
+    ['⚔ 勝利数',fmtN(st.wins)],['🎮 試合数',fmtN(st.plays)],['🏃 エンドレス最高',fmtN(st.best)],['🛣️ 走行距離',fmtN(st.dist)+' m'],['💨 追い抜き',fmtN(st.over)],
+    ['🎒 アイテム',fmtN(st.items)+' 個'],['📅 ログイン',fmtN(st.login)+' 日'],['🤝 フレンド',fmtN(st.fr)+' 人']];
+  if((p.seaTop|0)>=0&&p.seaTop!=null)tiles.splice(4,0,['🗓️ シーズン最高',RANKS[p.seaTop|0].n]);
+  const box=$('pf-stats');box.innerHTML='';tiles.forEach(([a,b,cl])=>{const d=document.createElement('div');d.className='pf-st'+(cl?' '+cl:'');const s=document.createElement('small');s.textContent=a;const v=document.createElement('b');v.textContent=b;d.append(s,v);box.appendChild(d);});
+  const rc=$('pf-ride'),rg=rc.getContext('2d');rg.setTransform(1,0,0,1,0,0);rg.clearRect(0,0,rc.width,rc.height);const lk=Object.assign({},DEF_LOOK,p.look||{});
+  for(const c of ['bike','skin','hair','fit','acc'])if(!CAT[c][lk[c]])lk[c]=DEF_LOOK[c];drawSide(rg,rc.width,rc.height,lk,t,1.05,{idle:true});
+  const bb=$('pf-btns');bb.innerHTML='';const B=(txt,cls,fn)=>{const b=document.createElement('button');b.className='btn sm '+cls;b.textContent=txt;b.onclick=fn;bb.appendChild(b);return b;};
+  if(P.self){B('✏️ 編集する','blue',openProfEdit);B('📸 プロフィールをシェア','purple',()=>openShare('prof'));}
+  else{
+    if(P.reg&&PK_RE.test(P.pk)){if(isFriend(P.pk))B('🤝 フレンド','dark',()=>{}).disabled=true;else B(isPending(P.pk)?'📨 申請中':'＋ フレンド申請','green',()=>{addFriend(P.pk,P.name);renderProfile();}).disabled=isPending(P.pk);}
+    if(P.reg)B('🚩 通報','dark',()=>openReport(P.pk,P.name,'プロフィール'));
+    if(PK_RE.test(P.pk)){const bl=isBlocked(P.pk);const b=B(bl?'ブロックを解除':'🚫 ブロック',bl?'':'red',()=>{if(bl){unblockUser(P.pk);renderProfile();return;}if(!confirmTwice(b,'本当にブロックする？'))return;blockUser(P.pk,P.name);renderProfile();});}
+  }
+}
+$('pf-close').onclick=()=>$('prof-modal').classList.add('hide');
+$('prof-modal').addEventListener('click',e=>{if(e.target.id==='prof-modal')$('pf-close').onclick();});
+// 編集
+let PE_CAT='hair';
+function openProfEdit(){
+  const cats=Object.keys(CATN).filter(c=>SV.inv[c].length);if(!cats.includes(PE_CAT))PE_CAT=cats[0];
+  const cb=$('pe-cats');cb.innerHTML='';cats.forEach(c=>{const b=document.createElement('button');b.className='chip'+(c===PE_CAT?' on':'');b.textContent=CATN[c];b.onclick=()=>{PE_CAT=c;openProfEdit();};cb.appendChild(b);});
+  const ib=$('pe-icons');ib.innerHTML='';const t=performance.now();
+  SV.inv[PE_CAT].forEach(k=>{const cv=document.createElement('canvas');cv.width=cv.height=120;const ic={c:PE_CAT,k};drawProfIcon(cv,ic,SV.prof.bg,t);cv.title=CAT[PE_CAT][k].n;
+    if(SV.prof.ic&&SV.prof.ic.c===PE_CAT&&SV.prof.ic.k===k)cv.classList.add('on');cv.onclick=()=>{SV.prof.ic=ic;save();pushProfile();drawHomeIcon();openProfEdit();if(AU.ctx)SFX.click();};ib.appendChild(cv);});
+  const bg=$('pe-bgs');bg.innerHTML='';PROF_BGS.forEach((col,i)=>{const b=document.createElement('button');b.style.background=col;if(i===SV.prof.bg)b.className='on';b.onclick=()=>{SV.prof.bg=i;save();pushProfile();drawHomeIcon();openProfEdit();};bg.appendChild(b);});
+  const mb=$('pe-msgs');mb.innerHTML='';PROF_MSGS.forEach((m,i)=>{const b=document.createElement('button');b.className='chip'+(i===SV.prof.msg?' on':'');b.textContent=m;b.onclick=()=>{SV.prof.msg=i;save();pushProfile();openProfEdit();};mb.appendChild(b);});
+  $('pe-modal').classList.remove('hide');
+}
+$('pe-ok').onclick=()=>{$('pe-modal').classList.add('hide');if(PF&&PF.self){PF.p=myProf();renderProfile();}};
+// ほかの画面からプロフィールを開く
+$('res-prof').onclick=()=>{const op=GAME.opp||{};if(op.pk)openProfile({pk:op.pk,name:op.name});};
+$('rm-prof').onclick=()=>{if(!ROOM)return;const op=ROOM.players[1-ROOM.me];if(op&&op.pk)openProfile({pk:op.pk,name:op.name});};
+
+/* ----- ログインボーナス（7日連続。途切れると1日目から） ----- */
+const LB_REW=[{nc:50},{tk:1},{nc:100},{tk:1},{nc:150},{tk:2},{nc:300,tk:3}];
+const dayKeyOff=off=>{const d=new Date();d.setDate(d.getDate()+off);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();};
+const lbToday=()=>SV.lb.last!==todayKey();
+function lbIndex(){return SV.lb.last===dayKeyOff(-1)||SV.lb.last===todayKey()?SV.lb.d:0;}   // 昨日も受け取っていれば続き、途切れたら1日目
+const rewText=r=>[r.nc?r.nc+' NC':'',r.tk?'ガチャ券×'+r.tk:''].filter(Boolean).join(' + ');
+function openLB(force){
+  const can=lbToday(),cur=lbIndex(),box=$('lb-days');box.innerHTML='';
+  const lastGot=can?cur-1:(SV.lb.d===0?6:SV.lb.d-1);   // 受け取り済みの最後の日
+  LB_REW.forEach((r,i)=>{const d=document.createElement('div');d.className='lb-d'+(i===6?' d7':'')+(i<=lastGot?' got':'')+(can&&i===cur?' today':'');
+    d.innerHTML='<small>'+(i+1)+'日目</small><span class="ic">'+(r.tk&&r.nc?'🎁':r.tk?'🎟️':'💰')+'</span><b>'+rewText(r).replace(' + ','<br>')+'</b>';box.appendChild(d);});
+  $('lb-sub').textContent=can?'毎日ログインしてボーナスをもらおう！ 7日目は豪華（1日休むと1日目から）':'今日の分は受け取り済み。また明日！（ログイン '+SV.lb.total+'日目）';
+  const b=$('lb-ok');b.textContent=can?'🎁 '+(cur+1)+'日目を受け取る（'+rewText(LB_REW[cur])+'）':'閉じる';b.className='btn big '+(can?'green':'dark');
+  $('lb-modal').classList.remove('hide');
+}
+$('lb-ok').onclick=()=>{
+  if(!lbToday()){$('lb-modal').classList.add('hide');return;}
+  const i=lbIndex(),r=LB_REW[i];SV.lb.d=(i+1)%7;SV.lb.last=todayKey();SV.lb.total++;
+  if(r.nc)SV.coins+=r.nc;if(r.tk)SV.tk+=r.tk;saveNow();updateTop();questChanged();pushProfile();
+  if(AU.ctx)(i===6?(SFX.fan||SFX.win):SFX.claim)();toast('📅 '+(i+1)+'日目のログインボーナス：'+rewText(r)+' を受け取りました！',3200);
+  $('lb-modal').classList.add('hide');updateTicketUI();
+};
+$('sm-lb').onclick=()=>{$('side-menu').classList.add('hide');openLB(true);};
+// ガチャ券（1回まわすときに自動で使う）
+function updateTicketUI(){const b=$('gpull');if(!b||!SV)return;const c=$('gpull-c');
+  if(SV.tk>0){b.firstChild.textContent='🎟️ 券でまわす';c.textContent='ガチャ券 残り'+SV.tk+'枚';}else{b.firstChild.textContent='1回まわす';c.textContent=GACHA_CONFIG.cost1+' NC';}}
+
+/* ----- シーズン（毎月1日にリセット。終了時のランクで報酬） ----- */
+const SEA_NC=[100,200,400,700,1000,1500,3000];
+let SEASONI=null,SEA_PEND=null;
+const seaName=id=>{const [y,m]=String(id||'').split('-');return y?y+'年'+(+m)+'月シーズン':'';};
+socket.on('season',info=>{
+  if(!info||!info.id||!SV)return;SEASONI=info;
+  if(!SV.season){SV.season=info.id;saveNow();}
+  else if(SV.season!==info.id)endSeason(info.id);
+  if(page==='rank')renderSeasonBar();
+});
+function endSeason(newId){
+  const played=SV.sPlay>0,ti=tierOf(Math.max(SV.sBest,SV.rp)),old=SV.season;
+  const r={id:old,ti,played,nc:0,items:[]};
+  if(played){
+    r.nc=SEA_NC[ti];SV.coins+=r.nc;SV.seaN++;SV.sHist.push({id:old,best:Math.max(SV.sBest,SV.rp),ti});SV.sHist=SV.sHist.slice(-24);
+    if(ti>SV.seaTop){SV.seaTop=ti;r.items=grantUnlocks();}
+  }
+  SV.rp=Math.min(Math.floor(SV.rp/2),RANKS[3].min);SV.rkStreak=0;SV.sBest=SV.rp;SV.sPlay=0;SV.season=newId;saveNow();updateTop();
+  if(played)SEA_PEND=r;
+}
+function showSeasonReward(){
+  const r=SEA_PEND;SEA_PEND=null;if(!r)return;
+  $('sea-title').textContent=seaName(r.id)+' 終了！';const cv=$('sea-badge'),g=cv.getContext('2d');g.clearRect(0,0,160,160);drawRankBadge(g,80,84,128,r.ti,performance.now(),'');
+  $('sea-text').textContent='シーズン中の最高ランク：'+RANKS[r.ti].n;
+  $('sea-rew').innerHTML='';[r.nc+' NC'].concat(r.items.map(n=>'🎁 '+n)).forEach(x=>{const d=document.createElement('div');d.textContent=x;$('sea-rew').appendChild(d);});
+  const n=document.createElement('div');n.className='muted';n.style.fontWeight='800';n.textContent='新シーズンのRPは半分（最大プラチナ）からスタート！';$('sea-rew').appendChild(n);
+  $('season-modal').classList.remove('hide');if(AU.ctx)(SFX.fan||SFX.win)();
+}
+$('sea-ok').onclick=()=>{$('season-modal').classList.add('hide');questChanged();};
+function renderSeasonBar(){
+  const b=$('season-bar');if(!SEASONI||rankKind!=='rp'){b.classList.add('hide');return;}
+  const left=Math.max(0,Math.ceil((SEASONI.end-Date.now())/864e5)),pv=SEASONI.prev;
+  b.innerHTML='';const a=document.createElement('span');a.innerHTML='🗓️ <b></b>　残り '+left+'日';a.querySelector('b').textContent=seaName(SEASONI.id);b.appendChild(a);
+  const r=document.createElement('span');r.className='muted';r.textContent='終了時のランクで報酬（ゴールド以上で限定チャリ）';b.appendChild(r);
+  if(pv&&pv.top&&pv.top.length){const p=document.createElement('span');p.className='prev';p.textContent='前シーズン：'+pv.top.slice(0,3).map((e,i)=>['🥇','🥈','🥉'][i]+e.name).join(' ');b.appendChild(p);}
+  b.classList.remove('hide');
+}
+
+/* ----- シェア画像 ----- */
+let SH=null;
+function openShare(kind){
+  initAudio();const W2=1200,H2=630,cv=document.createElement('canvas');cv.width=W2;cv.height=H2;const g=cv.getContext('2d'),t=performance.now();
+  const v=kind==='versus',run=kind==='endless',win=RES&&RES.win;
+  const bg=g.createLinearGradient(0,0,W2,H2);
+  if(kind==='prof'){bg.addColorStop(0,PROF_BGS[SV.prof.bg]);bg.addColorStop(1,'#0d1226');}else if(win){bg.addColorStop(0,'#ffb300');bg.addColorStop(.55,'#e65100');bg.addColorStop(1,'#3e1a00');}else{bg.addColorStop(0,'#283593');bg.addColorStop(1,'#0d1226');}
+  g.fillStyle=bg;g.fillRect(0,0,W2,H2);
+  g.save();g.translate(W2*.3,H2*.62);g.globalCompositeOperation='lighter';for(let i=0;i<14;i++){g.rotate(Math.PI/7);g.fillStyle='rgba(255,255,255,.06)';g.beginPath();g.moveTo(0,0);g.lineTo(W2,-50);g.lineTo(W2,50);g.fill();}g.restore();
+  g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(W2*.3,H2*.9,250,30,0,0,7);g.fill();
+  g.save();g.translate(W2*.3-300,H2*.18);drawSide(g,600,460,myLook(),t,1.05,{idle:false});g.restore();
+  const T=(s,x,y,sz,col,al)=>{g.font='900 '+sz+'px '+FONT;g.textAlign=al||'left';g.textBaseline='middle';g.lineJoin='round';g.lineWidth=sz*.16;g.strokeStyle=OUTL;g.strokeText(s,x,y);g.fillStyle=col;g.fillText(s,x,y);};
+  T('なにが目的なん？',40,58,46,'#ffe56b');T('ONLINE',40+g.measureText('なにが目的なん？').width+16,62,30,'#fff');
+  const X=W2*.6;
+  if(kind==='prof'){T(SV.name,X,150,62,'#fff');T('Lv'+SV.lv+'　'+(TITLES[myTitle()]||{}).n,X,225,34,'#cfe3ff');
+    const lines=['🏆 トロフィー '+trophies()+' / '+trophyMax(),'🚲 '+rankInfo(SV.rp).name,'👑 最高 '+RANKS[SV.rkTop].n,'⚔ '+fmtN(SV.stats.wins||0)+'勝　🏃 ベスト '+fmtN(SV.best)];
+    lines.forEach((l,i)=>T(l,X,300+i*62,36,'#fff'));}
+  else if(v){T(win?'VICTORY!':'DEFEAT',X,150,96,win?'#ffd23f':'#ff8a80');const sc=(D&&D.sc)||[0,0];T(sc[slot]+' - '+sc[1-slot],X,265,80,'#fff');
+    const op=GAME.opp||{};T('vs '+(op.name||'CPU'),X,350,40,'#cfe3ff');T($('res-mode').textContent,X,410,32,'#fff');if(MLOG&&MLOG.rk)T(rankInfo(MLOG.rk.rp1).label,X,465,32,'#ffe56b');}
+  else{T(END&&END.improved?'NEW RECORD!':'エンドレスラン',X,150,END&&END.improved?84:64,'#ffd23f');T((END?END.score:0).toLocaleString(),X,270,110,'#fff');
+    T('距離 '+(END?END.dist:0).toLocaleString()+' m',X,370,40,'#cfe3ff');if(D&&COURSES[D.course||0])T('コース：'+COURSES[D.course||0].n,X,430,32,'#fff');}
+  if(kind!=='prof')T(SV.name+'　Lv'+SV.lv,X,H2-110,34,'#fff');T('#なにが目的なん　'+location.host,W2-40,H2-40,28,'#fff','right');
+  const url=cv.toDataURL('image/png');$('sh-img').src=url;
+  const text=kind==='prof'?'「なにが目的なん？」で遊んでます！ プロフィールはこちら':v?(win?'「なにが目的なん？」で勝った！ '+((D&&D.sc)?D.sc[slot]+'-'+D.sc[1-slot]:''):'「なにが目的なん？」で負けた…次は勝つ！'):'「なにが目的なん？」エンドレスランで '+((END&&END.score)||0).toLocaleString()+' 点！';
+  SH={url,text,cv};$('share-modal').classList.remove('hide');
+}
+$('res-share').onclick=()=>openShare(RES&&RES.kind==='versus'?'versus':'endless');
+$('sh-close').onclick=()=>$('share-modal').classList.add('hide');
+$('sh-dl').onclick=()=>{if(!SH)return;const a=document.createElement('a');a.href=SH.url;a.download='nanigamokutekinan.png';document.body.appendChild(a);a.click();a.remove();};
+$('sh-x').onclick=()=>{if(!SH)return;window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(SH.text)+'&hashtags='+encodeURIComponent('なにが目的なん')+'&url='+encodeURIComponent(location.origin),'_blank','noopener');};
+$('sh-share').onclick=()=>{if(!SH)return;
+  SH.cv.toBlob(b=>{const f=new File([b],'nanigamokutekinan.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f],text:SH.text+' #なにが目的なん '+location.origin}).catch(()=>{});
+    else if(navigator.share)navigator.share({text:SH.text+' #なにが目的なん',url:location.origin}).catch(()=>{});
+    else{$('sh-dl').onclick();toast('画像を保存しました。SNSに貼りつけてシェアしよう！');}},'image/png');};
+
+/* ----- 遊び方（スライド） ----- */
+const HOWTO=[
+ {t:'🏁 ルール',d:'2人で自転車バトル！ ラウンドごとに<b style="color:#ff9a8f">攻撃側（前）</b>と<b style="color:#8fd0ff">追越側（後ろ）</b>を交代します。<br>先に<b>4ポイント</b>取ったほうの勝ち。6ラウンド目からは<b>サドンデス</b>（取ったほうが勝ち）。',k:'rule'},
+ {t:'💨 追越側（後ろ）',d:'左右に動いて道をさがし、<b>ブースト</b>で加速！<br>前の攻撃側を<b>追い抜いたら1ポイント</b>。',k:'over'},
+ {t:'🛑 攻撃側（前）',d:'左右で<b>幅寄せ</b>して道をふさごう。<br><b>急ブレーキ</b>（3回まで）で後ろの相手をぶつけたら1ポイント。<b>25秒守りきって</b>も1ポイント！',k:'att'},
+ {t:'🚗 車とパトカー',d:'車にぶつかると<b>相手のポイント</b>。<br>パトカーに近づきすぎたり、パトカーの近くで急ブレーキすると<b>逮捕（-1ポイント）</b>！',k:'cop'},
+ {t:'🎮 操作',d:'<b>スマホ</b>：左のスティックで左右、右のボタンでブースト／ブレーキ。<br><b>パソコン</b>：←→（A D）で移動、W・↑・スペースでブースト（攻撃側は急ブレーキ）。<br>まずは<b>🔰 練習モード</b>でためしてみよう！',k:'ctl'}];
+let HT=0,htRaf=0;
+function openHowto(i){HT=i||0;renderHowto();$('howto-modal').classList.remove('hide');if(!htRaf)htRaf=requestAnimationFrame(htLoop);if(SV.tut<1){SV.tut=1;save();}}
+function renderHowto(){const s=HOWTO[HT];$('ht-title').textContent=s.t;$('ht-text').innerHTML=s.d;$('ht-page').textContent=(HT+1)+' / '+HOWTO.length;
+  $('ht-prev').disabled=HT===0;$('ht-next').textContent=HT===HOWTO.length-1?'閉じる':'次へ →';$('ht-tut').classList.toggle('hide',HT!==HOWTO.length-1);}
+$('ht-prev').onclick=()=>{if(HT>0){HT--;renderHowto();}};
+$('ht-next').onclick=()=>{if(HT<HOWTO.length-1){HT++;renderHowto();if(AU.ctx)SFX.click();}else $('ht-close').onclick();};
+$('ht-close').onclick=()=>$('howto-modal').classList.add('hide');
+$('ht-tut').onclick=()=>{$('howto-modal').classList.add('hide');startTutorial();};
+$('sm-howto').onclick=()=>{$('side-menu').classList.add('hide');openHowto(0);};
+function htLoop(t){
+  if($('howto-modal').classList.contains('hide')){htRaf=0;return;}htRaf=requestAnimationFrame(htLoop);
+  const cv=$('ht-cv'),g=cv.getContext('2d'),w=cv.width,h=cv.height,k=HOWTO[HT].k,s=t/1000;
+  g.fillStyle='#3f7d3a';g.fillRect(0,0,w,h);const rx=w*.22,rw=w*.56;g.fillStyle='#4a4f5a';g.fillRect(rx,0,rw,h);
+  g.fillStyle='#e8e8e8';for(let y=(s*120)%60-60;y<h;y+=60){g.fillRect(w/2-3,y,6,30);}g.fillStyle='#fff';g.fillRect(rx,0,4,h);g.fillRect(rx+rw-4,0,4,h);
+  const bike=(x,y,col,lbl)=>{g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(x+3,y+6,16,30,0,0,7);g.fill();g.fillStyle='#222';g.fillRect(x-4,y-34,8,18);g.fillRect(x-4,y+16,8,18);g.fillStyle=col;g.beginPath();g.ellipse(x,y,13,24,0,0,7);g.fill();g.lineWidth=3;g.strokeStyle=OUTL;g.stroke();
+    g.fillStyle='#ffd8b0';g.beginPath();g.arc(x,y-4,8,0,7);g.fill();g.stroke();g.font='900 18px '+FONT;g.textAlign='center';g.lineWidth=4;g.strokeText(lbl,x,y+56);g.fillStyle='#fff';g.fillText(lbl,x,y+56);};
+  const car=(x,y,col)=>{g.fillStyle=col;g.fillRect(x-20,y-38,40,76);g.lineWidth=3;g.strokeStyle=OUTL;g.strokeRect(x-20,y-38,40,76);g.fillStyle='#9fd8ff';g.fillRect(x-15,y-26,30,14);};
+  const arrow=(x1,y1,x2,y2,col)=>{g.strokeStyle=col;g.fillStyle=col;g.lineWidth=6;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();const a=Math.atan2(y2-y1,x2-x1);g.beginPath();g.moveTo(x2,y2);g.lineTo(x2-16*Math.cos(a-.5),y2-16*Math.sin(a-.5));g.lineTo(x2-16*Math.cos(a+.5),y2-16*Math.sin(a+.5));g.fill();};
+  const cx=w/2;
+  if(k==='rule'){bike(cx-30,h*.32,'#ef5350','攻撃側');bike(cx+30,h*.7,'#42a5f5','追越側');g.font='900 30px '+FONT;g.fillStyle='#ffd23f';g.textAlign='left';g.fillText('4pt',w*.8,h*.3);g.fillText('先取!',w*.8,h*.45);}
+  if(k==='over'){const p=(s*.45)%1,y=h*.85-p*h*.6,x=cx+40*Math.sin(p*Math.PI);bike(cx-30,h*.38,'#ef5350','攻撃側');bike(x,y,'#42a5f5','追越側');arrow(x,y-40,x,y-80,'#ffe56b');}
+  if(k==='att'){const p=(s*.5)%1,x=cx-60+p*90;bike(x,h*.35,'#ef5350','攻撃側');bike(cx+30,h*.72,'#42a5f5','追越側');arrow(x+20,h*.35,x+46,h*.35,'#ff8a80');if(p>.7){g.font='900 28px '+FONT;g.fillStyle='#ff5252';g.textAlign='center';g.fillText('急ブレーキ!',cx,h*.12);}}
+  if(k==='cop'){car(cx-60,h*.35,'#ffca28');car(cx+70,h*.62,'#f4f4f4');g.fillStyle='#1565c0';g.fillRect(cx+50,h*.62-38,40,10);g.fillStyle=Math.floor(s*4)%2?'#ff1744':'#2979ff';g.fillRect(cx+62,h*.62-44,16,8);bike(cx+5,h*.84,'#42a5f5','あなた');
+    g.font='900 22px '+FONT;g.textAlign='center';g.fillStyle='#fff';g.fillText('近づきすぎ注意！',cx+70,h*.62-56);}
+  if(k==='ctl'){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(0,0,w,h);g.fillStyle='rgba(255,255,255,.2)';g.beginPath();g.arc(w*.16,h*.7,46,0,7);g.fill();g.fillStyle='#fff';g.beginPath();g.arc(w*.16+Math.sin(s*2)*24,h*.7,22,0,7);g.fill();
+    g.fillStyle='#ffca28';g.beginPath();g.arc(w*.84,h*.68,40,0,7);g.fill();g.fillStyle='#e53935';g.beginPath();g.arc(w*.72,h*.8,28,0,7);g.fill();
+    g.font='900 18px '+FONT;g.textAlign='center';g.fillStyle='#fff';g.fillText('左右',w*.16,h*.7+70);g.fillText('ブースト',w*.84,h*.68+60);g.fillText('ブレーキ',w*.72,h*.8+46);}
+}
+
+/* ----- 練習モード（とても弱いCPUと、画面の上にヒントが出る） ----- */
+let TUT=null;
+function startTutorial(){initAudio();if(!socket.connected){toast(NAME_WHY.offline);return;}$('tut-intro').classList.add('hide');$('side-menu').classList.add('hide');
+  if(SV.tut<1){SV.tut=1;save();}TUT={want:true,on:false,last:''};socket.emit('solo',Object.assign(payload(),{tut:1}));}
+$('tut-btn').onclick=startTutorial;$('sm-tut').onclick=startTutorial;
+$('ti-howto').onclick=()=>{$('tut-intro').classList.add('hide');openHowto(0);};
+$('ti-tut').onclick=startTutorial;
+$('ti-skip').onclick=()=>{$('tut-intro').classList.add('hide');SV.tut=Math.max(SV.tut,1);save();toast('≡ メニューからいつでも「遊び方」「練習モード」を開けます');};
+socket.on('start',()=>{if(TUT&&TUT.want){TUT.want=false;TUT.on=true;TUT.last='';}else TUT=null;});
+function tutTip(s){const e=$('tut-tip');if(!s){e.classList.add('hide');TUT&&(TUT.last='');return;}if(TUT.last===s)return;TUT.last=s;$('tut-tip-t').innerHTML=s;e.classList.remove('hide');e.style.animation='none';void e.offsetWidth;e.style.animation='';}
+setInterval(()=>{
+  if(!TUT||!TUT.on){if(!$('tut-tip').classList.contains('hide'))$('tut-tip').classList.add('hide');return;}
+  if(!inGame||!D){tutTip('');return;}
+  const att=D.att===slot,touch=document.body.classList.contains('touch');
+  if(D.s==='count')tutTip(att?'あなたは <b style="color:#ff9a8f">攻撃側（前）</b>！ 後ろの相手に追い抜かれないように道をふさごう':'あなたは <b style="color:#8fd0ff">追越側（後ろ）</b>！ 前の相手を追い抜けば1ポイント');
+  else if(D.s==='play'){
+    if(D.el<4)tutTip(touch?'左のスティックで左右に動こう。右のボタンは'+(att?'<b>急ブレーキ</b>（3回まで）':'<b>ブースト</b>'):'←→ で左右に動こう。スペースで'+(att?'<b>急ブレーキ</b>（3回まで）':'<b>ブースト</b>'));
+    else if(D.el<11)tutTip(att?'相手が真後ろに来たら <b>急ブレーキ</b>！ でも<b>パトカーの近く</b>ではダメ':'車をよけながら相手の<b>横に並んで</b>ブースト！');
+    else tutTip(att?'あと '+Math.max(0,Math.ceil(25-D.el))+' 秒守りきれば1ポイント！':'急いで！ 守りきられると相手のポイントになるよ');
+  }
+  else if(D.s==='result')tutTip('📝 '+(D.sub||'ポイント！'));
+  else if(D.s==='match'||D.s==='over'){tutTip('🎉 練習クリア！ この調子で対戦してみよう');if(SV.tut<2){SV.tut=2;saveNow();questChanged();}TUT.on=false;setTimeout(()=>tutTip(''),2500);}
+},250);
+
+/* ----- ホーム画面に追加（PWA） ----- */
+let BIP=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();BIP=e;});
+if('serviceWorker' in navigator&&location.protocol!=='file:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+$('sm-pwa').onclick=()=>{
+  $('side-menu').classList.add('hide');
+  if(DV.pwa){toast('すでにホーム画面から開いています 👍');return;}
+  if(BIP){BIP.prompt();BIP.userChoice.then(r=>{if(r&&r.outcome==='accepted')toast('📲 ホーム画面に追加しました！');BIP=null;});return;}
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  $('pwa-text').innerHTML=ios?'<ol><li>Safariで開いてください（LINEやInstagramの中のブラウザでは追加できません）</li><li>画面下（iPadは上）の <b>共有ボタン</b>（□に↑）を押す</li><li><b>「ホーム画面に追加」</b>を選ぶ</li></ol>ホーム画面のアイコンから開くと、最初から全画面で遊べます。'
+    :'<ol><li>Chromeで開いてください</li><li>右上の <b>︙</b> メニューを押す</li><li><b>「ホーム画面に追加」</b>または<b>「アプリをインストール」</b>を選ぶ</li></ol>ホーム画面のアイコンから開くと、最初から全画面で遊べます。';
+  $('pwa-modal').classList.remove('hide');
+};
+$('pwa-close').onclick=()=>$('pwa-modal').classList.add('hide');
+
+/* ----- ロビーに戻ったときに順番に出すもの（ログボ → シーズン報酬 → はじめての案内） ----- */
+let introShown=false;
+setInterval(()=>{
+  if(!SV||TITLE||inGame||!socket.connected||!SEASONI)return;
+  if(document.querySelector('.modal:not(.hide)')||!$('maint-ov').classList.contains('hide')||!$('ban-ov').classList.contains('hide')||!$('side-menu').classList.contains('hide'))return;
+  if(!$('res').classList.contains('hide'))return;
+  if(SEA_PEND){showSeasonReward();return;}
+  if(lbToday()){openLB();return;}
+  if(SV.tut===0&&!introShown){introShown=true;$('tut-intro').classList.remove('hide');}
+},1200);
 </script>
 </body>
 </html>
