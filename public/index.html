@@ -5009,7 +5009,8 @@ socket.on('rank_wait',d=>{
 socket.on('reward',d=>{
   if(!d||!d.gain)return;const g=Math.round(d.gain*(1+coinBoost(SV.lv)));SV.coins+=g;save();updateTop();if(inGame&&MLOG)MLOG.coins+=g;
   if(inGame)pops.push({t:'+'+g+' NC',x:W-150,y:mode==='endless'?84:100,l:1.6,ml:1.6,c:'#ffe56b',s:20});
-  if(mode==='versus')playSE(SV.eq.se);else if(AU.ctx)SFX.coin();
+  // 追い抜きでポイントを取ったときは「なにが目的なん？」ボイスは鳴らさない（v18）
+  if(mode==='versus'&&!(d.ov&&SES[SV.eq.se]&&SES[SV.eq.se].voice))playSE(SV.eq.se);else if(AU.ctx)SFX.coin();
 });
 socket.on('endless_over',d=>{END=d;if(d.score>SV.best){SV.best=d.score;SV.bestC=(D&&D.course)||0;save();}questChanged();setTimeout(rankBackup,500);});
 socket.on('prog',p=>{   // サーバーで起きた出来事 → クエスト進行・XP（CPU戦は少し控えめ）
@@ -5352,7 +5353,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v17',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v18',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5465,7 +5466,13 @@ $('res-report').onclick=()=>{const op=GAME.opp||{};openReport(op.pk,op.name,'試
 $('rm-report').onclick=()=>{if(!ROOM)return;const op=ROOM.players[1-ROOM.me];if(op)openReport(op.pk,op.name,'ルーム');};
 
 /* ----- メンテナンス（管理者以外は「メンテナンス中」の画面＋チャリ・ラン） ----- */
+// メンテナンスの控え（v18）：サーバーが再起動して状態が消えていたら、控えを送ってメンテナンスを続けてもらう
+let MAINT_C=null;try{MAINT_C=JSON.parse(LS.get('nm_maint','null'));}catch(e){}
+function maintCacheOk(c,born){if(!c||!c.on||!c.sig||!c.t||!(c.t<born))return false;const now=Date.now();return c.until?c.until>now&&c.until-c.t<=2*864e5:now-c.t<6*3600e3;}
 socket.on('maint',m=>{
+  if(!m)return;
+  if(MAINT_C&&MAINT_C.sig&&(MAINT_C.t||0)>(m.t||0)&&(maintCacheOk(MAINT_C,m.born||0)||!MAINT_C.on)){socket.emit('maint_restore',MAINT_C);if(MAINT_C.on&&!m.on)return;}   // 控えのほうが新しい
+  if(m.sig){MAINT_C=m;try{LS.set('nm_maint',JSON.stringify(m));}catch(e){}}
   const was=MAINT.on;MAINT=m&&m.on?m:{on:false};
   if(page==='admin')admMaintState();
   if(IS_ADMIN){if(MAINT.on!==was)toast(MAINT.on?'🛠 メンテナンス中です（管理者なので遊べます）':'🛠 メンテナンスを終了しました',3000);return;}
