@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v17 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v18 — Express + Socket.io（サーバー権威型）
+// v18：メンテナンス中にコードを更新（再起動）しても、メンテナンスが続くように（端末の署名つきの控えから復元）
 // v17：管理者画面をタブ化・運営は誰の試合でも見えないように観戦できる・お知らせの自動復元（署名つきの控え）・NCは1分ごと＋増えたときに報告
 // v16：NGワード・ブロック・NCの検算・端末情報（管理者用）・プロフィール・シーズン制ランキング・練習モード・PWA・プライバシーポリシー
 // メンテナンスモード（再開時刻の表示とミニゲーム）・フィードバック（採用でNCプレゼント）・お詫びNC付きお知らせ・ロッカーのお気に入り／お知らせページ・管理者画面（ユーザー管理／利用停止／警告／個別メッセージ／全員へのお知らせ）・通報（5人以上で管理者に通知）／録音ボイス・全エモートの動き・ガチャ演出強化とラインナップ・季節報酬と殿堂チャリの豪華化・短い引き継ぎコード／タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
@@ -434,7 +435,7 @@ function resetMatch(R) { R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R); }
 function endRound(R, w, pen, text) {
   if (w >= 0) {
     R.sc[w]++;
-    if (R.ids[w]) { io.to(R.ids[w]).emit('reward', { gain: 10 }); ecoAddSid(R.ids[w], 10); }
+    if (R.ids[w]) { io.to(R.ids[w]).emit('reward', { gain: 10, ov: text === '追い抜き成功！' }); ecoAddSid(R.ids[w], 10); }
   }
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   for (const i of [0, 1]) prog(R, i, 'round', { win: w === i, dist: Math.max(0, Math.floor((R.P[i] ? R.P[i].z : 0) / 10)) });
@@ -1049,17 +1050,36 @@ function userRow(pk) {
 }
 function flagged() { return Object.keys(MOD.reports).filter(pk => repCount(pk) >= REPORT_ALERT).map(pk => Object.assign(userRow(pk), { reasons: MOD.reports[pk].list.slice(-10) })).sort((a, b) => b.rep - a.rep); }
 // 停止中のユーザーは、お知らせを見る以外の操作をできなくする
-const BAN_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'eco', 'nc_fix_ok']);
+const BAN_ALLOW = new Set(['maint_restore', 'hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'eco', 'nc_fix_ok']);
 // メンテナンス中（管理者以外）にできること
-const MAINT_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'notice_claim', 'gift_claim', 'feedback', 'name_check', 'eco', 'nc_fix_ok', 'profile_set', 'blocks_set']);
-const maintInfo = () => MOD.maint && MOD.maint.on ? { on: true, until: MOD.maint.until || 0, msg: MOD.maint.msg || '', auto: !!MOD.maint.auto } : { on: false };
+const MAINT_ALLOW = new Set(['maint_restore', 'hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'notice_claim', 'gift_claim', 'feedback', 'name_check', 'eco', 'nc_fix_ok', 'profile_set', 'blocks_set']);
+// メンテナンスの状態にも署名をつけて、プレイヤーと運営の端末に控えを持たせる
+// → メンテナンス中にコードを更新してサーバーが再起動しても、つながった端末の控えからメンテナンスを再開できる
+const maintCore = m => ({ on: !!m.on, until: Number(m.until) || 0, msg: String(m.msg || '').slice(0, 200), auto: !!m.auto, t: Number(m.t) || 0 });
+const signM = m => { const c = maintCore(m); return hmac(['maint', c.on ? 1 : 0, c.until, c.msg, c.auto ? 1 : 0, c.t].join('|')).slice(0, 24); };
+const maintInfo = () => { const m = MOD.maint || { on: false }; const c = maintCore(m); return Object.assign(c, { sig: c.t ? signM(c) : '', born: MOD.born }); };
 function kickForMaint(sk) { try { qRemove(sk.id); leaveRoom(sk); } catch (e) {} }
 function setMaint(on, o) {
   if (on) {
     MOD.maint = { on: true, until: o.until || 0, msg: o.msg || '', auto: !!o.auto, t: Date.now() };
     for (const sk of io.sockets.sockets.values()) if (!sk.isAdmin) kickForMaint(sk);
-  } else MOD.maint = { on: false, ended: Date.now() };
+  } else MOD.maint = { on: false, t: Date.now() };
   saveMod(); io.emit('maint', maintInfo());
+}
+// 端末から届いたメンテナンスの控えを確かめて、サーバーが知っている状態より新しければ使う
+function restoreMaint(m) {
+  if (!m || typeof m !== 'object') return false;
+  const c = maintCore(m), now = Date.now();
+  if (!c.t || c.t > now + 60e3 || m.sig !== signM(c)) return false;           // 署名がちがう・未来の時刻 → 使わない
+  if ((MOD.maint && MOD.maint.t || 0) >= c.t) return false;                    // サーバーのほうが新しい
+  if (c.on) {
+    if (c.t >= MOD.born) return false;                                          // サーバーのデータが消えていないなら戻さない
+    if (c.until ? c.until <= now || c.until - c.t > 2 * 864e5 : now - c.t > 6 * 3600e3) return false;   // 古すぎる控えは使わない
+  }
+  MOD.maint = c; saveMod();
+  if (c.on) { for (const sk of io.sockets.sockets.values()) if (!sk.isAdmin) kickForMaint(sk); console.log('メンテナンスを端末の控えから再開しました'); }
+  io.emit('maint', maintInfo());
+  return true;
 }
 // 「時間になったら自動で終了」
 setInterval(() => { const m = MOD.maint; if (m && m.on && m.auto && m.until && Date.now() >= m.until) setMaint(false); }, 5000);
@@ -1172,6 +1192,7 @@ io.on('connection', socket => {
   });
   socket.on('nc_fix_ok', () => { const e = socket.nmPk && ECO[socket.nmPk]; if (e && e.fix != null) { delete e.fix; e.reset = true; delete e.flag; saveEco(); } });
   // お知らせの復元：サーバーのデータが消えていたら、端末に残っている署名つきの控えから戻す
+  socket.on('maint_restore', m => restoreMaint(m));
   socket.on('notices_restore', d => {
     const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
     let changed = false;
