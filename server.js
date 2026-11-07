@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v22 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v23 — Express + Socket.io（サーバー権威型）
+// v23：通信を軽く（試合の状態を短い形で・変わったところだけ・1秒20回に。ページは圧縮して送る）。チート対策（NC検算の抜け道・RPの上限）とセキュリティ（署名の鍵・CSPなどのヘッダー・送りすぎの制限）を強化
 // v22：管理画面を左メニュー＋いつも見える上のバー（オンライン・ユーザー・メンテナンス・お知らせ）に。ダッシュボードを「すぐ対応／いまの状態／今日の数字／これからの予定」に整理
 // v21：一斉配布・操作の記録・利用状況のグラフ・人気アイテム・ランキング管理・ガチャ設定を画面で変更・手動セール・メンテナンスの予約
 // v20：プッシュ通知・エラーの自動報告・バランスの記録・プロフィール用アイテム（枠／名前の色／背景）・かけら交換所・リプレイ
@@ -18,10 +19,93 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
 
+const zlib = require('zlib');
 const app = express();
-app.use(express.static(path.join(__dirname, 'public')));
+app.disable('x-powered-by');
+/* =====================================================================
+   v23：ページを圧縮して送る（brotli → だめなら gzip）・2回目からは「変わっていない」だけ返す（ETag）
+        ・セキュリティのヘッダー（CSPでページに入っていない命令を動かさない など）
+   ===================================================================== */
+const PUB = path.join(__dirname, 'public');
+const ZTYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
+const ZALIAS = { '/sio.min.js': path.join(path.dirname(require.resolve('socket.io/package.json')), 'client-dist', 'socket.io.min.js') };   // 通信用のプログラムも圧縮して送る
+const ZC = new Map();
+// CSP：ページの中のプログラムだけを動かす（あとから紛れこんだ命令は動かない）。外への通信は自分のサーバーだけ
+function cspFor(html) {
+  const hs = [];
+  html.replace(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi, (m, code) => { hs.push("'sha256-" + crypto.createHash('sha256').update(code, 'utf8').digest('base64') + "'"); return m; });
+  return req => {
+    const host = String(req.headers.host || '').replace(/[^\w.:-]/g, '');
+    return ["default-src 'self'", "script-src 'self' " + hs.join(' '), "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob:", "media-src 'self' data: blob:", "connect-src 'self' data: blob:" + (host ? ' wss://' + host + ' ws://' + host : ''), "worker-src 'self'", "manifest-src 'self'",
+      "frame-ancestors 'none'", "base-uri 'none'", "form-action 'self'", "object-src 'none'"].join('; ');
+  };
+}
+function zEntry(file) {
+  let st; try { st = fs.statSync(file); } catch (e) { return null; }
+  if (!st.isFile()) return null;
+  const c = ZC.get(file); if (c && c.mtime === st.mtimeMs && c.size === st.size) return c;
+  const raw = fs.readFileSync(file), ext = path.extname(file);
+  const e = { raw, mtime: st.mtimeMs, size: st.size, type: ZTYPES[ext], etag: '"' + crypto.createHash('sha1').update(raw).digest('base64').replace(/[^\w]/g, '').slice(0, 22) + '"',
+    gz: zlib.gzipSync(raw, { level: 9 }), br: zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }) };
+  if (ext === '.html') e.csp = cspFor(raw.toString('utf8'));
+  ZC.set(file, e);
+  // いちばん小さくなる圧縮（時間がかかる）は、裏でゆっくりやって、できたら入れかえる（そのあいだも上の圧縮で送れる）
+  if (raw.length > 30000) zlib.brotliCompress(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }, (err, out) => { if (!err && out && out.length < e.br.length && ZC.get(file) === e) e.br = out; });
+  return e;
+}
+function secHeaders(req, res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  if (req.headers['x-forwarded-proto'] === 'https') res.setHeader('Strict-Transport-Security', 'max-age=15552000');
+}
+app.use((req, res, next) => {
+  secHeaders(req, res);
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  let p; try { p = decodeURIComponent(req.path); } catch (e) { return res.status(400).end(); }
+  if (p.endsWith('/')) p += 'index.html';
+  let file = ZALIAS[p];
+  if (!file) { if (!ZTYPES[path.extname(p)] || p.includes('\0')) return next(); file = path.join(PUB, p); if (!file.startsWith(PUB + path.sep)) return next(); }
+  const e = zEntry(file); if (!e) return next();
+  res.setHeader('Content-Type', e.type); res.setHeader('ETag', e.etag); res.setHeader('Vary', 'Accept-Encoding');
+  res.setHeader('Cache-Control', p.endsWith('.html') || p.endsWith('sw.js') ? 'no-cache' : 'public, max-age=86400');
+  if (e.csp) res.setHeader('Content-Security-Policy', e.csp(req));
+  if (String(req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(e.etag)) return res.status(304).end();
+  const ae = String(req.headers['accept-encoding'] || '');
+  let body = e.raw; if (/\bbr\b/.test(ae)) { body = e.br; res.setHeader('Content-Encoding', 'br'); } else if (/\bgzip\b/.test(ae)) { body = e.gz; res.setHeader('Content-Encoding', 'gzip'); }
+  res.setHeader('Content-Length', body.length);
+  res.end(req.method === 'HEAD' ? undefined : body);
+});
+app.use(express.static(PUB, { maxAge: '1d' }));   // 画像など（もともと圧縮されているもの）
 const server = http.createServer(app);
-const io = new Server(server);
+/* ===== v23：通信の設定 =====
+   ・大きいメッセージ（2KB以上：ランキング・管理画面の一覧など）だけ圧縮する（毎回の小さい位置情報は圧縮しない方が速い）
+   ・1回に受け取る大きさの上限を小さく（いたずらで巨大なデータを送られないように）
+   ・ほかのサイトのページからは接続させない（ALLOWED_ORIGINS で追加できる）
+   ・同じ回線からの同時接続は30まで（学校などで同じ回線の人がいても困らない数） */
+const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean);
+function originOk(req) {
+  const o = req.headers.origin; if (!o) return true;
+  try { const u = new URL(o); return u.host === req.headers.host || ALLOWED_ORIGINS.includes(u.origin) || ALLOWED_ORIGINS.includes(u.host); } catch (e) { return false; }
+}
+const io = new Server(server, {
+  maxHttpBufferSize: 6e5,
+  perMessageDeflate: { threshold: 2048, zlibDeflateOptions: { level: 6, memLevel: 7 }, serverNoContextTakeover: true, clientNoContextTakeover: true },
+  httpCompression: { threshold: 2048 },
+  allowRequest: (req, cb) => cb(null, originOk(req))
+});
+const ipOfReq = (h, addr) => String((h && h['x-forwarded-for']) || addr || '').split(',')[0].trim();
+const IPN = new Map(), IP_MAX = Number(process.env.IP_MAX) || 30;
+io.use((socket, next) => {
+  const ip = ipOfReq(socket.handshake.headers, socket.handshake.address), n = IPN.get(ip) || 0;
+  if (n >= IP_MAX) return next(new Error('too many connections'));
+  IPN.set(ip, n + 1); socket.nmIp = ip;
+  socket.on('disconnect', () => { const m = (IPN.get(ip) || 1) - 1; if (m <= 0) IPN.delete(ip); else IPN.set(ip, m); });
+  next();
+});
 
 /* ===== 共通定数 ===== */
 const BASE = 110, HW = 112.5, LIMIT = 25, TICK = 1 / 30;
@@ -110,12 +194,17 @@ const cleanFid = v => (typeof v === 'string' && /^F-[A-Z0-9]{4}-[A-Z0-9]{4}$/.te
 const cleanPk = v => (typeof v === 'string' && /^[0-9a-f]{16}$/.test(v)) ? v : '';             // フレンド用の内部キー（端末UUIDのハッシュ。画面には出さない）
 // ランキング用：ログインIDは外に出さず、秘密の鍵でハッシュした値（h）で本人を見分ける
 const RANK_SECRET = process.env.RANK_SECRET || crypto.createHash('sha256').update('nm-rank:' + (process.env.RENDER_SERVICE_ID || '') + ':' + (process.env.RENDER_EXTERNAL_HOSTNAME || 'local')).digest('hex');
-const hmac = t => crypto.createHmac('sha256', RANK_SECRET).update(t).digest('hex');
+const hmac = t => crypto.createHmac('sha256', RANK_SECRET).update(t).digest('hex');   // 内部IDを作る用（今までと同じ）
+// v23：署名の鍵。今までは公開されている情報から作っていたので、推測できない乱数にする（Upstashに保存。環境変数 SIGN_SECRET でも指定できる）
+// 切りかえてから3日間は、前の鍵の署名も受け付ける（端末に残っている控えが、自動で新しい鍵のものに入れかわるまで）
+let SIGN_KEY = process.env.SIGN_SECRET || null, SIGN_T = 0;
+const hmacS = t => crypto.createHmac('sha256', SIGN_KEY || RANK_SECRET).update(t).digest('hex');
+const sigOk = (sig, f) => typeof sig === 'string' && sig.length === 24 && (sig === f(hmacS) || (!!SIGN_KEY && Date.now() - SIGN_T < 3 * 864e5 && sig === f(hmac)));
 const hidCache = new Map();
 const hidOf = id => { if (!id) return ''; let h = hidCache.get(id); if (!h) { h = hmac('h:' + id).slice(0, 16); if (hidCache.size > 5000) hidCache.clear(); hidCache.set(id, h); } return h; };
 const same = (r, id) => !!id && r.h === hidOf(id);
 // 署名（記録を出したコース c があるときはそれも含める。古いバックアップはそのまま有効）
-const signE = (board, e) => hmac([board, e.h, e.name, board === 'run' ? e.score : e.rp, e.lv, e.ttl || '', e.ts].join('|') + (Number.isInteger(e.c) ? '|c' + e.c : '')).slice(0, 24);
+const signE = (board, e, H = hmacS) => H([board, e.h, e.name, board === 'run' ? e.score : e.rp, e.lv, e.ttl || '', e.ts].join('|') + (Number.isInteger(e.c) ? '|c' + e.c : '')).slice(0, 24);
 const courseOk = c => Number.isInteger(c) && c >= 0 && c < PATHS.length;
 const pkOf = uid => crypto.createHash('sha256').update('nm-friend:' + uid).digest('hex').slice(0, 16);
 const isLoginId = v => typeof v === 'string' && /^NM-[\w-]{3,20}$/.test(v);
@@ -229,7 +318,9 @@ const nameOfPk = pk => { const k = pkKey.get(pk), e = k && nameReg.get(k); retur
 const RANK_FILE = process.env.RANK_FILE || path.join(__dirname, 'ranking.json');
 let ranking = [];
 function loadRanking(j) { if (Array.isArray(j)) ranking = j.filter(r => r && (typeof r.id === 'string' || typeof r.h === 'string') && Number.isFinite(r.score)).map(r => Object.assign(r, { h: r.h || hidOf(r.id) })).sort((a, b) => b.score - a.score).slice(0, 100); }
-const saveRanking = saver('ranking', RANK_FILE, () => ranking);
+const saveRanking0 = saver('ranking', RANK_FILE, () => ranking);
+let RKV = 0; const RK_BOOT = crypto.randomBytes(4).toString('hex');   // v23：ランキングが変わるたびに番号を進める（端末の控えが最新なら、全部は送らない）
+const saveRanking = () => { RKV++; saveRanking0(); };
 function submitScore(id, name, score, lv, c) {
   if (!id) return { best: score, rank: 0, improved: false };
   const h = hidOf(id), i = ranking.findIndex(r => r.h === h);
@@ -249,7 +340,8 @@ const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.s
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
 let rpBoard = [];
 function loadRp(j) { if (Array.isArray(j)) rpBoard = j.filter(r => r && (typeof r.id === 'string' || typeof r.h === 'string') && Number.isFinite(r.rp)).map(r => Object.assign(r, { h: r.h || hidOf(r.id) })).sort((a, b) => b.rp - a.rp).slice(0, 100); }
-const saveRp = saver('rp', RP_FILE, () => rpBoard);
+const saveRp0 = saver('rp', RP_FILE, () => rpBoard);
+const saveRp = () => { RKV++; saveRp0(); };
 /* ===== フレンド申請（承認制）：申請と「承認された／取り消された」のお知らせを保存（相手がオフラインでも届く） ===== */
 const FR_FILE = process.env.FRIENDS_FILE || path.join(__dirname, 'friends.json');
 const freq = new Map();    // 申請先pk -> Map(申請元pk -> ts)
@@ -293,7 +385,7 @@ function restoreSigned(board, list) {
     if (board === 'run' && it.c != null) { if (!courseOk(it.c)) continue; e.c = it.c; }
     if (board === 'rp' && SEASON.id && it.ts < seasonStart(SEASON.id)) continue;   // 前のシーズンの記録は戻さない
     if (it.ts <= ((MOD.rkdel[board] || {})[it.h] || 0) || it.ts < (MOD.rkreset[board] || 0)) continue;   // 運営が消した記録・リセット前の記録は戻さない
-    if (e.name !== it.name || typeof it.sig !== 'string' || it.sig !== signE(board, Object.assign({}, e, { ttl: it.ttl || '' }))) continue;
+    if (e.name !== it.name || typeof it.sig !== 'string' || !sigOk(it.sig, H => signE(board, Object.assign({}, e, { ttl: it.ttl || '' }), H))) continue;
     const cur = arr.find(x => x.h === e.h);
     if (!cur) { arr.push(e); n++; }
     else if (board === 'run' ? e.score > cur.score : e.ts > (cur.ts || 0)) { Object.assign(cur, e); n++; }
@@ -686,6 +778,44 @@ function snapE(R) {
   return s;
 }
 
+/* =====================================================================
+   v23：軽い送り方（'z'）
+   ・名前やスキンなど、ほとんど変わらないもの（m）と、得点・状態など、たまに変わるもの（l）・泥の位置（u）は、
+     変わったときだけ送る（念のため数秒に1回は全部送る）
+   ・毎回送る位置などは、キーなしの配列にして、数字を丸める
+   ・送る回数：試合中は1秒20回、カウントダウンや結果の画面は1秒10回、観戦は1秒15回
+     （計算は今までどおり1秒30回。画面はあいだを自動でなめらかにつなぐ）
+   ・古い画面（v22以前）とつながっているときは、今までの形（'st'）で送る
+   ===================================================================== */
+const OBK = { car: 0, bus: 1, cone: 2, cop: 3 };
+const ri = n => Math.round(n || 0);
+function zRoom(R, s) {   // 同じルームの全員で同じになる部分（1回だけ文字にする）
+  const P = R.P || [];
+  const m = [s.mode, s.course || 0, s.names, s.lvs, s.ranked ? 1 : 0, P.map(p => p ? [p.bike, p.skin, p.hair, p.fit, p.acc, p.trail] : 0)];
+  const l = [s.s, s.rd, s.att, s.sc, s.hist, s.msg, s.sub, s.fx || 0, P.map(p => p ? p.brakes || 0 : 0)];
+  const u = (s.mud || []).map(q => [q.id, q.x, q.z]);
+  return { m, l, u, ms: JSON.stringify(m), ls: JSON.stringify(l), us: JSON.stringify(u) };
+}
+function zFast(s) {   // 毎回送る部分
+  const P = (s.P || []).map(p => p ? [p.x, p.z, ri(p.v), p.mud || 0, ri(p.vx), (p.brk ? 1 : 0) | (p.boost ? 2 : 0), p.cd, p.bcd] : 0);
+  const O = (s.obs || []).map(o => [o.id, OBK[o.k] != null ? OBK[o.k] : o.k, o.x, o.z, o.c == null ? -1 : o.c, ri(o.vz), o.d == null ? 0 : o.d]);
+  const x = s.mode === 'versus' ? [s.bgGap, s.bgBx, s.bgBoost ? 1 : 0] : [s.score, s.combo, s.ev && s.ev.length ? s.ev : 0];
+  return [s.t, s.el, P, O, x];
+}
+function zSend(sk, R, s, Z, due) {   // sk：送り先、Z：zRoom の結果、due：今回が送る番か
+  if (!sk) return;
+  if (!sk.zv) { if (due || sk.zLegacyS !== s.s) { sk.zLegacyS = s.s; sk.emit('st', s); } return; }   // 古い画面には今までの形で
+  const c = sk.zc || (sk.zc = { m: '', l: '', u: '', n: 0 });
+  const out = { f: zFast(s) };
+  const key = ++c.n % 90 === 0;   // 3秒に1回は全部送る（もし受け取りそこねても直る）
+  if (c.l !== Z.ls || key) { out.l = Z.l; c.l = Z.ls; }
+  if (!out.l && !due) return;   // 状態が変わっていなくて、送る番でもないなら送らない
+  if (c.m !== Z.ms || key) { out.m = Z.m; c.m = Z.ms; }
+  if (c.u !== Z.us || key) { out.u = Z.u; c.u = Z.us; }
+  if (Z_CHECK) sk.emit('st_chk', s);   // テスト用（環境変数 Z_CHECK=1 のときだけ。元の形も送って、同じになるか確かめる）
+  sk.emit('z', out);
+}
+const Z_CHECK = process.env.Z_CHECK === '1';
 /* ===== ゲームループ（30Hz） ===== */
 setInterval(() => {
   for (const R of rooms.values()) {
@@ -694,15 +824,18 @@ setInterval(() => {
       if (R.state === 'over' && R.sentOver) continue;
       stepEndless(R, TICK);
       if (R.state === 'over') R.sentOver = true;
-      const se = snapE(R);
-      io.to(R.ids[0]).emit('st', se);
-      if (R.spec && R.spec.size) for (const sid of R.spec) io.to(sid).emit('st', se);
+      const tk = R.tk = (R.tk || 0) + 1, hasEv = R.ev.length > 0;
+      const se = snapE(R), Z = zRoom(R, se), dueP = hasEv || (se.s === 'play' ? tk % 3 !== 2 : tk % 3 === 0);   // ニアミスの知らせは、すぐ送る
+      zSend(sockOf(R.ids[0]), R, se, Z, dueP);
+      if (R.spec && R.spec.size) for (const sid of R.spec) zSend(sockOf(sid), R, se, Z, hasEv || tk % 2 === 0);
       continue;
     }
     if (!R.isCpu && !R.ids[1]) continue;
     step(R, TICK);
-    for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('st', snapV(R, i));
-    if (R.spec && R.spec.size) { const sv = snapV(R, -1); for (const sid of R.spec) io.to(sid).emit('st', sv); }   // 観戦者には両方の位置を見せる
+    const tk = R.tk = (R.tk || 0) + 1, play = R.state === 'play', dueP = play ? tk % 3 !== 2 : tk % 3 === 0;
+    let Z = null;
+    for (const i of [0, 1]) if (R.ids[i]) { const sv = snapV(R, i); Z = Z || zRoom(R, sv); zSend(sockOf(R.ids[i]), R, sv, Z, dueP); }
+    if (R.spec && R.spec.size) { const sv = snapV(R, -1); Z = Z || zRoom(R, sv); for (const sid of R.spec) zSend(sockOf(sid), R, sv, Z, tk % 2 === 0); }   // 観戦者には両方の位置を見せる
   }
 }, TICK * 1000);
 
@@ -758,7 +891,7 @@ function newRoom(code, socket, d, extra) {
   const R = Object.assign({
     code, ids: [socket.id, null], names: ['プレイヤー', 'プレイヤー2'], bikes: ['std', 'std'], skins: ['default', 'default'], hairs: ['default', 'default'], fits: ['default', 'default'],
     accs: ['none', 'none'], trails: ['none', 'none'], lvs: [1, 1], pids: ['', ''], pks: ['', ''], ttls: ['rookie', 'rookie'], pls: ['normal', 'normal'], rps: [0, 0], ready: [false, false],
-    course: cleanCourse(d && d.course), hostId: clean(d && d.id, ''), hostPk: socket.nmPk || '', mode: 'versus', isCpu: false,
+    course: cleanCourse(d && d.course), hostId: socket.nmId || clean(d && d.id, ''), hostPk: socket.nmPk || '', mode: 'versus', isCpu: false,
     inp: [{ s: 0 }, { s: 0 }], act: [false, false], actK: [null, null], state: 'wait', sc: [0, 0], hist: [], round: 0, P: [], obs: [], nid: 1
   }, extra || {});
   setLook(R, 0, lookS(socket, d, 'プレイヤー'));
@@ -1020,11 +1153,30 @@ const RANK_BONUS = [0, 100, 150, 200, 300, 400, 1000];
 const lvBonusSum = (a, b) => { let s = 0; for (let L = a + 1; L <= b; L++) s += 30 + L * 5; return s; };
 // ガチャ1回あたりの余裕（ガチャ設定で「かぶりのNC」を値段より高くしたときも、まちがって不正あつかいしない）
 const pullMargin = () => { const g = MOD.gcfg; return g ? Math.max(15, Math.max(...Object.values(g.refund)) - Math.min(g.cost1, g.cost10 / 10) + 15) : 15; };
-function ecoBound(e, lv, rk, ach, pulls, sea, now) {
+function ecoBound(e, lv, rk, ach, pulls, sea, now) {   // pulls：基準のあとに引いたガチャの回数（v23から、サーバーが数えた回数をもとにする）
   const days = Math.max(1, Math.ceil((now - e.bt) / 864e5));
   let rb = 0; for (let i = (e.rk0 || 0) + 1; i <= rk; i++) rb += RANK_BONUS[i] || 0;
   return Math.round(e.b + (e.srv || 0) * 1.55 + (e.gift || 0) + lvBonusSum(e.lv0 || 1, lv) + rb + Math.max(0, ach - (e.ach0 || 0)) * 1000
-    + Math.max(0, pulls - (e.p0 || 0)) * pullMargin() + Math.max(0, sea - (e.s0 || 0)) * 3000 + days * ECO_DAY + 500);
+    + Math.max(0, pulls) * pullMargin() + Math.max(0, sea - (e.s0 || 0)) * 3000 + days * ECO_DAY + 500);
+}
+/* ===== v23：NC検算の抜け道をふさぐ =====
+   上限の目安は「レベル・ランク・実績・ガチャ回数・シーズン数」の報告を使って広げているので、
+   そこを大きく書き換えると上限がいくらでも広がってしまっていた。ありえない報告は上限の計算に使わず、管理者画面に理由つきで出す */
+const ACH_MAX = 60;                                   // 実績（トロフィー）の数の上限（いまは16種類×3段階＝48）
+const RP_TIERS = [0, 100, 250, 450, 700, 1000, 1400]; // ランクの境目のRP（画面のRANKSと同じ）
+const rpTier = rp => { let i = 0; for (let k = 0; k < RP_TIERS.length; k++) if (rp >= RP_TIERS[k]) i = k; return i; };
+const monthsSince = (a, b) => { const A = new Date(a + 9 * 3600e3), B = new Date(b + 9 * 3600e3); return Math.max(0, (B.getUTCFullYear() - A.getUTCFullYear()) * 12 + B.getUTCMonth() - A.getUTCMonth()); };
+function ecoCheck(e, r, now) {   // r：端末からの報告 → 上限の計算に使ってよい値と、おかしかった理由
+  const days = Math.max(1, Math.ceil((now - e.bt) / 864e5)), why = [];
+  const ach = Math.min(r.ach, (e.ach0 || 0) + 8 + days * 4, Math.max(e.ach0 || 0, ACH_MAX)); if (r.ach > Math.max(e.ach0 || 0, ACH_MAX)) why.push('実績の数がありえない（' + r.ach + '）');
+  const rkCap = Math.max(e.rk0 || 0, rpTier(e.rpMax || 0)), rk = Math.min(r.rk, rkCap); if (r.rk > rkCap + 1) why.push('ランクがRPの記録より高い');
+  const seaCap = (e.s0 || 0) + monthsSince(e.bt, now) + 1, sea = Math.min(r.sea, seaCap); if (r.sea > seaCap) why.push('シーズン数が多すぎる（' + r.sea + '）');
+  const lv = Math.min(r.lv, (e.lv0 || 1) + 10 + days * 6);   // レベルは上限の計算だけおさえる（たくさん遊ぶ人もいるので、理由には出さない）
+  // ガチャの回数：v23からは、サーバーが数えた回数（ガチャを引くたびに届く「人気アイテム」の記録）＋少しの余裕までしか使わない
+  if (!e.v23) { e.v23 = 1; e.pFix = Math.max(0, Math.min(r.pulls - (e.p0 || 0), 3000)); e.p1 = r.pulls; e.ps = 0; }   // それまでの分はそのまま認める
+  const seen = Math.max(0, r.pulls - (e.p1 || 0)), pulls = (e.pFix || 0) + Math.min(seen, (e.ps || 0) + 30);
+  if (seen > (e.ps || 0) + 300) why.push('ガチャの回数が多すぎる（' + r.pulls + '）');
+  return { lv, rk, ach, pulls, sea, why };
 }
 function ecoAdd(pk, k, n) { const e = pk && ECO[pk]; if (!e || !(n > 0)) return; e[k] = (e[k] || 0) + n; saveEco(); }
 const ecoAddSid = (sid, n) => { const sk = sockOf(sid); if (sk) ecoAdd(sk.nmPk, 'srv', n); };
@@ -1130,7 +1282,7 @@ function publishNotice(o) {   // お知らせを作って全員に送る（予�
   return n;
 }
 // お知らせの署名：プレイヤーの端末に控えを持たせて、サーバーのデータが消えたときに元に戻すため
-const signN = n => hmac(['notice', n.id, n.kind, n.title, n.body || '', n.t, n.pin ? 1 : 0, n.gift || 0].join('|')).slice(0, 24);
+const signN = (n, H = hmacS) => H(['notice', n.id, n.kind, n.title, n.body || '', n.t, n.pin ? 1 : 0, n.gift || 0].join('|')).slice(0, 24);
 function loadMod(j) {
   if (!j || typeof j !== 'object') return;
   for (const k of ['bans', 'warns', 'pmsg', 'reports', 'seen', 'gifts', 'claims']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
@@ -1144,7 +1296,7 @@ function loadMod(j) {
   if (Array.isArray(j.sched)) MOD.sched = j.sched.slice(0, 50);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
   if (Array.isArray(j.notices)) MOD.notices = j.notices.slice(0, 100);
-  for (const n of MOD.notices) if (!n.sig) n.sig = signN(n);
+  for (const n of MOD.notices) n.sig = signN(n);   // v23：いまの鍵で署名しなおす
   MOD.nid = Math.max(1, parseInt(j.nid, 10) || 1);
   MOD.born = Number(j.born) || 1;
 }
@@ -1168,7 +1320,7 @@ const MAINT_ALLOW = new Set(['cerr', 'push_key', 'push_sub', 'push_pref', 'push_
 // メンテナンスの状態にも署名をつけて、プレイヤーと運営の端末に控えを持たせる
 // → メンテナンス中にコードを更新してサーバーが再起動しても、つながった端末の控えからメンテナンスを再開できる
 const maintCore = m => ({ on: !!m.on, until: Number(m.until) || 0, msg: String(m.msg || '').slice(0, 200), auto: !!m.auto, t: Number(m.t) || 0 });
-const signM = m => { const c = maintCore(m); return hmac(['maint', c.on ? 1 : 0, c.until, c.msg, c.auto ? 1 : 0, c.t].join('|')).slice(0, 24); };
+const signM = (m, H = hmacS) => { const c = maintCore(m); return H(['maint', c.on ? 1 : 0, c.until, c.msg, c.auto ? 1 : 0, c.t].join('|')).slice(0, 24); };
 const maintInfo = () => { const m = MOD.maint || { on: false }; const c = maintCore(m); return Object.assign(c, { sig: c.t ? signM(c) : '', born: MOD.born, sched: MOD.msched ? { at: MOD.msched.at, until: MOD.msched.until || 0 } : null }); };
 function kickForMaint(sk) { try { qRemove(sk.id); leaveRoom(sk); } catch (e) {} }
 function setMaint(on, o) {
@@ -1182,7 +1334,7 @@ function setMaint(on, o) {
 function restoreMaint(m) {
   if (!m || typeof m !== 'object') return false;
   const c = maintCore(m), now = Date.now();
-  if (!c.t || c.t > now + 60e3 || m.sig !== signM(c)) return false;           // 署名がちがう・未来の時刻 → 使わない
+  if (!c.t || c.t > now + 60e3 || !sigOk(m.sig, H => signM(c, H))) return false;           // 署名がちがう・未来の時刻 → 使わない
   if ((MOD.maint && MOD.maint.t || 0) >= c.t) return false;                    // サーバーのほうが新しい
   if (c.on) {
     if (c.t >= MOD.born) return false;                                          // サーバーのデータが消えていないなら戻さない
@@ -1343,6 +1495,15 @@ function deliverMod(socket) {
 }
 
 io.on('connection', socket => {
+  socket.zv = !!(socket.handshake.auth && socket.handshake.auth.zv === 1);   // v23以降の画面は軽い送り方（'z'）を使える
+  // v23：送りすぎの制限（ふつうは1秒に20〜30回。1秒60回・まとめて200回をこえた分は捨てる。ずっと続くなら切断）
+  socket.use((pkt, next) => {
+    const now = Date.now(), b = socket.rl || (socket.rl = { t: now, tok: 200, drop: 0, dt: now });
+    b.tok = Math.min(200, b.tok + (now - b.t) * 0.06); b.t = now;
+    if (b.tok >= 1) { b.tok--; return next(); }
+    if (now - b.dt > 10000) { b.dt = now; b.drop = 0; }
+    if (++b.drop > 400 && !b.dead) { b.dead = 1; console.warn('送りすぎのため切断:', socket.nmIp); socket.disconnect(true); }
+  });
   // ===== 運営機能（停止中は使えない操作をはじく） =====
   socket.use(([ev], next) => {
     if (socket.banned && !BAN_ALLOW.has(ev)) return;
@@ -1406,13 +1567,19 @@ io.on('connection', socket => {
     const now = Date.now(); if (now - (socket.ecoT || 0) < 6000) return; socket.ecoT = now;
     const n = k => clamp(Math.floor(Number(d[k]) || 0), 0, 1e9);
     const coins = n('coins'), w = coins + n('inv'), lv = clamp(n('lv'), 1, 99), rk = clamp(n('rk'), 0, 6), ach = n('ach'), pulls = n('pulls'), sea = n('sea');
-    let e = ECO[pk];
-    if (!e || e.reset) e = ECO[pk] = { b: w, bt: now, lv0: lv, rk0: rk, ach0: ach, p0: pulls, s0: sea, srv: 0, gift: 0 };   // 最初の報告を基準にする
-    const bound = ecoBound(e, lv, rk, ach, pulls, sea, now);
+    let e = ECO[pk], fresh = false;
+    if (!e || e.reset) {   // 最初の報告を基準にする（RPの記録は引きつぐ）
+      const old = e || {}; fresh = !e;
+      e = ECO[pk] = { b: w, bt: now, lv0: lv, rk0: rk, ach0: Math.min(ach, ACH_MAX), p0: pulls, s0: sea, srv: 0, gift: 0, rp: old.rp, rpS: old.rpS, rpMax: old.rpMax };
+    }
+    const ck = ecoCheck(e, { lv, rk, ach, pulls, sea }, now), bound = ecoBound(e, ck.lv, ck.rk, ck.ach, ck.pulls, ck.sea, now);
+    // はじめて来た人（2時間以内）なのに、最初からNCや持ち物が多すぎる
+    const seenC = (MOD.seen[pk] || {}).c || 0;
+    if (fresh && seenC && now - seenC < 2 * 3600e3 && w > 8000 + lvBonusSum(1, Math.min(lv, 30))) ck.why.push('はじめたばかりなのにNCが多すぎる');
     const changed = e.c !== coins || e.w !== w || e.bound !== bound;   // NCや持ち物が変わったときだけ保存する（開いているだけなら保存しない）
     e.c = coins; e.w = w; e.bound = bound; e.t = now;
-    if (w > bound) {
-      const first = !e.flag; e.flag = { t: (e.flag && e.flag.t) || now, w, bound };
+    if (w > bound || ck.why.length) {
+      const first = !e.flag; e.flag = { t: (e.flag && e.flag.t) || now, w, bound, why: [...new Set([...((e.flag && e.flag.why) || []), ...ck.why])].slice(0, 5) };
       if (first) { const name = nameOfPk(pk) || socket.nmName || 'プレイヤー'; for (const s of adminSockets()) s.emit('adm_alert', { name, n: 0, eco: 1 }); pushAdmins({ title: '💰 NCが多すぎるユーザー', body: name + ' のNCが上限の目安をこえています', tag: 'adm-eco' }); }
     }
     if (changed || !e.saved) { e.saved = 1; saveEco(); }
@@ -1427,8 +1594,8 @@ io.on('connection', socket => {
       if (!n || typeof n !== 'object') continue;
       const c = { id: parseInt(n.id, 10), kind: KINDS[n.kind] ? n.kind : 'info', title: txt(n.title, 60), body: txt(n.body, 2000), t: Number(n.t) || 0, pin: !!n.pin };
       const g = Math.max(0, Math.min(GIFT_MAX, Math.round(Number(n.gift) || 0))); if (g) c.gift = g;
-      if (!(c.id > 0) || !c.title || c.t >= MOD.born || n.sig !== signN(c) || MOD.notices.some(x => x.id === c.id)) continue;
-      c.sig = n.sig; MOD.notices.push(c); MOD.nid = Math.max(MOD.nid, c.id + 1); changed = true;
+      if (!(c.id > 0) || !c.title || c.t >= MOD.born || !sigOk(n.sig, H => signN(c, H)) || MOD.notices.some(x => x.id === c.id)) continue;
+      c.sig = signN(c); MOD.notices.push(c); MOD.nid = Math.max(MOD.nid, c.id + 1); changed = true;
     }
     // 受け取り済みのお詫びNCも戻す（二重に受け取れないように）
     for (const id of (Array.isArray(d.claimed) ? d.claimed : []).slice(0, 100)) {
@@ -1470,7 +1637,7 @@ io.on('connection', socket => {
       if (!x || !['gacha', 'dup', 'shop', 'ex', 'prof'].includes(x.s) || !/^[\w-]{1,24}$/.test(x.c) || !/^[\w-]{1,24}$/.test(x.k)) continue;
       const M = ISTAT[x.s], key = x.c + ':' + x.k; if (!M[key] && Object.keys(M).length > 3000) continue;
       M[key] = (M[key] || 0) + 1;
-      if ((x.s === 'gacha' || x.s === 'dup') && x.r >= 1 && x.r <= 4) { ISTAT.rar = ISTAT.rar || [0, 0, 0, 0, 0]; ISTAT.rar[x.r]++; }
+      if ((x.s === 'gacha' || x.s === 'dup') && x.r >= 1 && x.r <= 4) { ISTAT.rar = ISTAT.rar || [0, 0, 0, 0, 0]; ISTAT.rar[x.r]++; const ec = socket.nmPk && ECO[socket.nmPk]; if (ec) ec.ps = (ec.ps || 0) + 1; }   // v23：NC検算用に、この人のガチャの回数も数える
       if (x.p > 0 && x.p < 1e5) { ISTAT.nc = ISTAT.nc || {}; ISTAT.nc[x.s] = (ISTAT.nc[x.s] || 0) + Math.round(x.p); }
     }
     saveIstat();
@@ -1508,7 +1675,7 @@ io.on('connection', socket => {
   });
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
-  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
+  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c, why: ECO[pk].flag.why || [] })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
     banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length,
     today: usageToday(), days: Object.keys(USAGE.days).sort().slice(-13).map(d => ({ d, dau: USAGE.days[d].dau || 0, nu: USAGE.days[d].nu || 0 })), audit: (MOD.audit || []).slice(0, 5),
     bgifts: (MOD.bgifts || []).filter(g => g.until > Date.now()).map(g => ({ id: g.id, title: g.title, until: g.until, got: (MOD.bclaims[g.id] || []).length })) })));
@@ -1816,7 +1983,9 @@ io.on('connection', socket => {
   socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId) }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
   // 端末バックアップ用の署名つきランキング／復元
-  socket.on('rank_backup', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ run: ranking.map(e => entryOut('run', e)), rp: rpBoard.map(e => entryOut('rp', e)), mine: { run: myEntry('run', socket.nmId), rp: myEntry('rp', socket.nmId) } }); });
+  socket.on('rank_backup', (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } const v = RK_BOOT + ':' + RKV + ':' + SEASON.id;
+    if (d && d.v === v) return rp(cb)({ same: 1, v });   // v23：前に送ったときから変わっていない
+    rp(cb)({ v, run: ranking.map(e => entryOut('run', e)), rp: rpBoard.map(e => entryOut('rp', e)), mine: { run: myEntry('run', socket.nmId), rp: myEntry('rp', socket.nmId) } }); });
   socket.on('rank_restore', (d, cb) => {
     if (socket.restored || !d || typeof d !== 'object') return rp(cb)({ added: 0 });
     socket.restored = true;
@@ -1826,9 +1995,15 @@ io.on('connection', socket => {
   socket.on('rank_report', (d, cb) => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
     socket.rkOk = false;
-    const id = clean(d.id, ''); if (!id) return rp(cb)({ ok: false });
+    const id = clean(d.id, ''); if (!id || id !== socket.nmId) return rp(cb)({ ok: false });   // v23：自分のIDでしか報告できない
     if (d.season !== SEASON.id) return rp(cb)({ ok: false, err: 'season' });
-    rp(cb)({ ok: true, rank: submitRp(id, socket.nmRegName || 'ゲスト', clamp(parseInt(d.rp, 10) || 0, 0, 99999), clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
+    // v23：RPは1試合で最大でも約50しか動かないので、サーバーが覚えている前のRP＋60までしか受け付けない
+    //      （シーズンのはじめは450＋60まで。書き換えて一気にランキング1位になるのを防ぐ）
+    const pk = socket.nmPk, e = pk && ECO[pk], h = hidOf(id), cur = rpBoard.find(r => r.h === h), want = clamp(parseInt(d.rp, 10) || 0, 0, 99999);
+    const base = e && e.rpS === SEASON.id && Number.isFinite(e.rp) ? e.rp : cur ? cur.rp : RP_TIERS[3], ok = Math.min(want, base + 60);
+    if (want > base + 300 && e) { const first = !e.flag; e.flag = Object.assign(e.flag || { t: Date.now(), w: e.w || 0, bound: e.bound || 0 }, { why: [...new Set([...((e.flag && e.flag.why) || []), 'RPの報告が多すぎる（' + want + '）'])].slice(0, 5) }); if (first) for (const s2 of adminSockets()) s2.emit('adm_alert', { name: nameOfPk(pk) || 'プレイヤー', n: 0, eco: 1 }); }
+    if (e) { e.rp = ok; e.rpS = SEASON.id; e.rpMax = Math.max(e.rpMax || 0, ok); saveEco(); }
+    rp(cb)({ ok: true, rank: submitRp(id, socket.nmRegName || 'ゲスト', ok, clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
   });
   // ランクマッチの待ち行列に入る／抜ける
   socket.on('rank_q', d => {
@@ -1956,7 +2131,7 @@ io.on('connection', socket => {
   });
   socket.on('inp', d => {
     const R = myRoom(); if (!R) return;
-    R.inp[socket.data.slot] = (d && Number.isFinite(d.s)) ? { s: clamp(d.s, -1, 1) } : { l: !!(d && d.l), r: !!(d && d.r) };
+    R.inp[socket.data.slot] = Number.isFinite(d) ? { s: clamp(d, -1, 1) } : (d && Number.isFinite(d.s)) ? { s: clamp(d.s, -1, 1) } : { l: !!(d && d.l), r: !!(d && d.r) };   // v23：数字だけでもOK
   });
   socket.on('act', d => {
     const R = myRoom(); if (!R) return;
@@ -2008,14 +2183,19 @@ function backupData() {
     names: [...nameReg.values()], ranking, rp: rpBoard, friends: { req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] },
     mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT } };
 }
+// v23：管理者用の入口は、まちがった鍵で10回失敗したら、その回線から10分間使えなくする
+const AFAIL = new Map();
+const admBlocked = req => { const f = AFAIL.get(ipOfReq(req.headers, req.socket.remoteAddress)); return !!f && f.n >= 10 && Date.now() - f.t < 600e3; };
+const admFail = req => { const ip = ipOfReq(req.headers, req.socket.remoteAddress), f = AFAIL.get(ip); if (!f || Date.now() - f.t >= 600e3) AFAIL.set(ip, { n: 1, t: Date.now() }); else { f.n++; f.t = Date.now(); } if (AFAIL.size > 5000) AFAIL.clear(); };
+app.use('/api/adm', (req, res, next) => { if (admBlocked(req)) return res.status(429).json({ ok: false, err: 'しばらく待ってからためしてください' }); next(); });
 app.post('/api/adm/backup', express.json({ limit: '2kb' }), (req, res) => {
-  if (!isAdminUid(req.body && req.body.uid)) return res.status(403).json({ ok: false, err: '管理者だけが使えます' });
+  if (!isAdminUid(req.body && req.body.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
   audit({ nmRegName: nameOfPk(pkOf(req.body.uid)) || '運営' }, 'backup');
   res.json(backupData());
 });
 app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
   const b = req.body || {};
-  if (!isAdminUid(b.uid)) return res.status(403).json({ ok: false, err: '管理者だけが使えます' });
+  if (!isAdminUid(b.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
   const bk = b.backup, D = bk && bk.data;
   if (!bk || bk.app !== 'nanigamokutekinan' || !D || typeof D !== 'object') return res.status(400).json({ ok: false, err: 'バックアップファイルではありません' });
   const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items']), done = {};
@@ -2041,12 +2221,21 @@ app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
 const PORT = process.env.PORT || 3000;
 // 保存データを読み込んでから受付開始
 (async () => {
+  // v23：署名の鍵を読み込む（Upstashを使っているときだけ。読み込みに失敗したときは、新しく作らずに今までの鍵を使う）
+  if (!SIGN_KEY && useKV && !process.env.RANK_SECRET) {
+    try {
+      let k = await STORE.load('sigkey', path.join(__dirname, 'sigkey.json'));
+      if (!k || typeof k.k !== 'string' || k.k.length < 32) { k = { k: crypto.randomBytes(32).toString('hex'), t: Date.now() }; await STORE.save('sigkey', path.join(__dirname, 'sigkey.json'), k); console.log('署名の鍵を新しく作りました'); }
+      SIGN_KEY = k.k; SIGN_T = k.t || 0;
+    } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
+  }
   for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason();
   await initVapid();
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
+  try { zEntry(path.join(PUB, 'index.html')); zEntry(ZALIAS['/sio.min.js']); } catch (e) { }   // 圧縮は起動時にすませておく
   server.listen(PORT, () => console.log('listening on ' + PORT));
   // Render無料プランのスリープ（＝保存データが消える）を防ぐため、自分のURLへ10分ごとにアクセス
   // （Upstashを設定済みなら不要なので動かさない。止めたいときは環境変数 KEEP_AWAKE=0）
