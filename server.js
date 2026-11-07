@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v20 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v21 — Express + Socket.io（サーバー権威型）
+// v21：一斉配布・操作の記録・利用状況のグラフ・人気アイテム・ランキング管理・ガチャ設定を画面で変更・手動セール・メンテナンスの予約
 // v20：プッシュ通知・エラーの自動報告・バランスの記録・プロフィール用アイテム（枠／名前の色／背景）・かけら交換所・リプレイ
 // v19：Upstashの使用量表示・接続テスト／管理データのバックアップ（保存・読み込み）／期間限定イベント（NC・XP倍率）／お知らせの予約送信／音量の細かい設定
 // v18：メンテナンス中にコードを更新（再起動）しても、メンテナンスが続くように（端末の署名つきの控えから復元）
@@ -266,9 +267,9 @@ function restoreBoards(id, name, best, rp, lv, ttl, bc) {
   if (!id || !name) return;
   const h = hidOf(id), r = ranking.find(x => x.h === h), q = rpBoard.find(x => x.h === h);
   if (r) { if (r.name !== name) { r.name = name; saveRanking(); } }
-  else if (!useKV && best > 0) { ranking.push({ h, name, score: best, lv, c: courseOk(bc) ? bc : undefined, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
+  else if (!useKV && best > 0 && !MOD.rkreset.run && !(MOD.rkdel.run || {})[h]) { ranking.push({ h, name, score: best, lv, c: courseOk(bc) ? bc : undefined, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
   if (q) { if (q.name !== name) { q.name = name; saveRp(); } }
-  else if (!useKV && rp > 0 && restoreBoards.season === SEASON.id) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
+  else if (!useKV && rp > 0 && restoreBoards.season === SEASON.id && !MOD.rkreset.rp && !(MOD.rkdel.rp || {})[h]) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
 }
 function submitRp(id, name, rp, lv, ttl) {
   const h = hidOf(id), i = rpBoard.findIndex(r => r.h === h);
@@ -290,6 +291,7 @@ function restoreSigned(board, list) {
     const e = { h: it.h, name: cleanName(it.name, 'プレイヤー'), lv: clamp(parseInt(it.lv, 10) || 1, 1, 99), ttl: clean(it.ttl, ''), ts: it.ts, [key]: it[key] };
     if (board === 'run' && it.c != null) { if (!courseOk(it.c)) continue; e.c = it.c; }
     if (board === 'rp' && SEASON.id && it.ts < seasonStart(SEASON.id)) continue;   // 前のシーズンの記録は戻さない
+    if (it.ts <= ((MOD.rkdel[board] || {})[it.h] || 0) || it.ts < (MOD.rkreset[board] || 0)) continue;   // 運営が消した記録・リセット前の記録は戻さない
     if (e.name !== it.name || typeof it.sig !== 'string' || it.sig !== signE(board, Object.assign({}, e, { ttl: it.ttl || '' }))) continue;
     const cur = arr.find(x => x.h === e.h);
     if (!cur) { arr.push(e); n++; }
@@ -442,6 +444,7 @@ function newRound(R) {
 function resetMatch(R) { R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R); }
 function endRound(R, w, pen, text) {
   recordRound(R, w, text);   // バランスの記録
+  try { usageDay().r++; } catch (e) { }
   if (w >= 0) {
     R.sc[w]++;
     if (R.ids[w]) { const g = 10 * ncMult(); io.to(R.ids[w]).emit('reward', { gain: g, ev: ncMult() > 1 ? ncMult() : 0, ov: text === '追い抜き成功！' }); ecoAddSid(R.ids[w], g); }
@@ -457,6 +460,7 @@ function afterResult(R) {
   const w = R.hist[R.hist.length - 1];
   if (w >= 0 && (R.sc[w] >= 4 || R.round >= 6)) {
     R.state = 'match';
+    try { usageDay().m++; } catch (e) { }
     R.msg = 'MATCH WINNER: ' + R.names[w];
     R.sub = R.round >= 6 ? 'サドンデス決着' : '';
     for (const i of [0, 1]) {
@@ -613,6 +617,7 @@ function spawnWave(R, p) {
 }
 function overEndless(R, kind, reason) {
   const p = R.P[0];
+  try { usageDay().e++; } catch (e) { }
   R.state = 'over'; R.fx = { who: [0], kind }; R.msg = 'GAME OVER'; R.sub = reason;
   R.score = Math.floor(p.z / 10) + R.bonus;
   const res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0], R.course || 0);
@@ -1012,11 +1017,13 @@ function loadEco(j) { if (j && typeof j === 'object') ECO = j; }
 const ECO_DAY = 2000;      // 1日にクエスト・ログボなどで増やせるNCの目安（多めに見積もる）
 const RANK_BONUS = [0, 100, 150, 200, 300, 400, 1000];
 const lvBonusSum = (a, b) => { let s = 0; for (let L = a + 1; L <= b; L++) s += 30 + L * 5; return s; };
+// ガチャ1回あたりの余裕（ガチャ設定で「かぶりのNC」を値段より高くしたときも、まちがって不正あつかいしない）
+const pullMargin = () => { const g = MOD.gcfg; return g ? Math.max(15, Math.max(...Object.values(g.refund)) - Math.min(g.cost1, g.cost10 / 10) + 15) : 15; };
 function ecoBound(e, lv, rk, ach, pulls, sea, now) {
   const days = Math.max(1, Math.ceil((now - e.bt) / 864e5));
   let rb = 0; for (let i = (e.rk0 || 0) + 1; i <= rk; i++) rb += RANK_BONUS[i] || 0;
   return Math.round(e.b + (e.srv || 0) * 1.55 + (e.gift || 0) + lvBonusSum(e.lv0 || 1, lv) + rb + Math.max(0, ach - (e.ach0 || 0)) * 1000
-    + Math.max(0, pulls - (e.p0 || 0)) * 15 + Math.max(0, sea - (e.s0 || 0)) * 3000 + days * ECO_DAY + 500);
+    + Math.max(0, pulls - (e.p0 || 0)) * pullMargin() + Math.max(0, sea - (e.s0 || 0)) * 3000 + days * ECO_DAY + 500);
 }
 function ecoAdd(pk, k, n) { const e = pk && ECO[pk]; if (!e || !(n > 0)) return; e[k] = (e[k] || 0) + n; saveEco(); }
 const ecoAddSid = (sid, n) => { const sk = sockOf(sid); if (sk) ecoAdd(sk.nmPk, 'srv', n); };
@@ -1109,7 +1116,7 @@ const adminHash = uid => crypto.createHash('sha256').update('nm-admin:' + uid).d
 const isAdminUid = uid => !!uid && (ADMIN_HASHES.has(adminHash(uid)) || (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(uid));
 const REPORT_ALERT = 5;        // ちがうプレイヤー何人から通報されたら管理者画面の一番上に出すか
 const MOD_FILE = process.env.MOD_FILE || path.join(__dirname, 'moderation.json');
-const MOD = { notices: [], bans: {}, warns: {}, pmsg: {}, reports: {}, seen: {}, feedback: [], gifts: {}, claims: {}, maint: { on: false }, nid: Math.floor(Date.now() / 1000) };   // 番号は時刻から始める（データが消えても前の番号とかぶらない）
+const MOD = { notices: [], bans: {}, warns: {}, pmsg: {}, reports: {}, seen: {}, feedback: [], gifts: {}, claims: {}, maint: { on: false }, audit: [], bgifts: [], bclaims: {}, dists: [], rkdel: { run: {}, rp: {} }, rkreset: {}, sale: null, gcfg: null, msched: null, nid: Math.floor(Date.now() / 1000) };   // 番号は時刻から始める（データが消えても前の番号とかぶらない）
 const GIFT_MAX = 100000;      // 1回に配れるNCの上限
 MOD.born = Date.now();        // このモデレーションデータが作られた時刻（保存データを読めたら、その値に置きかわる）
 function publishNotice(o) {   // お知らせを作って全員に送る（予約送信・イベントからも使う）
@@ -1129,6 +1136,9 @@ function loadMod(j) {
   if (Array.isArray(j.feedback)) MOD.feedback = j.feedback.slice(0, 300);
   if (Array.isArray(j.ng)) MOD.ng = j.ng.filter(w => typeof w === 'string').slice(-300);
   if (j.kvm && typeof j.kvm === 'object') MOD.kvm = j.kvm;
+  for (const k of ['bclaims', 'rkdel', 'rkreset']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
+  for (const k of ['audit', 'bgifts', 'dists']) if (Array.isArray(j[k])) MOD[k] = j[k];
+  for (const k of ['sale', 'gcfg', 'msched']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
   if (j.event && typeof j.event === 'object') MOD.event = j.event;
   if (Array.isArray(j.sched)) MOD.sched = j.sched.slice(0, 50);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
@@ -1158,7 +1168,7 @@ const MAINT_ALLOW = new Set(['cerr', 'push_key', 'push_sub', 'push_pref', 'push_
 // → メンテナンス中にコードを更新してサーバーが再起動しても、つながった端末の控えからメンテナンスを再開できる
 const maintCore = m => ({ on: !!m.on, until: Number(m.until) || 0, msg: String(m.msg || '').slice(0, 200), auto: !!m.auto, t: Number(m.t) || 0 });
 const signM = m => { const c = maintCore(m); return hmac(['maint', c.on ? 1 : 0, c.until, c.msg, c.auto ? 1 : 0, c.t].join('|')).slice(0, 24); };
-const maintInfo = () => { const m = MOD.maint || { on: false }; const c = maintCore(m); return Object.assign(c, { sig: c.t ? signM(c) : '', born: MOD.born }); };
+const maintInfo = () => { const m = MOD.maint || { on: false }; const c = maintCore(m); return Object.assign(c, { sig: c.t ? signM(c) : '', born: MOD.born, sched: MOD.msched ? { at: MOD.msched.at, until: MOD.msched.until || 0 } : null }); };
 function kickForMaint(sk) { try { qRemove(sk.id); leaveRoom(sk); } catch (e) {} }
 function setMaint(on, o) {
   if (on) {
@@ -1185,6 +1195,91 @@ function restoreMaint(m) {
 // 「時間になったら自動で終了」
 setInterval(() => { const m = MOD.maint; if (m && m.on && m.auto && m.until && Date.now() >= m.until) setMaint(false); }, 5000);
 
+/* ===== v21：操作の記録（誰が・いつ・何をしたか） ===== */
+function audit(by, act, o) {
+  MOD.audit = MOD.audit || [];
+  MOD.audit.unshift(Object.assign({ t: Date.now(), by: by ? (by.nmRegName || by.nmName || '運営') : '自動', act }, o || {}));
+  MOD.audit = MOD.audit.slice(0, 500); saveMod();
+}
+const tgOf = pk => ({ tg: nameOfPk(pk) || (MOD.seen[pk] || {}).n || 'プレイヤー', tpk: pk });
+
+/* =====================================================================
+   v21：一斉配布（NC・ガチャ券・かけら・アイテム）
+   ・「全員」…MOD.bgifts（1人1回。条件はもらうときに確かめる）
+   ・「最近◯日に来た人」…その人たちに1人ずつプレゼントを届ける
+   ===================================================================== */
+const ITEM_VALUE = 2500;   // NCの検算で、配ったアイテム1つを何NC分と見なすか（多めに）
+function cleanGiftBody(d) {
+  const n = (v, b) => Math.max(0, Math.min(b, Math.round(Number(v) || 0)));
+  const items = (Array.isArray(d.items) ? d.items : []).filter(x => x && /^[\w-]{1,24}$/.test(x.c) && /^[\w-]{1,24}$/.test(x.k)).slice(0, 10).map(x => ({ c: x.c, k: x.k, n: txt(x.n, 30) }));
+  return { amount: n(d.amount, GIFT_MAX), tk: n(d.tk, 100), shard: n(d.shard, 10000), items };
+}
+const giftWorth = g => (g.amount || 0) + (g.tk || 0) * 30 + (g.items || []).length * ITEM_VALUE;
+function bgiftOk(g, pk, socket) {   // この人が「全員配布」をもらえるか
+  if (Date.now() > g.until) return false;
+  if (g.regOnly && !nameOfPk(pk)) return false;
+  if (g.lvMin && ((socket && socket.nmLv) || (MOD.seen[pk] || {}).lv || 1) < g.lvMin) return false;
+  if (g.oldOnly && ((MOD.seen[pk] || {}).c || Date.now()) > g.t) return false;
+  return !((MOD.bclaims[g.id] || []).includes(pk));
+}
+const bgiftsFor = (pk, socket) => (MOD.bgifts || []).filter(g => bgiftOk(g, pk, socket)).map(g => Object.assign({ b: 1 }, g, { by: undefined }));
+function distTargets(o) {   // 「最近◯日に来た人」の一覧
+  const since = Date.now() - Math.max(1, Math.min(365, Number(o.days) || 7)) * 864e5;
+  return Object.keys(MOD.seen).filter(pk => (MOD.seen[pk].t || 0) >= since && (!o.regOnly || nameOfPk(pk)) && (!o.lvMin || (MOD.seen[pk].lv || 1) >= o.lvMin));
+}
+
+/* =====================================================================
+   v21：利用状況（毎日の人数・新しい人・次の日も来た人・時間帯）と人気のアイテム
+   ===================================================================== */
+const USAGE_FILE = process.env.USAGE_FILE || path.join(__dirname, 'usage.json');
+let USAGE = { days: {}, today: null, yday: null };
+const saveUsage = saver('usage', USAGE_FILE, () => ({ days: USAGE.days, today: USAGE.today && Object.assign({}, USAGE.today, { set: [...USAGE.today.set], nset: [...USAGE.today.nset] }), yday: USAGE.yday && Object.assign({}, USAGE.yday, { set: [...USAGE.yday.set], nset: [...USAGE.yday.nset] }) }), 300000);
+const dayJ = t => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
+function mkDay(d) { return { d, set: new Set(), nset: new Set(), peak: 0, h: Array(24).fill(0), m: 0, r: 0, e: 0 }; }
+function loadUsage(j) {
+  if (!j || typeof j !== 'object') return;
+  const rev = o => o ? Object.assign(o, { set: new Set(o.set || []), nset: new Set(o.nset || []), h: Array.isArray(o.h) ? o.h : Array(24).fill(0) }) : null;
+  USAGE = { days: j.days || {}, today: rev(j.today), yday: rev(j.yday) };
+}
+function usageDay() {   // 日付が変わったら、きのうの分を記録してから新しい日にする
+  const d = dayJ(Date.now());
+  if (!USAGE.today) USAGE.today = mkDay(d);
+  if (USAGE.today.d !== d) {
+    const T = USAGE.today, Y = USAGE.yday && USAGE.yday.d === dayJ(Date.parse(USAGE.today.d + 'T00:00:00+09:00') - 864e5) ? USAGE.yday : null;   // 前の日のデータがあるときだけ「次の日も来た人」を数える
+    let ret = 0, nret = 0; if (Y) for (const k of T.set) { if (Y.set.has(k)) ret++; if (Y.nset.has(k)) nret++; }
+    USAGE.days[T.d] = { dau: T.set.size, nu: T.nset.size, ret, nret, ynu: Y ? Y.nset.size : 0, peak: T.peak, h: T.h, m: T.m, r: T.r, e: T.e || 0 };
+    const ks = Object.keys(USAGE.days).sort(); while (ks.length > 90) delete USAGE.days[ks.shift()];
+    USAGE.yday = T; USAGE.today = mkDay(d); saveUsage();
+  }
+  return USAGE.today;
+}
+function usageSeen(pk, isNew) { const T = usageDay(), k = pk.slice(0, 10); if (!T.set.has(k)) { T.set.add(k); saveUsage(); } if (isNew) T.nset.add(k); }
+setInterval(() => { const T = usageDay(), n = [...io.sockets.sockets.values()].filter(s => s.nmPk).length, h = new Date(Date.now() + 9 * 3600e3).getUTCHours(); if (n > T.peak) T.peak = n; if (n > T.h[h]) T.h[h] = n; }, 60e3);
+const ITEMS_FILE = process.env.ITEMS_FILE || path.join(__dirname, 'itemstats.json');
+let ISTAT = { since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} };
+const saveIstat = saver('items', ITEMS_FILE, () => ISTAT, 600000);
+function loadIstat(j) { if (j && typeof j === 'object' && j.gacha) ISTAT = Object.assign({ since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} }, j); }
+
+/* =====================================================================
+   v21：ショップのセール・ガチャの設定（管理者画面から変更）・メンテナンスの予約・ランキング管理
+   ===================================================================== */
+const saleInfo = () => { const s = MOD.sale; return s && s.on && Date.now() < s.until ? { on: true, pct: s.pct, cats: s.cats || [], from: s.from || 0, until: s.until, title: s.title || '' } : { on: false }; };
+function cleanGcfg(c) {
+  if (!c || typeof c !== 'object') return null;
+  const n = (v, a, b, d) => { v = Number(v); return Number.isFinite(v) ? Math.max(a, Math.min(b, Math.round(v * 100) / 100)) : d; };
+  const four = (o, a, b, d) => ({ C: n(o && o.C, a, b, d.C), R: n(o && o.R, a, b, d.R), EPIC: n(o && o.EPIC, a, b, d.EPIC), LEGEND: n(o && o.LEGEND, a, b, d.LEGEND) });
+  const out = { rates: four(c.rates, 0, 100, { C: 55, R: 28, EPIC: 12, LEGEND: 5 }), cost1: n(c.cost1, 1, 10000, 30), cost10: n(c.cost10, 1, 100000, 270), guarantee10: n(c.guarantee10, 0, 4, 2),
+    refund: four(c.refund, 0, 10000, { C: 5, R: 10, EPIC: 20, LEGEND: 40 }), shard: four(c.shard, 0, 1000, { C: 1, R: 2, EPIC: 5, LEGEND: 15 }), exchange: four(c.exchange, 1, 100000, { C: 12, R: 30, EPIC: 90, LEGEND: 240 }) };
+  if (!(out.rates.C + out.rates.R + out.rates.EPIC + out.rates.LEGEND > 0)) return null;
+  return out;
+}
+setInterval(() => {   // メンテナンスの予約・期限が切れた一斉配布のかたづけ
+  const old = (MOD.bgifts || []).filter(g => g.until < Date.now() - 7 * 864e5);
+  if (old.length) { for (const g of old) delete MOD.bclaims[g.id]; MOD.bgifts = MOD.bgifts.filter(g => !old.includes(g)); saveMod(); }
+  const s = MOD.msched; if (!s || Date.now() < s.at) return;
+  MOD.msched = null; setMaint(true, { until: s.until > Date.now() ? s.until : 0, msg: s.msg || '', auto: !!s.auto }); audit(null, 'maint_auto_start', { d: '予約していたメンテナンスを開始' });
+}, 5000);
+
 /* ===== 期間限定イベント（NC・XPの倍率）と、お知らせの予約送信 ===== */
 const EV_KINDS = { nc2: { n: 'NC2倍', nc: 2, xp: 1 }, xp15: { n: 'XP1.5倍', nc: 1, xp: 1.5 }, xp2: { n: 'XP2倍', nc: 1, xp: 2 }, both: { n: 'NC2倍＆XP1.5倍', nc: 2, xp: 1.5 }, nc3: { n: 'NC3倍', nc: 3, xp: 1 } };
 const evActive = () => { const e = MOD.event, now = Date.now(); return e && e.on && now >= (e.from || 0) && now < e.until ? e : null; };
@@ -1200,12 +1295,12 @@ setInterval(() => {
   if (e && e.on && now >= e.until) { MOD.event = { on: false, t: now }; saveMod(); }
   const live = !!evActive(); if (live !== evLive) { evLive = live; io.emit('event', evInfo()); if (live) pushAll('ev', { title: '🎉 ' + MOD.event.name + 'イベント開催中！', body: '今なら' + [MOD.event.nc > 1 ? '試合のNCが' + MOD.event.nc + '倍' : '', MOD.event.xp > 1 ? 'XPが' + MOD.event.xp + '倍' : ''].filter(Boolean).join('・') + '！', tag: 'ev' }); }
 }, 5000);
-function giveGift(pk, amount, title, text) {
+function giveGift(pk, amount, title, text, extra) {
   amount = Math.max(0, Math.min(GIFT_MAX, Math.round(Number(amount) || 0)));
-  if (!amount) return null;
-  const g = { id: MOD.nid++, amount, title: title || '運営からのプレゼント', text: text || '', t: Date.now() };
+  const ex = extra || {}; if (!amount && !ex.tk && !ex.shard && !(ex.items && ex.items.length)) return null;
+  const g = Object.assign({ id: MOD.nid++, amount, title: title || '運営からのプレゼント', text: text || '', t: Date.now() }, ex.tk ? { tk: ex.tk } : {}, ex.shard ? { shard: ex.shard } : {}, ex.items && ex.items.length ? { items: ex.items } : {});
   (MOD.gifts[pk] = MOD.gifts[pk] || []).push(g); MOD.gifts[pk] = MOD.gifts[pk].slice(-20);
-  const sk = sockOf(byPk.get(pk)); if (sk) sk.emit('gifts', [g]); else sendPush(pk, 'gift', { title: '🎁 ' + g.title, body: g.amount.toLocaleString() + ' NC のプレゼントが届いています', tag: 'gift' });
+  const sk = sockOf(byPk.get(pk)); if (sk) sk.emit('gifts', [g]); else sendPush(pk, 'gift', { title: '🎁 ' + g.title, body: 'プレゼントが届いています。ログインして受け取ろう！', tag: 'gift' });
   return g;
 }
 const claimedBy = pk => Object.keys(MOD.claims).filter(id => MOD.claims[id].includes(pk)).map(Number);
@@ -1218,6 +1313,7 @@ function applyBan(sk, b) {
 // ログイン時に届けるもの（停止・警告・個別メッセージ・お知らせ）
 function deliverMod(socket) {
   const pk = socket.nmPk; if (!pk) return;
+  usageSeen(pk, !MOD.seen[pk]);   // 利用状況（今日来た人・新しい人）
   MOD.seen[pk] = Object.assign(MOD.seen[pk] || { c: Date.now() }, { t: Date.now(), n: socket.nmRegName || socket.nmName || (MOD.seen[pk] || {}).n || '', lv: socket.nmLv });
   const dv = socket.nmDv;
   if (dv) {   // 端末の要約だけ名簿に、くわしい情報はプロフィールの中（管理者だけが見られる）に保存
@@ -1228,6 +1324,8 @@ function deliverMod(socket) {
   saveMod();
   socket.isAdmin = isAdminUid(socket.nmUid);
   socket.emit('admin', socket.isAdmin);
+  socket.emit('sale', saleInfo()); if (MOD.gcfg) socket.emit('gcfg', MOD.gcfg);
+  const bg = bgiftsFor(pk, socket); if (bg.length) socket.emit('gifts', bg);
   socket.emit('nmeta', { born: MOD.born });
   socket.emit('notices', MOD.notices);
   socket.emit('claimed', claimedBy(pk));
@@ -1256,9 +1354,14 @@ io.on('connection', socket => {
   });
   socket.on('gift_claim', (d, cb) => {
     const pk = socket.nmPk, id = parseInt(d && d.id, 10), l = pk && MOD.gifts[pk], g = l && l.find(x => x.id === id);
-    if (!g) return rp(cb)({ ok: false, err: 'もう受け取っています' });
+    if (!g) {   // 全員への配布
+      const bg = pk && (MOD.bgifts || []).find(x => x.id === id);
+      if (!bg || !bgiftOk(bg, pk, socket)) return rp(cb)({ ok: false, err: 'もう受け取っています' });
+      (MOD.bclaims[id] = MOD.bclaims[id] || []).push(pk); saveMod(); ecoAdd(pk, 'gift', giftWorth(bg));
+      return rp(cb)({ ok: true, id, amount: bg.amount || 0, tk: bg.tk || 0, shard: bg.shard || 0, items: bg.items || [] });
+    }
     MOD.gifts[pk] = l.filter(x => x.id !== id); if (!MOD.gifts[pk].length) delete MOD.gifts[pk];
-    saveMod(); ecoAdd(pk, 'gift', g.amount); rp(cb)({ ok: true, amount: g.amount, id });
+    saveMod(); ecoAdd(pk, 'gift', giftWorth(g)); rp(cb)({ ok: true, id, amount: g.amount || 0, tk: g.tk || 0, shard: g.shard || 0, items: g.items || [] });
   });
   // フィードバック（ご意見・要望・バグ報告）
   socket.on('feedback', (d, cb) => {
@@ -1354,6 +1457,19 @@ io.on('connection', socket => {
   socket.on('push_get', (d, cb) => { if (typeof d === 'function') cb = d; const e = socket.nmPk && PUSH[socket.nmPk]; rp(cb)({ ok: true, on: !!(e && e.subs.length), pref: e ? e.pref : null, key: VAPID ? VAPID.publicKey : '' }); });
   socket.on('push_test', (d, cb) => { if (typeof d === 'function') cb = d; cb = rp(cb); const pk = socket.nmPk, e = pk && PUSH[pk]; if (!e) return cb({ ok: false }); const save = e.pref.news; e.pref.news = 1; e.last && (e.last.news = 0); sendPush(pk, 'news', { title: '🔔 通知のテスト', body: 'こんなふうに届きます！', tag: 'test' }); e.pref.news = save; cb({ ok: true }); });
   // ===== 🐞 プレイヤーの画面のエラー =====
+  // 人気のアイテム（ガチャで出た・ショップで買った・交換したアイテムを数える）
+  socket.on('istat', d => {
+    const now = Date.now(); socket.isN = (socket.isT || 0) < now - 60e3 ? 0 : socket.isN || 0; if (!socket.isN) socket.isT = now;
+    if (++socket.isN > 40 || !Array.isArray(d)) return;   // 1分に40回まで
+    for (const x of d.slice(0, 10)) {
+      if (!x || !['gacha', 'dup', 'shop', 'ex', 'prof'].includes(x.s) || !/^[\w-]{1,24}$/.test(x.c) || !/^[\w-]{1,24}$/.test(x.k)) continue;
+      const M = ISTAT[x.s], key = x.c + ':' + x.k; if (!M[key] && Object.keys(M).length > 3000) continue;
+      M[key] = (M[key] || 0) + 1;
+      if ((x.s === 'gacha' || x.s === 'dup') && x.r >= 1 && x.r <= 4) { ISTAT.rar = ISTAT.rar || [0, 0, 0, 0, 0]; ISTAT.rar[x.r]++; }
+      if (x.p > 0 && x.p < 1e5) { ISTAT.nc = ISTAT.nc || {}; ISTAT.nc[x.s] = (ISTAT.nc[x.s] || 0) + Math.round(x.p); }
+    }
+    saveIstat();
+  });
   socket.on('cerr', d => {
     if (!d || typeof d !== 'object') return; socket.errN = (socket.errN || 0) + 1; if (socket.errN > 10) return;
     const msg = txt(d.msg, 300); if (!msg) return;
@@ -1388,7 +1504,7 @@ io.on('connection', socket => {
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
   socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
-    banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV })));
+    banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length })));
   socket.on('adm_users', adm((d, cb) => {
     const q = typeof d.q === 'string' ? d.q.normalize('NFKC').toLowerCase().trim() : '', pks = new Set([...nameReg.values()].map(e => e.pk));
     for (const pk of Object.keys(MOD.seen)) pks.add(pk);
@@ -1425,6 +1541,7 @@ io.on('connection', socket => {
     else if (act === 'ncok') { const e = ECO[pk]; if (e) { e.reset = true; delete e.flag; saveEco(); } }   // 問題なしとして、今の値を基準にし直す
     else if (act === 'gift') { if (!giveGift(pk, d.amount, txt(d.title, 40) || '運営からのプレゼント', text)) return cb({ ok: false, err: 'NCの数を入れてください' }); }
     else return cb({ ok: false, err: '不明な操作' });
+    audit(socket, 'u_' + act, Object.assign(tgOf(pk), { d: act === 'ban' ? (Number(d.days) > 0 ? Number(d.days) + '日間' : '無期限') + '・' + (text || '利用規約違反') : act === 'gift' ? Math.round(Number(d.amount) || 0) + 'NC' : act === 'ncfix' ? Math.round(Number(d.amount) || 0) + 'NCに修正' : text.slice(0, 80) }));
     saveMod(); cb({ ok: true, u: userRow(pk) });
   }));
   // 全員へのお知らせ（アップデート・メンテナンスなど）
@@ -1438,26 +1555,29 @@ io.on('connection', socket => {
       if (at > Date.now() + 60 * 864e5) return cb({ ok: false, err: '予約は60日先までです' });
       MOD.sched = MOD.sched || []; if (MOD.sched.length >= 50) return cb({ ok: false, err: '予約は50件までです' });
       const sc = { sid: MOD.nid++, at, kind, title, body, pin: !!d.pin, gift }; MOD.sched.push(sc); MOD.sched.sort((a, b) => a.at - b.at); saveMod();
+      audit(socket, 'notice_sched', { d: title + (gift ? '（🎁' + gift + 'NC）' : '') });
       return cb({ ok: true, sched: sc });
     }
+    audit(socket, 'notice', { d: title + (gift ? '（🎁' + gift + 'NC）' : '') });
     cb({ ok: true, n: publishNotice({ kind, title, body, pin: !!d.pin, gift }) });
   }));
-  socket.on('adm_notice_del', adm((d, cb) => { const id = parseInt(d.id, 10); MOD.notices = MOD.notices.filter(n => n.id !== id); delete MOD.claims[id]; saveMod(); io.emit('notices', MOD.notices); cb({ ok: true }); }));
+  socket.on('adm_notice_del', adm((d, cb) => { const id = parseInt(d.id, 10), nn = MOD.notices.find(n => n.id === id); if (nn) audit(socket, 'notice_del', { d: nn.title }); MOD.notices = MOD.notices.filter(n => n.id !== id); delete MOD.claims[id]; saveMod(); io.emit('notices', MOD.notices); cb({ ok: true }); }));
   // 🐞 エラー一覧・削除
   socket.on('adm_errs', adm((d, cb) => cb({ ok: true, list: ERRS.map(e => Object.assign({}, e, { users: e.pk.length, pk: undefined })) })));
-  socket.on('adm_err_del', adm((d, cb) => { if (d.all) ERRS = []; else ERRS = ERRS.filter(e => e.sig !== d.sig); saveErrs(); cb({ ok: true }); }));
+  socket.on('adm_err_del', adm((d, cb) => { if (d.all) { ERRS = []; audit(socket, 'err_clear'); } else ERRS = ERRS.filter(e => e.sig !== d.sig); saveErrs(); cb({ ok: true }); }));
   // 📈 バランス
   socket.on('adm_stats', adm((d, cb) => cb({ ok: true, stats: BSTATS })));
-  socket.on('adm_stats_reset', adm((d, cb) => { BSTATS = { since: Date.now(), g: {} }; saveStats(); cb({ ok: true, stats: BSTATS }); }));
+  socket.on('adm_stats_reset', adm((d, cb) => { BSTATS = { since: Date.now(), g: {} }; saveStats(); audit(socket, 'stats_reset'); cb({ ok: true, stats: BSTATS }); }));
   // 🎉 イベント開始・終了
   socket.on('adm_event', adm((d, cb) => {
-    if (!d.on) { MOD.event = { on: false, t: Date.now() }; saveMod(); evLive = false; io.emit('event', evInfo()); return cb({ ok: true, ev: evInfo() }); }
+    if (!d.on) { if (MOD.event && MOD.event.on) audit(socket, 'event_end', { d: MOD.event.name }); MOD.event = { on: false, t: Date.now() }; saveMod(); evLive = false; io.emit('event', evInfo()); return cb({ ok: true, ev: evInfo() }); }
     const k = EV_KINDS[d.kind]; if (!k) return cb({ ok: false, err: 'イベントの種類を選んでください' });
     const now = Date.now(), from = Math.max(now, Number(d.from) || now), until = Number(d.until) || 0;
     if (until <= from + 60e3) return cb({ ok: false, err: '終わる時刻は始まる時刻より後にしてください' });
     if (until - from > 31 * 864e5) return cb({ ok: false, err: 'イベントは31日までです' });
     MOD.event = { on: true, kind: d.kind, name: k.n, nc: k.nc, xp: k.xp, from: from > now + 30e3 ? from : 0, until, t: now }; saveMod();
     evLive = !!evActive(); io.emit('event', evInfo());
+    audit(socket, 'event', { d: k.n + '（〜' + new Date(until + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace('-', '/') + '）' });
     if (d.notice) {   // お知らせも自動で送る（始まる時刻に合わせて予約）
       const f = t => { const x = new Date(t + 9 * 3600e3); return (x.getUTCMonth() + 1) + '/' + x.getUTCDate() + ' ' + String(x.getUTCHours()).padStart(2, '0') + ':' + String(x.getUTCMinutes()).padStart(2, '0'); };
       const o = { kind: 'event', title: '🎉 ' + k.n + 'イベント開催！', body: f(MOD.event.from || now) + ' 〜 ' + f(until) + ' のあいだ、' + [k.nc > 1 ? '試合でもらえるNCが' + k.nc + '倍' : '', k.xp > 1 ? 'XPが' + k.xp + '倍' : ''].filter(Boolean).join('、') + 'になります！' + (txt(d.msg, 300) ? '\n' + txt(d.msg, 300) : ''), pin: true, gift: 0 };
@@ -1466,7 +1586,7 @@ io.on('connection', socket => {
     }
     cb({ ok: true, ev: evInfo() });
   }));
-  socket.on('adm_sched_del', adm((d, cb) => { const id = parseInt(d.sid, 10); MOD.sched = (MOD.sched || []).filter(x => x.sid !== id); saveMod(); cb({ ok: true, sched: MOD.sched }); }));
+  socket.on('adm_sched_del', adm((d, cb) => { const id = parseInt(d.sid, 10), x = (MOD.sched || []).find(q => q.sid === id); if (x) audit(socket, 'sched_del', { d: x.title }); MOD.sched = (MOD.sched || []).filter(x => x.sid !== id); saveMod(); cb({ ok: true, sched: MOD.sched }); }));
   // 💾 Upstashの接続テスト（書きこんで、読みもどせるか）
   socket.on('adm_kvtest', adm(async (d, cb) => {
     if (!useKV) return cb({ ok: true, kv: false });
@@ -1488,8 +1608,8 @@ io.on('connection', socket => {
   }));
   socket.on('adm_ng', adm((d, cb) => {
     MOD.ng = MOD.ng || []; const w = txt(d.w, 20);
-    if (d.act === 'add' && w && !MOD.ng.includes(w)) MOD.ng.push(w);
-    if (d.act === 'del') MOD.ng = MOD.ng.filter(x => x !== w);
+    if (d.act === 'add' && w && !MOD.ng.includes(w)) { MOD.ng.push(w); audit(socket, 'ng_add', { d: w }); }
+    if (d.act === 'del' && MOD.ng.includes(w)) { MOD.ng = MOD.ng.filter(x => x !== w); audit(socket, 'ng_del', { d: w }); }
     MOD.ng = MOD.ng.slice(-300); saveMod(); cb({ ok: true, ng: MOD.ng });
   }));
   socket.on('adm_ngtest', adm((d, cb) => cb({ ok: true, out: ngMask(txt(d.text, 100)).text })));
@@ -1502,16 +1622,120 @@ io.on('connection', socket => {
       const amount = Math.max(0, Math.min(GIFT_MAX, Math.round(Number(d.amount) || 0)));
       f.st = 'adopted'; f.reward = amount; f.at = Date.now();
       if (amount) giveGift(f.pk, amount, '💡 フィードバック採用', txt(d.text, 300) || 'あなたのフィードバックが採用されました！ありがとうございます。');
+      audit(socket, 'fb_adopt', Object.assign(tgOf(f.pk), { d: (amount ? amount + 'NC・' : '') + f.text.slice(0, 50) }));
     } else if (d.act === 'reject') f.st = 'done';
-    else if (d.act === 'del') MOD.feedback = MOD.feedback.filter(x => x.id !== id);
+    else if (d.act === 'del') { MOD.feedback = MOD.feedback.filter(x => x.id !== id); audit(socket, 'fb_del', Object.assign(tgOf(f.pk), { d: f.text.slice(0, 50) })); }
     else return cb({ ok: false });
     saveMod(); cb({ ok: true });
     const nn = MOD.feedback.filter(x => x.st === 'new').length; for (const s of adminSockets()) s.emit('adm_fbn', nn);
   }));
   // メンテナンスの開始・終了
   socket.on('adm_maint', adm((d, cb) => {
-    if (d.on) { const until = Number(d.until) || 0; setMaint(true, { until: until > Date.now() ? until : 0, msg: txt(d.msg, 200), auto: !!d.auto }); }
-    else setMaint(false);
+    if (d.on) { const until = Number(d.until) || 0, was = MOD.maint && MOD.maint.on; setMaint(true, { until: until > Date.now() ? until : 0, msg: txt(d.msg, 200), auto: !!d.auto }); MOD.msched = null; audit(socket, was ? 'maint_edit' : 'maint_start', { d: txt(d.msg, 60) }); }
+    else { const was = MOD.maint && MOD.maint.on; setMaint(false); if (was) audit(socket, 'maint_end'); }
+    cb({ ok: true, maint: maintInfo() });
+  }));
+  /* ===================== v21：管理者の新しい機能 ===================== */
+  // 📜 操作の記録
+  socket.on('adm_audit', adm((d, cb) => cb({ ok: true, list: MOD.audit || [] })));
+  // 🎁 一斉配布
+  const distCond = d => ({ to: d.to === 'recent' ? 'recent' : 'all', days: clamp(parseInt(d.days, 10) || 7, 1, 365), lvMin: clamp(parseInt(d.lvMin, 10) || 0, 0, 99), regOnly: !!d.regOnly, oldOnly: !!d.oldOnly });
+  const condTxt = c => [c.to === 'recent' ? 'この' + c.days + '日に来た人' : '全員', c.lvMin > 1 ? 'Lv' + c.lvMin + '以上' : '', c.regOnly ? '名前登録済み' : '', c.to === 'all' && c.oldOnly ? '今いるプレイヤーだけ' : ''].filter(Boolean).join('・');
+  const bodyTxt = b => [b.amount ? b.amount.toLocaleString() + 'NC' : '', b.tk ? 'ガチャ券' + b.tk + '枚' : '', b.shard ? 'かけら' + b.shard : '', ...(b.items || []).map(x => x.n || x.k)].filter(Boolean).join('＋');
+  const allCount = c => Object.keys(MOD.seen).filter(pk => (!c.regOnly || nameOfPk(pk)) && (!c.lvMin || (MOD.seen[pk].lv || 1) >= c.lvMin)).length;
+  socket.on('adm_dist_count', adm((d, cb) => { const c = distCond(d); cb({ ok: true, n: c.to === 'recent' ? distTargets(c).length : allCount(c) }); }));
+  socket.on('adm_dist', adm((d, cb) => {
+    const b = cleanGiftBody(d), c = distCond(d), title = txt(d.title, 40) || '運営からのプレゼント', text = txt(d.text, 300), now = Date.now();
+    if (!b.amount && !b.tk && !b.shard && !b.items.length) return cb({ ok: false, err: '配るものを選んでください' });
+    let n;
+    if (c.to === 'recent') {
+      const pks = distTargets(c); if (!pks.length) return cb({ ok: false, err: '条件に合うプレイヤーがいません' });
+      for (const pk of pks) giveGift(pk, b.amount, title, text, b);
+      n = pks.length;
+    } else {
+      const g = Object.assign({ id: MOD.nid++, title, text, t: now, until: now + clamp(parseInt(d.valid, 10) || 14, 1, 60) * 864e5, lvMin: c.lvMin, regOnly: c.regOnly, oldOnly: c.oldOnly }, b);
+      MOD.bgifts.push(g); MOD.bclaims[g.id] = [];
+      while (MOD.bgifts.length > 30) delete MOD.bclaims[MOD.bgifts.shift().id];
+      for (const sk of io.sockets.sockets.values()) if (sk.nmPk && bgiftOk(g, sk.nmPk, sk)) sk.emit('gifts', [Object.assign({ b: 1 }, g)]);
+      if (d.push) pushAll('gift', { title: '🎁 ' + title, body: 'みんなにプレゼントが届いています。ログインして受け取ろう！', tag: 'bg' + g.id });
+      n = allCount(c);
+    }
+    MOD.dists.unshift({ t: now, by: socket.nmRegName || '運営', title, what: bodyTxt(b), cond: condTxt(c), n, all: c.to === 'all' });
+    MOD.dists = MOD.dists.slice(0, 50); saveMod();
+    audit(socket, 'dist', { d: title + '：' + bodyTxt(b) + '（' + condTxt(c) + '・' + n + '人' + (c.to === 'all' ? 'まで' : '') + '）' });
+    cb({ ok: true, n });
+  }));
+  socket.on('adm_dist_list', adm((d, cb) => cb({ ok: true, hist: MOD.dists || [], active: (MOD.bgifts || []).map(g => Object.assign({}, g, { got: (MOD.bclaims[g.id] || []).length })) })));
+  socket.on('adm_dist_stop', adm((d, cb) => {
+    const id = parseInt(d.id, 10), g = (MOD.bgifts || []).find(x => x.id === id); if (!g) return cb({ ok: false, err: '見つかりません' });
+    g.until = Date.now(); saveMod(); audit(socket, 'dist_stop', { d: g.title + '（' + (MOD.bclaims[id] || []).length + '人が受け取り済み）' }); cb({ ok: true });
+  }));
+  // 📈 利用状況・人気のアイテム
+  socket.on('adm_usage', adm((d, cb) => {
+    const T = usageDay(), Y = USAGE.yday && USAGE.yday.d === dayJ(Date.now() - 864e5) ? USAGE.yday : null; let nret = 0; if (Y) for (const k of T.set) if (Y.nset.has(k)) nret++;
+    cb({ ok: true, days: USAGE.days, today: { d: T.d, dau: T.set.size, nu: T.nset.size, peak: T.peak, h: T.h, m: T.m, r: T.r, e: T.e || 0, nret, ynu: Y ? Y.nset.size : 0 }, online: [...io.sockets.sockets.values()].filter(s => s.nmPk).length });
+  }));
+  socket.on('adm_items', adm((d, cb) => cb({ ok: true, st: ISTAT })));
+  socket.on('adm_items_reset', adm((d, cb) => { ISTAT = { since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} }; saveIstat(); audit(socket, 'items_reset'); cb({ ok: true, st: ISTAT }); }));
+  // 🏆 ランキングの管理
+  const rkOut = (b, e, i) => Object.assign({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0 }, b === 'run' ? { score: e.score, c: e.c } : { rp: e.rp, ttl: e.ttl || '' });
+  socket.on('adm_rank_list', adm((d, cb) => cb({ ok: true, run: ranking.map((e, i) => rkOut('run', e, i)), rp: rpBoard.map((e, i) => rkOut('rp', e, i)), season: SEASON.id, reset: MOD.rkreset || {} })));
+  socket.on('adm_rank_del', adm((d, cb) => {
+    const b = d.board === 'rp' ? 'rp' : 'run', h = String(d.h || ''), arr = b === 'run' ? ranking : rpBoard, i = arr.findIndex(x => x.h === h);
+    if (i < 0) return cb({ ok: false, err: 'もうありません' });
+    const e = arr.splice(i, 1)[0]; const L = MOD.rkdel[b] = MOD.rkdel[b] || {}; L[h] = Date.now();
+    const ks = Object.keys(L); if (ks.length > 500) for (const k of ks.sort((x, y) => L[x] - L[y]).slice(0, ks.length - 500)) delete L[k];
+    if (b === 'run') saveRanking(); else saveRp(); saveMod();
+    audit(socket, 'rank_del', { d: (b === 'run' ? 'エンドレス' : 'チャリランク') + '：' + e.name + '（' + (b === 'run' ? e.score + 'm' : e.rp + 'RP') + '）' });
+    cb({ ok: true });
+  }));
+  socket.on('adm_rank_reset', adm((d, cb) => {
+    const b = d.board === 'rp' ? 'rp' : 'run', n = (b === 'run' ? ranking : rpBoard).length;
+    if (b === 'run') { ranking = []; saveRanking(); } else { rpBoard = []; saveRp(); }
+    MOD.rkreset[b] = Date.now(); MOD.rkdel[b] = {}; saveMod();
+    audit(socket, 'rank_reset', { d: (b === 'run' ? 'エンドレス' : 'チャリランク') + '（' + n + '件を消去）' }); cb({ ok: true });
+  }));
+  // 🎰 ガチャの設定
+  socket.on('adm_gcfg', adm((d, cb) => {
+    if (d.reset) MOD.gcfg = null;
+    else { const c = cleanGcfg(d.cfg); if (!c) return cb({ ok: false, err: '確率の合計が0になっています' }); MOD.gcfg = c; }
+    saveMod(); io.emit('gcfg', MOD.gcfg || { reset: 1 });
+    const g = MOD.gcfg; audit(socket, 'gcfg', { d: g ? 'C' + g.rates.C + '% R' + g.rates.R + '% EPIC' + g.rates.EPIC + '% LEGEND' + g.rates.LEGEND + '%・1回' + g.cost1 + 'NC・10連' + g.cost10 + 'NC' : '最初の設定に戻した' });
+    cb({ ok: true, gcfg: MOD.gcfg });
+  }));
+  socket.on('adm_gcfg_get', adm((d, cb) => cb({ ok: true, gcfg: MOD.gcfg })));
+  // 🏷 セール
+  socket.on('adm_sale', adm((d, cb) => {
+    if (!d.on) { const was = saleInfo().on; MOD.sale = null; saveMod(); io.emit('sale', saleInfo()); if (was) audit(socket, 'sale_end'); return cb({ ok: true, sale: saleInfo() }); }
+    const now = Date.now(), pct = clamp(Math.round(Number(d.pct) || 0), 5, 50), from = Math.max(now, Number(d.from) || now), until = Number(d.until) || 0;
+    if (until <= from + 60e3) return cb({ ok: false, err: '終わる時刻は始まる時刻より後にしてください' });
+    if (until - from > 31 * 864e5) return cb({ ok: false, err: 'セールは31日までです' });
+    const CATS = ['bike', 'skin', 'hair', 'fit', 'acc', 'trail', 'emote', 'se', 'bgm', 'wfx', 'prof'];
+    const cats = Array.isArray(d.cats) ? d.cats.filter(c => CATS.includes(c)) : [];
+    MOD.sale = { on: true, pct, cats: cats.length === CATS.length ? [] : cats, from: from > now + 30e3 ? from : 0, until, title: txt(d.title, 30), t: now }; saveMod();
+    io.emit('sale', saleInfo());
+    const f = t => { const x = new Date(t + 9 * 3600e3); return (x.getUTCMonth() + 1) + '/' + x.getUTCDate() + ' ' + String(x.getUTCHours()).padStart(2, '0') + ':' + String(x.getUTCMinutes()).padStart(2, '0'); };
+    const what = MOD.sale.cats.length ? 'ショップの一部（' + MOD.sale.cats.length + '種類）' : 'ショップ全品';
+    if (d.notice) {
+      const o = { kind: 'event', title: '🏷 ' + (MOD.sale.title || what + ' ' + pct + '%OFFセール！'), body: f(MOD.sale.from || now) + ' 〜 ' + f(until) + ' のあいだ、' + what + 'が ' + pct + '%OFF になります！', pin: true, gift: 0 };
+      if (MOD.sale.from) { MOD.sched = MOD.sched || []; MOD.sched.push(Object.assign({ sid: MOD.nid++, at: MOD.sale.from }, o)); MOD.sched.sort((a, b) => a.at - b.at); saveMod(); } else publishNotice(o);
+    }
+    audit(socket, 'sale', { d: what + ' ' + pct + '%OFF（' + f(MOD.sale.from || now) + '〜' + f(until) + '）' });
+    cb({ ok: true, sale: saleInfo() });
+  }));
+  // 🛠 メンテナンスの予約
+  socket.on('adm_msched', adm((d, cb) => {
+    const fm = t => { const x = new Date(t + 9 * 3600e3); return (x.getUTCMonth() + 1) + '/' + x.getUTCDate() + ' ' + String(x.getUTCHours()).padStart(2, '0') + ':' + String(x.getUTCMinutes()).padStart(2, '0'); };
+    if (d.cancel) { const s = MOD.msched; MOD.msched = null; saveMod(); io.emit('maint', maintInfo()); if (s) audit(socket, 'msched_cancel', { d: fm(s.at) + 'からの予定' }); return cb({ ok: true, maint: maintInfo() }); }
+    const now = Date.now(), at = Number(d.at) || 0, until = Number(d.until) || 0;
+    if (at < now + 60e3) return cb({ ok: false, err: '始まる時刻は1分以上先にしてください' });
+    if (at > now + 30 * 864e5) return cb({ ok: false, err: '予約は30日先までです' });
+    if (until && until <= at + 60e3) return cb({ ok: false, err: '終わる時刻は始まる時刻より後にしてください' });
+    if (until && until - at > 2 * 864e5) return cb({ ok: false, err: 'メンテナンスは2日までです' });
+    MOD.msched = { at, until, msg: txt(d.msg, 200), auto: !!until && !!d.auto, t: now, by: socket.nmRegName || '運営' }; saveMod();
+    if (d.notice) publishNotice({ kind: 'maint', title: '🛠 メンテナンスのお知らせ（' + fm(at) + '〜）', body: fm(at) + ' から' + (until ? ' ' + fm(until) + ' ごろまで' : '') + 'メンテナンスを行います。\nメンテナンス中は遊べません（試合中の場合は途中で終わります）。' + (MOD.msched.msg ? '\n' + MOD.msched.msg : ''), pin: true, gift: 0 });
+    io.emit('maint', maintInfo());
+    audit(socket, 'msched', { d: fm(at) + 'から' + (until ? fm(until) + 'まで' : '（終わりは未定）') });
     cb({ ok: true, maint: maintInfo() });
   }));
 
@@ -1774,12 +1998,13 @@ io.on('connection', socket => {
    ===================================================================== */
 function backupData() {
   const prof = {}; for (const [pk, p] of PROF) if (p && !p._miss) prof[pk] = p;
-  return { app: 'nanigamokutekinan', v: 19, t: Date.now(), kv: useKV, data: {
+  return { app: 'nanigamokutekinan', v: 21, t: Date.now(), kv: useKV, data: {
     names: [...nameReg.values()], ranking, rp: rpBoard, friends: { req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] },
-    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS } };
+    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT } };
 }
 app.post('/api/adm/backup', express.json({ limit: '2kb' }), (req, res) => {
   if (!isAdminUid(req.body && req.body.uid)) return res.status(403).json({ ok: false, err: '管理者だけが使えます' });
+  audit({ nmRegName: nameOfPk(pkOf(req.body.uid)) || '運営' }, 'backup');
   res.json(backupData());
 });
 app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
@@ -1787,27 +2012,30 @@ app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
   if (!isAdminUid(b.uid)) return res.status(403).json({ ok: false, err: '管理者だけが使えます' });
   const bk = b.backup, D = bk && bk.data;
   if (!bk || bk.app !== 'nanigamokutekinan' || !D || typeof D !== 'object') return res.status(400).json({ ok: false, err: 'バックアップファイルではありません' });
-  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats']), done = {};
+  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items']), done = {};
   try {
     if (want.has('names') && Array.isArray(D.names)) { nameReg.clear(); pkKey.clear(); loadNames(D.names); saveNames(); done.names = nameReg.size; }
     if (want.has('ranking') && Array.isArray(D.ranking)) { loadRanking(D.ranking); saveRanking(); done.ranking = ranking.length; }
     if (want.has('rp') && Array.isArray(D.rp)) { loadRp(D.rp); saveRp(); done.rp = rpBoard.length; }
     if (want.has('friends') && D.friends) { freq.clear(); fnote.clear(); loadFriends(D.friends); saveFriends(); done.friends = freq.size; }
-    if (want.has('mod') && D.mod && typeof D.mod === 'object') { loadMod(D.mod); saveMod(); done.mod = MOD.notices.length; io.emit('notices', MOD.notices); io.emit('maint', maintInfo()); io.emit('event', evInfo()); }
+    if (want.has('mod') && D.mod && typeof D.mod === 'object') { loadMod(D.mod); saveMod(); done.mod = MOD.notices.length; io.emit('notices', MOD.notices); io.emit('maint', maintInfo()); io.emit('event', evInfo()); io.emit('sale', saleInfo()); io.emit('gcfg', MOD.gcfg || { reset: 1 }); }
     if (want.has('season') && D.season) { loadSeason(D.season); saveSeason(); done.season = SEASON.id; }
     if (want.has('eco') && D.eco && typeof D.eco === 'object') { loadEco(D.eco); saveEco(); done.eco = Object.keys(ECO).length; }
     if (want.has('push') && D.push && typeof D.push === 'object') { loadPush(D.push); savePush(); done.push = Object.keys(PUSH).length; }
     if (want.has('stats') && D.stats && typeof D.stats === 'object') { loadStats(D.stats); saveStats(); done.stats = 1; }
+    if (want.has('usage') && D.usage && D.usage.days && typeof D.usage.days === 'object') { USAGE.days = Object.assign({}, D.usage.days, USAGE.days); saveUsage(); done.usage = Object.keys(USAGE.days).length; }
+    if (want.has('items') && D.items && typeof D.items === 'object') { loadIstat(D.items); saveIstat(); done.items = 1; }
     if (want.has('prof') && D.prof && typeof D.prof === 'object') { let n = 0; for (const [pk, p] of Object.entries(D.prof).slice(0, 5000)) if (cleanPk(pk) && p && typeof p === 'object') { putProf(pk, p); n++; } done.prof = n; }
   } catch (e) { return res.status(500).json({ ok: false, err: '読み込みに失敗しました：' + e.message }); }
   console.log('バックアップから復元しました', JSON.stringify(done));
+  audit({ nmRegName: nameOfPk(pkOf(b.uid)) || '運営' }, 'restore', { d: Object.keys(done).join('・') });
   res.json({ ok: true, done });
 });
 
 const PORT = process.env.PORT || 3000;
 // 保存データを読み込んでから受付開始
 (async () => {
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason();
