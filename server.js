@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v21 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v22 — Express + Socket.io（サーバー権威型）
+// v22：管理画面を左メニュー＋いつも見える上のバー（オンライン・ユーザー・メンテナンス・お知らせ）に。ダッシュボードを「すぐ対応／いまの状態／今日の数字／これからの予定」に整理
 // v21：一斉配布・操作の記録・利用状況のグラフ・人気アイテム・ランキング管理・ガチャ設定を画面で変更・手動セール・メンテナンスの予約
 // v20：プッシュ通知・エラーの自動報告・バランスの記録・プロフィール用アイテム（枠／名前の色／背景）・かけら交換所・リプレイ
 // v19：Upstashの使用量表示・接続テスト／管理データのバックアップ（保存・読み込み）／期間限定イベント（NC・XP倍率）／お知らせの予約送信／音量の細かい設定
@@ -1253,6 +1254,10 @@ function usageDay() {   // 日付が変わったら、きのうの分を記録�
   }
   return USAGE.today;
 }
+function usageToday() {   // 今日の利用状況（「次の日も来た人」は、きのう始めた人のうち今日も来た人）
+  const T = usageDay(), Y = USAGE.yday && USAGE.yday.d === dayJ(Date.now() - 864e5) ? USAGE.yday : null; let nret = 0; if (Y) for (const k of T.set) if (Y.nset.has(k)) nret++;
+  return { d: T.d, dau: T.set.size, nu: T.nset.size, peak: T.peak, h: T.h, m: T.m, r: T.r, e: T.e || 0, nret, ynu: Y ? Y.nset.size : 0 };
+}
 function usageSeen(pk, isNew) { const T = usageDay(), k = pk.slice(0, 10); if (!T.set.has(k)) { T.set.add(k); saveUsage(); } if (isNew) T.nset.add(k); }
 setInterval(() => { const T = usageDay(), n = [...io.sockets.sockets.values()].filter(s => s.nmPk).length, h = new Date(Date.now() + 9 * 3600e3).getUTCHours(); if (n > T.peak) T.peak = n; if (n > T.h[h]) T.h[h] = n; }, 60e3);
 const ITEMS_FILE = process.env.ITEMS_FILE || path.join(__dirname, 'itemstats.json');
@@ -1504,7 +1509,9 @@ io.on('connection', socket => {
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
   socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
-    banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length })));
+    banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length,
+    today: usageToday(), days: Object.keys(USAGE.days).sort().slice(-13).map(d => ({ d, dau: USAGE.days[d].dau || 0, nu: USAGE.days[d].nu || 0 })), audit: (MOD.audit || []).slice(0, 5),
+    bgifts: (MOD.bgifts || []).filter(g => g.until > Date.now()).map(g => ({ id: g.id, title: g.title, until: g.until, got: (MOD.bclaims[g.id] || []).length })) })));
   socket.on('adm_users', adm((d, cb) => {
     const q = typeof d.q === 'string' ? d.q.normalize('NFKC').toLowerCase().trim() : '', pks = new Set([...nameReg.values()].map(e => e.pk));
     for (const pk of Object.keys(MOD.seen)) pks.add(pk);
@@ -1672,8 +1679,7 @@ io.on('connection', socket => {
   }));
   // 📈 利用状況・人気のアイテム
   socket.on('adm_usage', adm((d, cb) => {
-    const T = usageDay(), Y = USAGE.yday && USAGE.yday.d === dayJ(Date.now() - 864e5) ? USAGE.yday : null; let nret = 0; if (Y) for (const k of T.set) if (Y.nset.has(k)) nret++;
-    cb({ ok: true, days: USAGE.days, today: { d: T.d, dau: T.set.size, nu: T.nset.size, peak: T.peak, h: T.h, m: T.m, r: T.r, e: T.e || 0, nret, ynu: Y ? Y.nset.size : 0 }, online: [...io.sockets.sockets.values()].filter(s => s.nmPk).length });
+    cb({ ok: true, days: USAGE.days, today: usageToday(), online: [...io.sockets.sockets.values()].filter(s => s.nmPk).length });
   }));
   socket.on('adm_items', adm((d, cb) => cb({ ok: true, st: ISTAT })));
   socket.on('adm_items_reset', adm((d, cb) => { ISTAT = { since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} }; saveIstat(); audit(socket, 'items_reset'); cb({ ok: true, st: ISTAT }); }));
