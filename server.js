@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v16 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v17 — Express + Socket.io（サーバー権威型）
+// v17：管理者画面をタブ化・運営は誰の試合でも見えないように観戦できる・お知らせの自動復元（署名つきの控え）・NCは1分ごと＋増えたときに報告
 // v16：NGワード・ブロック・NCの検算・端末情報（管理者用）・プロフィール・シーズン制ランキング・練習モード・PWA・プライバシーポリシー
 // メンテナンスモード（再開時刻の表示とミニゲーム）・フィードバック（採用でNCプレゼント）・お詫びNC付きお知らせ・ロッカーのお気に入り／お知らせページ・管理者画面（ユーザー管理／利用停止／警告／個別メッセージ／全員へのお知らせ）・通報（5人以上で管理者に通知）／録音ボイス・全エモートの動き・ガチャ演出強化とラインナップ・季節報酬と殿堂チャリの豪華化・短い引き継ぎコード／タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
@@ -701,11 +702,12 @@ const sockOf = sid => sid && io.sockets.sockets.get(sid);
 const specs = new Map();   // 観戦者のsocket.id -> ルームコード
 const SPEC_MAX = 8;
 function canWatch(R) { return !!R && R.state !== 'lobby' && (R.mode === 'endless' || R.isCpu || !!R.ids[1]); }
-function specCount(R) { const n = R.spec ? R.spec.size : 0; for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('spec_n', n); }
+function specVisible(R) { let n = R.spec ? R.spec.size : 0; if (R.hid) for (const sid of R.hid) if (R.spec.has(sid)) n--; return n; }
+function specCount(R) { const n = specVisible(R); for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('spec_n', n); }
 function specLeave(socket) {
   const code = specs.get(socket.id); if (!code) return;
   specs.delete(socket.id); const R = rooms.get(code);
-  if (R && R.spec) { R.spec.delete(socket.id); specCount(R); }
+  if (R && R.spec) { R.spec.delete(socket.id); if (R.hid) R.hid.delete(socket.id); specCount(R); }
 }
 function specEnd(sid, why) { specs.delete(sid); const sk = sockOf(sid); if (sk) sk.emit('spec_end', { why }); }
 // 試合が終わってルームが消えた・ロビーに戻ったら観戦も終わり
@@ -1017,8 +1019,11 @@ const adminHash = uid => crypto.createHash('sha256').update('nm-admin:' + uid).d
 const isAdminUid = uid => !!uid && (ADMIN_HASHES.has(adminHash(uid)) || (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean).includes(uid));
 const REPORT_ALERT = 5;        // ちがうプレイヤー何人から通報されたら管理者画面の一番上に出すか
 const MOD_FILE = process.env.MOD_FILE || path.join(__dirname, 'moderation.json');
-const MOD = { notices: [], bans: {}, warns: {}, pmsg: {}, reports: {}, seen: {}, feedback: [], gifts: {}, claims: {}, maint: { on: false }, nid: 1 };
+const MOD = { notices: [], bans: {}, warns: {}, pmsg: {}, reports: {}, seen: {}, feedback: [], gifts: {}, claims: {}, maint: { on: false }, nid: Math.floor(Date.now() / 1000) };   // 番号は時刻から始める（データが消えても前の番号とかぶらない）
 const GIFT_MAX = 100000;      // 1回に配れるNCの上限
+MOD.born = Date.now();        // このモデレーションデータが作られた時刻（保存データを読めたら、その値に置きかわる）
+// お知らせの署名：プレイヤーの端末に控えを持たせて、サーバーのデータが消えたときに元に戻すため
+const signN = n => hmac(['notice', n.id, n.kind, n.title, n.body || '', n.t, n.pin ? 1 : 0, n.gift || 0].join('|')).slice(0, 24);
 function loadMod(j) {
   if (!j || typeof j !== 'object') return;
   for (const k of ['bans', 'warns', 'pmsg', 'reports', 'seen', 'gifts', 'claims']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
@@ -1026,7 +1031,9 @@ function loadMod(j) {
   if (Array.isArray(j.ng)) MOD.ng = j.ng.filter(w => typeof w === 'string').slice(-300);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
   if (Array.isArray(j.notices)) MOD.notices = j.notices.slice(0, 100);
+  for (const n of MOD.notices) if (!n.sig) n.sig = signN(n);
   MOD.nid = Math.max(1, parseInt(j.nid, 10) || 1);
+  MOD.born = Number(j.born) || 1;
 }
 const saveMod = saver('mod', MOD_FILE, () => MOD, 2000);
 const KINDS = { update: 'アップデート', maint: 'メンテナンス', info: 'お知らせ', event: 'イベント', important: '重要' };
@@ -1036,7 +1043,8 @@ const repCount = pk => { const r = MOD.reports[pk]; return r ? new Set(r.list.ma
 const adminSockets = () => [...io.sockets.sockets.values()].filter(s => s.isAdmin);
 function userRow(pk) {
   const name = nameOfPk(pk), sid = byPk.get(pk), sk = sockOf(sid), seen = MOD.seen[pk] || {}, b = banOf(pk);
-  return { pk, name: name || seen.n || '（名前なし）', reg: !!name, dv: seen.d || '', net: seen.net || '', eco: ECO[pk] && ECO[pk].flag ? 1 : 0, lv: (sk && sk.nmLv) || seen.lv || 1, online: !!sk, st: sk ? statusOf(sid) : 'offline', seen: seen.t || 0, since: seen.c || 0,
+  const ec = ECO[pk];
+  return { pk, name: name || seen.n || '（名前なし）', reg: !!name, dv: seen.d || '', net: seen.net || '', eco: ec && ec.flag ? 1 : 0, nc: ec && ec.c != null ? ec.c : null, nct: ec && ec.t || 0, lv: (sk && sk.nmLv) || seen.lv || 1, online: !!sk, st: sk ? statusOf(sid) : 'offline', seen: seen.t || 0, since: seen.c || 0,
     rep: repCount(pk), warn: (MOD.warns[pk] || []).length, ban: b ? { until: b.until || 0, reason: b.reason || '' } : null };
 }
 function flagged() { return Object.keys(MOD.reports).filter(pk => repCount(pk) >= REPORT_ALERT).map(pk => Object.assign(userRow(pk), { reasons: MOD.reports[pk].list.slice(-10) })).sort((a, b) => b.rep - a.rep); }
@@ -1083,6 +1091,7 @@ function deliverMod(socket) {
   saveMod();
   socket.isAdmin = isAdminUid(socket.nmUid);
   socket.emit('admin', socket.isAdmin);
+  socket.emit('nmeta', { born: MOD.born });
   socket.emit('notices', MOD.notices);
   socket.emit('claimed', claimedBy(pk));
   socket.emit('maint', maintInfo());
@@ -1162,6 +1171,26 @@ io.on('connection', socket => {
     saveEco();
   });
   socket.on('nc_fix_ok', () => { const e = socket.nmPk && ECO[socket.nmPk]; if (e && e.fix != null) { delete e.fix; e.reset = true; delete e.flag; saveEco(); } });
+  // お知らせの復元：サーバーのデータが消えていたら、端末に残っている署名つきの控えから戻す
+  socket.on('notices_restore', d => {
+    const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
+    let changed = false;
+    for (const n of (Array.isArray(d.list) ? d.list : []).slice(0, 50)) {
+      if (!n || typeof n !== 'object') continue;
+      const c = { id: parseInt(n.id, 10), kind: KINDS[n.kind] ? n.kind : 'info', title: txt(n.title, 60), body: txt(n.body, 2000), t: Number(n.t) || 0, pin: !!n.pin };
+      const g = Math.max(0, Math.min(GIFT_MAX, Math.round(Number(n.gift) || 0))); if (g) c.gift = g;
+      if (!(c.id > 0) || !c.title || c.t >= MOD.born || n.sig !== signN(c) || MOD.notices.some(x => x.id === c.id)) continue;
+      c.sig = n.sig; MOD.notices.push(c); MOD.nid = Math.max(MOD.nid, c.id + 1); changed = true;
+    }
+    // 受け取り済みのお詫びNCも戻す（二重に受け取れないように）
+    for (const id of (Array.isArray(d.claimed) ? d.claimed : []).slice(0, 100)) {
+      const n = MOD.notices.find(x => x.id === parseInt(id, 10)); if (!n || !n.gift) continue;
+      const l = MOD.claims[n.id] = MOD.claims[n.id] || []; if (!l.includes(pk)) { l.push(pk); changed = true; }
+    }
+    if (!changed) return;
+    MOD.notices.sort((a, b) => b.t - a.t); MOD.notices = MOD.notices.slice(0, 100); saveMod();
+    io.emit('notices', MOD.notices); socket.emit('claimed', claimedBy(pk));
+  });
   socket.on('notices_get', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ notices: MOD.notices }); });
   socket.on('warn_ack', id => { const pk = socket.nmPk, l = pk && MOD.warns[pk]; if (!l) return; for (const w of l) if (w.id === id) w.ack = Date.now(); saveMod(); });
   socket.on('msg_read', () => { const pk = socket.nmPk, l = pk && MOD.pmsg[pk]; if (!l) return; l.forEach(m => { m.read = 1; }); saveMod(); });
@@ -1181,7 +1210,7 @@ io.on('connection', socket => {
   });
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
-  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
+  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
     banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV })));
   socket.on('adm_users', adm((d, cb) => {
     const q = typeof d.q === 'string' ? d.q.normalize('NFKC').toLowerCase().trim() : '', pks = new Set([...nameReg.values()].map(e => e.pk));
@@ -1190,7 +1219,7 @@ io.on('connection', socket => {
     let list = [...pks].map(userRow);
     if (q) list = list.filter(u => u.name.normalize('NFKC').toLowerCase().includes(q) || (u.dv || '').toLowerCase().includes(q) || u.net === q || u.pk.startsWith(q));
     const sort = d.sort || 'seen';
-    list.sort((a, b) => sort === 'rep' ? b.rep - a.rep : sort === 'lv' ? b.lv - a.lv : (b.online - a.online) || (b.seen - a.seen));
+    list.sort((a, b) => sort === 'rep' ? b.rep - a.rep : sort === 'lv' ? b.lv - a.lv : sort === 'nc' ? (b.nc || 0) - (a.nc || 0) : (b.online - a.online) || (b.seen - a.seen));
     cb({ ok: true, total: list.length, list: list.slice(0, 5000) });   // 全員を表示
   }));
   socket.on('adm_user', adm(async (d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
@@ -1228,11 +1257,23 @@ io.on('connection', socket => {
     const gift = Math.max(0, Math.min(GIFT_MAX, Math.round(Number(d.gift) || 0)));   // お詫びNC（0なら無し）
     const n = { id: MOD.nid++, kind, title, body, t: Date.now(), pin: !!d.pin };
     if (gift) n.gift = gift;
+    n.sig = signN(n);
     MOD.notices.unshift(n); MOD.notices = MOD.notices.slice(0, 100); saveMod();
     io.emit('notice_new', n); cb({ ok: true, n });
   }));
   socket.on('adm_notice_del', adm((d, cb) => { const id = parseInt(d.id, 10); MOD.notices = MOD.notices.filter(n => n.id !== id); delete MOD.claims[id]; saveMod(); io.emit('notices', MOD.notices); cb({ ok: true }); }));
   // NGワードの追加・削除（基本のリストに足す言葉）
+  // 試合中のルーム一覧（運営の観戦用）
+  socket.on('adm_rooms', adm((d, cb) => {
+    const list = [];
+    for (const R of rooms.values()) {
+      if (!canWatch(R)) continue;
+      const ps = [0, 1].map(i => { const sk = sockOf(R.ids[i]); return sk ? { name: R.names[i], pk: sk.nmPk || '', lv: R.lvs[i] } : (R.isCpu && i === 1 ? { name: 'CPU', pk: '', lv: R.lvs[i], cpu: 1 } : null); });
+      if (!ps[0] || !ps[0].pk) continue;
+      list.push({ mode: R.mode, ranked: !!R.ranked, cpu: !!R.isCpu, tut: !!R.tut, ps, sc: R.sc || [0, 0], rd: R.round || 0, spec: specVisible(R), me: !!(R.spec && R.spec.has(socket.id)) });
+    }
+    cb({ ok: true, list });
+  }));
   socket.on('adm_ng', adm((d, cb) => {
     MOD.ng = MOD.ng || []; const w = txt(d.w, 20);
     if (d.act === 'add' && w && !MOD.ng.includes(w)) MOD.ng.push(w);
@@ -1486,17 +1527,19 @@ io.on('connection', socket => {
   // フレンドの試合を観戦する（見るだけ。操作やチャットはできない）
   socket.on('spectate', (d, cb) => {
     const pk = cleanPk(d && d.pk), sid = pk && byPk.get(pk), sk = sockOf(sid);
-    if (!sk) return rp(cb)({ ok: false, err: 'フレンドはオフラインです' });
+    const hid = !!(d && d.hidden && socket.isAdmin);   // 運営の観戦は相手に表示しない
+    if (!sk) return rp(cb)({ ok: false, err: hid ? 'そのプレイヤーはオフラインです' : 'フレンドはオフラインです' });
     if (sid === socket.id) return rp(cb)({ ok: false, err: '自分は観戦できません' });
     const R = rooms.get(sk.data && sk.data.code);
     if (!canWatch(R)) return rp(cb)({ ok: false, err: '今は試合をしていません' });
     R.spec = R.spec || new Set();
-    if (!R.spec.has(socket.id) && R.spec.size >= SPEC_MAX) return rp(cb)({ ok: false, err: '観戦の人数がいっぱいです（' + SPEC_MAX + '人まで）' });
+    if (!hid && !R.spec.has(socket.id) && specVisible(R) >= SPEC_MAX) return rp(cb)({ ok: false, err: '観戦の人数がいっぱいです（' + SPEC_MAX + '人まで）' });
     qRemove(socket.id); leaveRoom(socket);
     R.spec.add(socket.id); specs.set(socket.id, R.code);
+    R.hid = R.hid || new Set(); if (hid) R.hid.add(socket.id); else R.hid.delete(socket.id);
     const follow = R.ids[0] === sid ? 0 : 1;
     rp(cb)({ ok: true });
-    socket.emit('spec_start', { follow, mode: R.mode, course: R.course || 0, names: R.names, ranked: !!R.ranked, cpu: !!R.isCpu, target: nameOfPk(pk) || R.names[follow],
+    socket.emit('spec_start', { hidden: hid, follow, mode: R.mode, course: R.course || 0, names: R.names, ranked: !!R.ranked, cpu: !!R.isCpu, target: nameOfPk(pk) || R.names[follow],
       players: [0, 1].map(i => (R.ids[i] || (R.isCpu && i === 1)) ? { name: R.names[i], lv: R.lvs[i], bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i] } : null) });
     specCount(R);
   });
