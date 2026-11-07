@@ -317,7 +317,7 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .ad-it{display:flex;flex-direction:column;gap:.1em;background:rgba(255,255,255,.06);border-radius:10px;padding:.4em .55em;margin:.25em 0}.ad-it small{opacity:.85}.ad-it.on{border-left:4px solid #8cf08c}
 .gift-items{display:flex;flex-wrap:wrap;justify-content:center;gap:.35em;max-width:22em}.gift-items:empty{display:none}
 .gift-items span{background:rgba(0,0,0,.3);border:2px solid var(--ln);border-radius:12px;padding:.2em .6em;font-weight:900;font-size:.92em}
-.dot.sale{background:#ff9100!important;min-width:auto!important;padding:0 .35em;font-size:.56em!important;border-radius:6px!important;top:-5px!important;right:-8px!important}
+.tab .dot.sale{position:static;display:inline-grid;vertical-align:.15em;margin-left:.3em;background:#ff9100;min-width:auto;height:auto;padding:.05em .4em;font-size:.62em;border-radius:6px;border-width:2px}.tab .dot.sale.hide{display:none}
 .shop-sale{background:linear-gradient(90deg,#ff3d00,#ff9100,#ff3d00);background-size:200% 100%;animation:evr 3s linear infinite;border:3px solid var(--ln);border-radius:14px;padding:.45em .8em;color:#fff;font-weight:900;text-align:center;box-shadow:0 3px 0 var(--ln);text-shadow:0 2px 0 rgba(0,0,0,.3)}
 .shop-sale small{display:block;font-size:.78em;opacity:.95}
 .salep{color:#ffd23f}.salep s{color:#c9cff5;opacity:.75;font-size:.85em;margin-left:.2em}
@@ -337,11 +337,41 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .ai-row .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.ai-row .bar{height:.75em;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}.ai-row .bar i{display:block;height:100%;background:#4a94f0;border-radius:0 4px 4px 0}
 .ai-row .v{text-align:right;font-weight:900}.ai-row .r{text-align:center;color:#aab3e0}
 /* ===== 管理者画面（v17：タブ切り替え。スクロールするのは中身の部分だけ） ===== */
-#pg-admin.on{display:flex;flex-direction:column;overflow:hidden;gap:.5em}
-.adm-tabs{display:flex;gap:.3em;overflow-x:auto;scrollbar-width:none;flex:none;padding:.1em 0 .3em}.adm-tabs::-webkit-scrollbar{display:none}
-.adm-tabs button{flex:none;position:relative;border:3px solid var(--ln);border-radius:12px;background:#3a2a6e;color:#e6dcff;font-weight:900;font-size:.85em;padding:.35em .7em;cursor:pointer;box-shadow:0 3px 0 var(--ln);font-family:inherit}
+/* v22：左のメニュー＋上のバー */
+#pg-admin.on{display:flex;flex-direction:row;overflow:hidden;gap:.6em}
+.adm-tabs{display:flex;flex-direction:column;gap:.22em;width:13.2em;flex:none;overflow-y:auto;overflow-x:hidden;padding:.1em .35em .8em .1em;scrollbar-width:thin;overscroll-behavior:contain}
+.adm-tabs button{flex:none;position:relative;display:flex;align-items:center;gap:.45em;width:100%;text-align:left;border:3px solid var(--ln);border-radius:12px;background:#3a2a6e;color:#e6dcff;font-weight:900;font-size:.86em;padding:.38em .55em;cursor:pointer;box-shadow:0 2px 0 var(--ln);font-family:inherit}
+.adm-tabs button .ic{width:1.35em;text-align:center;flex:none}.adm-tabs button .lb{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-tabs i{font-style:normal;margin-left:auto;flex:none;background:#ff3b30;color:#fff;border-radius:99px;padding:0 .45em;font-size:.8em;line-height:1.5}
+.adm-tabs i.info{background:#1e88e5}.adm-tabs i.state{background:#ef6c00}
+.adm-grp{font-size:.7em;font-weight:900;color:#b4a6ea;margin:.55em .35em .05em;letter-spacing:.06em;flex:none}
+.adm-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:.45em}
+.adm-quick{display:flex;gap:.4em;flex-wrap:wrap;flex:none}
+.aq{display:flex;align-items:center;gap:.4em;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.13);border-radius:12px;padding:.22em .35em .22em .6em;font-weight:900;font-size:.86em;cursor:pointer;color:#fff;min-height:2.2em}
+.aq:hover{background:rgba(255,255,255,.12)}.aq b{font-size:1.12em}.aq small{color:#c9cff5;font-weight:800;font-size:.82em}.aq .btn{font-size:.8em;padding:.18em .55em;margin-left:.1em}
+.aq.ok b{color:#8cf08c}.aq.warn{border-color:#ef6c00;background:rgba(239,108,0,.2)}.aq.warn b{color:#ffb74d}
+@media (max-width:900px){
+  .adm-tabs{width:4.5em;padding-right:.2em}.adm-tabs button{flex-direction:column;gap:0;padding:.28em .1em;text-align:center;border-width:2px}
+  .adm-tabs button .ic{width:auto;font-size:1.12em}.adm-tabs button .lb{font-size:.6em;white-space:normal;line-height:1.15;overflow:visible}
+  .adm-tabs i{position:absolute;top:-3px;right:-3px;margin:0;font-size:.58em}.adm-grp{display:none}.adm-tabs .adm-grp+button{margin-top:.35em}
+  .adm-tabs{gap:.2em}.aq{font-size:.78em}
+}
+/* v22：ダッシュボード */
+.dash-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:.7em;align-items:start}@media (max-width:1100px){.dash-grid{grid-template-columns:minmax(0,1fr)}}
+.dash-col{display:flex;flex-direction:column;gap:.6em;min-width:0}.dash-sec{display:flex;flex-direction:column;gap:.35em;min-width:0}
+.dash-h{display:flex;align-items:center;gap:.5em;font-weight:900;font-size:.92em;color:#e6dcff}.dash-h .dash-more{margin-left:auto;font-size:.72em}
+.dash-box{background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.08);border-radius:14px;padding:.5em .6em}
+.adm-cards.dc{grid-template-columns:repeat(auto-fill,minmax(9.6em,1fr));gap:.4em}
+.adm-cards.dc .acard{padding:.35em .6em}.adm-cards.dc .acard b{font-size:1.3em}
+.acard small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acard em{font-style:normal;font-size:.72em;font-weight:800;opacity:.85;margin-left:.3em}
+.acard.calm{background:linear-gradient(180deg,#232c63,#171d48)}.acard.calm b{color:#9fa9dd}.acard.info{background:linear-gradient(180deg,#14508f,#0d3866)}
+.dash-list{display:flex;flex-direction:column;gap:.25em}.dash-list .muted{font-size:.85em}
+.dl{display:flex;align-items:center;gap:.5em;background:rgba(255,255,255,.06);border-radius:10px;padding:.3em .5em;cursor:pointer;font-size:.86em}.dl:hover{background:rgba(255,255,255,.1)}
+.dl .t{white-space:nowrap;font-weight:900;color:#ffd23f;min-width:6.2em;font-size:.92em}.dl .x{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dl .w{font-size:.82em;color:#aab3e0;white-space:nowrap}
+.dl.live .t{color:#8cf08c}
+#dash-chart svg{width:100%;height:auto;display:block;overflow:visible}
+body:has(#pg-admin.on) #ev-ribbon,body:has(#pg-admin.on) #ms-ribbon{display:none}   /* 管理画面では上の帯を出さない（ダッシュボードに出ている） */#dash-chart svg text{fill:#aab3e0;font-size:10px;font-family:inherit}
 .adm-tabs button.on{background:linear-gradient(180deg,#c58bff,#8a2be2);color:#fff}
-.adm-tabs i{font-style:normal;margin-left:.35em;background:#ff3b30;color:#fff;border-radius:99px;padding:0 .45em;font-size:.85em}
 .adm-body{flex:1;min-height:0;position:relative}
 .ap{display:none;position:absolute;inset:0;flex-direction:column;gap:.45em}.ap.on{display:flex}
 .ap-head{display:flex;align-items:center;gap:.5em;flex-wrap:wrap;flex:none}
@@ -655,28 +685,44 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     </section>
     <section id="pg-admin" class="pg">
       <nav class="adm-tabs" id="adm-tabs">
-        <button data-a="dash" class="on">📊 ダッシュボード</button>
-        <button data-a="todo">🚨 要対応<i id="at-todo" class="hide"></i></button>
-        <button data-a="users">👥 ユーザー</button>
-        <button data-a="live">👀 試合中<i id="at-live" class="hide"></i></button>
-        <button data-a="news">📢 お知らせ</button>
-        <button data-a="dist">🎁 配布<i id="at-dist" class="hide"></i></button>
-        <button data-a="fb">💡 フィードバック<i id="at-fb" class="hide"></i></button>
-        <button data-a="event">🎉 イベント<i id="at-event" class="hide">中</i></button>
-        <button data-a="shopadm">🛒 ショップ・ガチャ<i id="at-sale" class="hide">SALE</i></button>
-        <button data-a="maint">🛠 メンテナンス<i id="at-maint" class="hide">中</i></button>
-        <button data-a="rank">🏆 ランキング</button>
-        <button data-a="bal">📈 分析</button>
-        <button data-a="ng">🚫 NGワード</button>
-        <button data-a="err">🐞 エラー<i id="at-err" class="hide"></i></button>
-        <button data-a="audit">📜 操作の記録</button>
-        <button data-a="data">💾 データ<i id="at-data" class="hide">!</i></button>
+        <button data-a="dash" class="on"><span class="ic">📊</span><span class="lb">ダッシュボード</span></button>
+        <div class="adm-grp">プレイヤー</div>
+        <button data-a="todo"><span class="ic">🚨</span><span class="lb">要対応</span><i id="at-todo" class="hide"></i></button>
+        <button data-a="users"><span class="ic">👥</span><span class="lb">ユーザー</span></button>
+        <button data-a="live"><span class="ic">👀</span><span class="lb">試合中</span><i id="at-live" class="hide info"></i></button>
+        <button data-a="fb"><span class="ic">💡</span><span class="lb">フィードバック</span><i id="at-fb" class="hide"></i></button>
+        <div class="adm-grp">運営</div>
+        <button data-a="news"><span class="ic">📢</span><span class="lb">お知らせ</span></button>
+        <button data-a="dist"><span class="ic">🎁</span><span class="lb">配布</span><i id="at-dist" class="hide info"></i></button>
+        <button data-a="event"><span class="ic">🎉</span><span class="lb">イベント</span><i id="at-event" class="hide state">中</i></button>
+        <button data-a="maint"><span class="ic">🛠</span><span class="lb">メンテナンス</span><i id="at-maint" class="hide state">中</i></button>
+        <div class="adm-grp">ショップ・設定</div>
+        <button data-a="shopadm"><span class="ic">🛒</span><span class="lb">ショップ・ガチャ</span><i id="at-sale" class="hide state">SALE</i></button>
+        <button data-a="rank"><span class="ic">🏆</span><span class="lb">ランキング</span></button>
+        <button data-a="ng"><span class="ic">🚫</span><span class="lb">NGワード</span></button>
+        <div class="adm-grp">データ</div>
+        <button data-a="bal"><span class="ic">📈</span><span class="lb">分析</span></button>
+        <button data-a="err"><span class="ic">🐞</span><span class="lb">エラー</span><i id="at-err" class="hide"></i></button>
+        <button data-a="audit"><span class="ic">📜</span><span class="lb">操作の記録</span></button>
+        <button data-a="data"><span class="ic">💾</span><span class="lb">データ</span><i id="at-data" class="hide">!</i></button>
       </nav>
+      <div class="adm-main">
+        <div class="adm-quick" id="adm-quick"></div>
       <div class="adm-body">
         <!-- 📊 ダッシュボード -->
         <div class="ap on" data-a="dash"><div class="ap-scroll">
-          <div id="adm-cards" class="adm-cards"></div>
-          <div id="adm-stat" class="adm-note"></div>
+          <div class="dash-grid">
+            <div class="dash-col">
+              <div class="dash-sec"><div class="dash-h">🚨 すぐ対応</div><div class="adm-cards dc" id="dc-todo"></div></div>
+              <div class="dash-sec"><div class="dash-h">📡 いまの状態</div><div class="adm-cards dc" id="dc-now"></div></div>
+              <div class="dash-sec"><div class="dash-h">📊 今日の数字</div><div class="adm-cards dc" id="dc-today"></div></div>
+            </div>
+            <div class="dash-col">
+              <div class="dash-sec dash-box"><div class="dash-h">📅 これからの予定</div><div id="dash-plan" class="dash-list"></div></div>
+              <div class="dash-sec dash-box"><div class="dash-h">👥 毎日遊んだ人（2週間）<button class="btn sm dark dash-more" id="dash-chart-more">くわしく</button></div><div id="dash-chart"></div></div>
+              <div class="dash-sec dash-box"><div class="dash-h">📜 最近の操作<button class="btn sm dark dash-more" id="dash-audit-more">すべて見る</button></div><div id="dash-audit" class="dash-list"></div></div>
+            </div>
+          </div>
         </div></div>
         <!-- 🚨 要対応（5人以上から通報・NCの疑い・停止中） -->
         <div class="ap" data-a="todo"><div class="ap-head"><b>🚨 対応が必要なユーザー</b><span class="muted">タップすると詳しい画面が開きます</span></div><div class="ap-scroll" id="adm-alerts"></div></div>
@@ -810,6 +856,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <div class="muted">だれが・いつ・何をしたかが自動で残ります（新しい順・最大500件）。</div><div class="ap-scroll" id="aa-list"></div></div>
         <!-- 💾 データ（Upstash・バックアップ） -->
         <div class="ap" data-a="data"><div class="ap-scroll">
+          <div class="panel adm-panel"><b>ℹ️ この管理画面について</b><div id="adm-stat"></div></div>
           <div class="panel adm-panel"><b>💾 保存先（Upstash）</b><div id="ad-kv"></div>
             <div class="row"><button id="ad-test" class="btn sm blue">🔌 接続テスト</button><span id="ad-test-r" class="muted"></span></div></div>
           <div class="panel adm-panel"><b>📦 バックアップ</b>
@@ -822,6 +869,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
             <button id="ad-load" class="btn red" disabled>このファイルで戻す</button><div id="ad-load-r" class="muted"></div>
           </div>
         </div></div>
+      </div>
       </div>
     </section>
   </main>
@@ -5572,7 +5620,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v21',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v22',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5825,11 +5873,7 @@ function card(box,label,val,cls,tab){const c=document.createElement('button');c.
 function admOverview(quiet){
   socket.emit('adm_overview',r=>{if(!r||!r.ok)return;ADM_R=r;MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
     const todo=r.flagged.length+(r.ecoFlags||[]).length;ADM_FLAG=todo;admDot();tabBadge('at-todo',todo);tabBadge('at-live',r.live||0);
-    // 📊 ダッシュボード
-    const cb=$('adm-cards');cb.innerHTML='';
-    card(cb,'🟢 オンライン',r.online+'人','ok','users');card(cb,'👥 ユーザー',r.users+'人','','users');card(cb,'👀 試合中',(r.live||0)+'ルーム','','live');
-    card(cb,'🚨 要対応',todo+'人',todo?'bad':'ok','todo');card(cb,'💡 未対応フィードバック',r.fbNew+'件',r.fbNew?'warn':'ok','fb');card(cb,'⛔ 停止中',r.banned.length+'人','','todo');
-    card(cb,'📢 お知らせ',r.notices.length+'件','','news');card(cb,'🛠 メンテナンス',r.maint&&r.maint.on?'実施中':'通常',r.maint&&r.maint.on?'warn':'ok','maint');
+    // 📊 ダッシュボード・上のバーは v22（dashRender／quickBar）で作る
     if(typeof admExtra==='function')admExtra(r);
     $('adm-stat').innerHTML='<b>💾 保存先：</b>'+(r.kv?'<span style="color:#8cf08c">Upstash（再起動しても消えません）</span>':'<span style="color:#ff8a80">サーバーのファイル（Renderの再起動で、停止・フィードバック・NCの記録などが消えます。Upstashの設定をおすすめします）</span>')
       +'<br><b>📢 お知らせ：</b>消えてもプレイヤーの端末の控えから自動で戻ります<br><b>💰 NC：</b>各プレイヤーの端末から1分ごと（増えたときはすぐ）に報告されます<br><b>🔄 この画面：</b>20秒ごとに自動で更新します';
@@ -6291,9 +6335,7 @@ function admExtra(r){
     e.innerHTML='<div style="color:#8cf08c">✅ Upstashに保存しています（再起動・コード更新でもデータは消えません）</div>今月の使用回数：<b>'+used.toLocaleString()+'</b> / 500,000 回（無料枠）<div class="kv-bar"><i style="width:'+pct+'%"></i></div>このペースだと月末に約 <b>'+pace.toLocaleString()+'</b> 回'+(pace>450000?' <b style="color:#ff8a80">⚠ 無料枠をこえそうです</b>':'')+(k.err?'<br><span style="color:#ffb300">⚠ 保存エラー '+k.err+'回（最後：'+fmtD(k.lastErrT)+'）</span>':'');}
   else e.innerHTML='<div style="color:#ff8a80">⚠ Upstashが設定されていません。今はサーバーのファイルに保存しているので、Renderの再起動やコードの更新のたびに、名簿・ランキング・停止・フィードバック・NCの記録などが消えます。</div><div class="muted">設定方法は Render の「Environment」に UPSTASH_REDIS_REST_URL と UPSTASH_REDIS_REST_TOKEN を入れるだけです。</div>';
   $('at-data').classList.toggle('hide',!!k.kv);
-  const cb=$('adm-cards');
-  if(cb&&!cb.querySelector('[data-x]')){const add=(lb,v,cl,tab)=>{const c=document.createElement('button');c.className='acard'+(cl?' '+cl:'');c.dataset.x=1;const s=document.createElement('small');s.textContent=lb;const b=document.createElement('b');b.textContent=v;c.append(s,b);c.onclick=()=>admTab(tab);cb.appendChild(c);};
-    add('🎉 イベント',evNow()?EVENT.name:EVENT.on?'予定あり':'なし',evNow()?'warn':'','event');add('📅 予約中のお知らせ',(r.sched||[]).length+'件','','news');add('💾 保存先',k.kv?'Upstash':'未設定',k.kv?'ok':'bad','data');add('🔔 通知オンの人',(r.pushN||0)+'人','','dash');add('🐞 エラー（24時間）',(r.errN||0)+'件',r.errN?'warn':'ok','err');tabBadge('at-err',r.errN||0);}
+  tabBadge('at-err',r.errN||0);
 }
 $('ad-test').onclick=()=>{$('ad-test-r').textContent='テスト中…';socket.emit('adm_kvtest',r=>{if(!r||!r.ok){$('ad-test-r').textContent='失敗しました';return;}
   $('ad-test-r').innerHTML=!r.kv?'<span style="color:#ff8a80">Upstashが設定されていません</span>':r.pass?'<span style="color:#8cf08c">✅ 成功（'+r.ms+'ミリ秒）</span>':'<span style="color:#ff8a80">❌ 失敗：'+(r.err||'読み書きできませんでした')+'（URLとTOKENを確認してください）</span>';});};
@@ -6332,7 +6374,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v21',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v22',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -6693,15 +6735,8 @@ document.querySelectorAll('#adm-tabs button').forEach(b=>b.addEventListener('cli
 // 開いている間は1分ごとに更新（入力中はそのまま）
 setInterval(()=>{if(page!=='admin'||!IS_ADMIN||document.hidden)return;const f=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#pg-admin input,#pg-admin textarea,#pg-admin select');if(f)return;
   if(ADM_TAB==='dist')admDist(true);if(ADM_TAB==='audit')admAudit();if(ADM_TAB==='bal'&&AN_V==='use')admUsage();if(ADM_TAB==='rank')admRank();},60000);
-// ダッシュボードにカードを足す
-{const ex=admExtra;admExtra=function(r){ex(r);const cb=$('adm-cards');if(!cb)return;
-  const add=(lb,v,cl,tab,cb2)=>{const c=document.createElement('button');c.className='acard'+(cl?' '+cl:'');const s=document.createElement('small');s.textContent=lb;const b=document.createElement('b');b.textContent=v;c.append(s,b);c.onclick=()=>{admTab(tab);if(cb2)cb2();};cb.appendChild(c);};
-  if(r.dau!=null)add('👥 今日遊んだ人（新しく'+(r.nu||0)+'人）',r.dau+'人','','bal',()=>anSub('use'));
-  if(r.sale){SALE=r.sale.on?r.sale:{on:false};saleUI();}
-  add('🏷 セール',saleLive()?SALE.pct+'%OFF中':SALE.on?'予定あり':'なし',saleLive()?'warn':'','shopadm',()=>{asState();agFill();});
-  add('🎁 配布中（全員向け）',(r.bgN||0)+'件','','dist',()=>admDist());
-  add('📅 メンテナンスの予約',MSCHED?fmtHM(MSCHED.at):'なし',MSCHED?'warn':'','maint',amsState);
-  tabBadge('at-dist',r.bgN||0);tabBadge('at-sale',saleLive()?1:0,'SALE');};}
+// ダッシュボード・上のバー（v22 で dashRender／quickBar を呼ぶ）
+{const ex=admExtra;admExtra=function(r){ex(r);if(r.sale){SALE=r.sale.on?r.sale:{on:false};saleUI();}tabBadge('at-dist',r.bgN||0);tabBadge('at-sale',saleLive()?1:0,'SALE');if(typeof dashRender==='function')dashRender(r);};}
 // 時刻の入力（datetime-local）
 const dtVal=id=>$(id).value?new Date($(id).value).getTime():0;
 function quickRange(fromId,untilId,h){const from=dtVal(fromId)||Date.now();let until;
@@ -6827,7 +6862,7 @@ document.addEventListener('scroll',tipHide,true);
 function chartBox(title,sub){const d=document.createElement('div');d.className='an-chart';const b=document.createElement('b');b.textContent=title;const s=document.createElement('small');s.textContent=sub||'';d.append(b,s);return d;}
 // o: {values, labels, tips, every, fmt, max, line, partial(i)}
 function drawChart(box,o){
-  const W=320,H=132,L=32,R=6,T=8,B=18,pw=W-L-R,ph=H-T-B,n=o.values.length,vals=o.values.filter(v=>v!=null),mx=o.max||niceMax(Math.max(0,...vals));
+  const W=o.W||320,H=o.H||132,L=32,R=6,T=8,B=18,pw=W-L-R,ph=H-T-B,n=o.values.length,vals=o.values.filter(v=>v!=null),mx=o.max||niceMax(Math.max(0,...vals));
   const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,role:'img'}),fmt=o.fmt||(v=>String(Math.round(v*10)/10));
   for(const f of [0,.5,1]){const y=T+ph*(1-f);svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,stroke:f?'rgba(255,255,255,.08)':'rgba(255,255,255,.28)','stroke-width':1}));
     const t=svgEl('text',{x:L-5,y:y+3.5,'text-anchor':'end'});t.textContent=fmt(mx*f);svg.appendChild(t);}
@@ -6924,6 +6959,88 @@ $('ams-set').onclick=()=>{const at=dtVal('ams-at'),until=dtVal('ams-until');if(!
 $('ams-cancel').onclick=()=>{if(!confirmTwice($('ams-cancel'),'取り消す？'))return;socket.emit('adm_msched',{cancel:1},r=>{if(r&&r.ok){MSCHED=null;amsState();msRibbon();toast('予約を取り消しました');}});};
 // バックアップから戻せる項目
 AD_PARTS.usage='利用状況のグラフ';AD_PARTS.items='人気アイテムの記録';
+
+/* =====================================================================
+   v22：管理画面
+   ・左のメニュー（プレイヤー／運営／ショップ・設定／データ のグループ分け。スマホではアイコンだけの細いメニュー）
+   ・どのタブでもいつも見える上のバー：オンライン・ユーザー・メンテナンス・お知らせ
+   ・ダッシュボード：すぐ対応／いまの状態／今日の数字＋これからの予定・毎日遊んだ人のグラフ・最近の操作
+   ===================================================================== */
+// タブを開く（タブのボタンを押したのと同じ。中身の読み込みもする）
+function admGo(tab){const b=document.querySelector('#adm-tabs button[data-a="'+tab+'"]');if(b)b.click();else admTab(tab);}
+
+/* ----- 上のバー ----- */
+function quickBar(){const r=ADM_R,box=$('adm-quick');if(!box||!r)return;box.innerHTML='';
+  const chip=(cls,html,tab,btn)=>{const d=document.createElement('div');d.className='aq'+(cls?' '+cls:'');d.innerHTML=html;d.onclick=()=>admGo(tab);
+    if(btn){const b=document.createElement('button');b.className='btn sm '+btn.c;b.textContent=btn.t;b.onclick=e=>{e.stopPropagation();btn.f(b);};d.appendChild(b);}box.appendChild(d);};
+  chip('ok','🟢 オンライン <b>'+(r.online||0)+'人</b>','users');
+  chip('','👥 ユーザー <b>'+(r.users||0)+'人</b>','users');
+  if(MAINT.on)chip('warn','🛠 <b>メンテナンス中</b><small>'+(MAINT.until?fmtHM(MAINT.until)+' 再開予定':'再開時刻なし')+'</small>','maint',
+    {c:'green',t:'終了する',f:b=>{if(!confirmTwice(b,'終了する？'))return;socket.emit('adm_maint',{on:false},x=>{if(x&&x.ok){MAINT=x.maint;admMaintState();toast('🛠 メンテナンスを終了しました');}});}});
+  else chip('','🛠 <b>通常運転中</b>'+(MSCHED?'<small>📅 '+fmtHM(MSCHED.at)+'から予約</small>':''),'maint',{c:'dark',t:'開始する…',f:()=>{admGo('maint');setTimeout(()=>$('am-msg').focus(),60);}});
+  chip('','📢 お知らせ <b>'+(r.notices||[]).length+'件</b>'+((r.sched||[]).length?'<small>予約 '+r.sched.length+'件</small>':''),'news',{c:'blue',t:'✏️ 書く',f:()=>{admGo('news');setTimeout(()=>$('an-title').focus(),60);}});}
+// メンテナンスの状態が変わったら上のバーも作り直す
+{const f=admMaintState;admMaintState=function(){f();quickBar();};}
+{const f=amsState;amsState=function(){f();quickBar();if(ADM_R&&ADM_TAB==='dash')dashPlan(ADM_R);};}
+
+/* ----- ダッシュボード ----- */
+function dcard(box,o){const c=document.createElement('button');c.className='acard'+(o.cls?' '+o.cls:'');const s=document.createElement('small');s.textContent=o.lb;
+  const b=document.createElement('b');b.textContent=o.v;if(o.sub){const e=document.createElement('em');e.textContent=o.sub;b.appendChild(e);}c.append(s,b);
+  c.onclick=()=>{admGo(o.tab);if(o.fn)o.fn();};box.appendChild(c);}
+function dashRender(r){quickBar();
+  const todo=r.flagged.length+(r.ecoFlags||[]).length,ev=evNow(),T=r.today||{};
+  // 🚨 すぐ対応（0のときは目立たない色、あるときだけ赤・オレンジ）
+  let B=$('dc-todo');B.innerHTML='';
+  dcard(B,{lb:'🚨 要対応のユーザー',v:todo+'人',cls:todo?'bad':'calm',tab:'todo'});
+  dcard(B,{lb:'💡 未対応フィードバック',v:(r.fbNew||0)+'件',cls:r.fbNew?'warn':'calm',tab:'fb'});
+  dcard(B,{lb:'🐞 エラー（24時間）',v:(r.errN||0)+'件',cls:r.errN?'warn':'calm',tab:'err'});
+  if(!r.kv)dcard(B,{lb:'💾 保存先',v:'未設定',cls:'bad',tab:'data'});
+  // 📡 いまの状態
+  B=$('dc-now');B.innerHTML='';
+  dcard(B,{lb:'👀 試合中',v:(r.live||0)+'ルーム',cls:r.live?'info':'',tab:'live'});
+  dcard(B,{lb:'🎉 イベント',v:ev?EVENT.name:EVENT.on?'予定あり':'なし',cls:ev?'warn':'',tab:'event'});
+  dcard(B,{lb:'🏷 セール',v:saleLive()?SALE.pct+'%OFF中':SALE.on?'予定あり':'なし',cls:saleLive()?'warn':'',tab:'shopadm'});
+  dcard(B,{lb:'🎁 配布中（全員向け）',v:(r.bgN||0)+'件',cls:r.bgN?'info':'',tab:'dist'});
+  dcard(B,{lb:'⛔ 停止中',v:r.banned.length+'人',tab:'todo'});
+  dcard(B,{lb:'🔔 通知オンの人',v:(r.pushN||0)+'人',tab:'dash'});
+  if(r.kv)dcard(B,{lb:'💾 保存先',v:'Upstash',cls:'ok',tab:'data'});
+  // 📊 今日の数字
+  B=$('dc-today');B.innerHTML='';const toUse=()=>anSub('use');
+  dcard(B,{lb:'👥 遊んだ人',v:(T.dau||0)+'人',tab:'bal',fn:toUse});
+  dcard(B,{lb:'🌱 新しく始めた人',v:(T.nu||0)+'人',tab:'bal',fn:toUse});
+  dcard(B,{lb:'🔁 次の日も来た割合',v:T.ynu?Math.round(T.nret/T.ynu*100)+'%':'—',sub:T.ynu?T.nret+'/'+T.ynu+'人':'',tab:'bal',fn:toUse});
+  dcard(B,{lb:'⚔ 試合',v:((T.m||0)+(T.e||0))+'回',tab:'bal',fn:toUse});
+  dcard(B,{lb:'⏫ 最大同時接続',v:(T.peak||0)+'人',tab:'bal',fn:toUse});
+  dashPlan(r);dashChart(r);dashAudit(r);}
+// 📅 これからの予定（予約したお知らせ・メンテナンス・セール・イベント・配布の期限を時間順に）
+function dashPlan(r){const box=$('dash-plan');if(!box)return;box.innerHTML='';const now=Date.now(),L=[];
+  (r.sched||[]).forEach(x=>L.push({t:x.at,x:'📢 お知らせ「'+x.title+'」を送信',tab:'news'}));
+  if(MSCHED)L.push({t:MSCHED.at,x:'🛠 メンテナンス開始'+(MSCHED.until?'（'+fmtHM(MSCHED.until)+'まで）':''),tab:'maint'});
+  if(MAINT.on&&MAINT.until)L.push({t:MAINT.until,x:'🛠 メンテナンス終了の予定',tab:'maint',live:1});
+  if(SALE.on&&now<SALE.until){if(SALE.from>now)L.push({t:SALE.from,x:'🏷 セール開始（'+saleWhat(SALE)+' '+SALE.pct+'%OFF）',tab:'shopadm'});L.push({t:SALE.until,x:'🏷 セール終了（'+SALE.pct+'%OFF）',tab:'shopadm',live:saleLive()});}
+  if(EVENT.on&&now<EVENT.until){if(EVENT.from>now)L.push({t:EVENT.from,x:'🎉 '+EVENT.name+'イベント開始',tab:'event'});L.push({t:EVENT.until,x:'🎉 '+EVENT.name+'イベント終了',tab:'event',live:evNow()});}
+  (r.bgifts||[]).forEach(g=>L.push({t:g.until,x:'🎁 配布「'+g.title+'」の受け取り期限（'+g.got+'人が受け取り済み）',tab:'dist',live:1}));
+  L.sort((a,b)=>a.t-b.t);
+  if(!L.length){box.innerHTML='<div class="muted">予定はありません</div>';return;}
+  L.slice(0,8).forEach(o=>{const d=document.createElement('div');d.className='dl'+(o.live?' live':'');const t=document.createElement('span');t.className='t';t.textContent=fmtHM(o.t);
+    const x=document.createElement('span');x.className='x';x.textContent=o.x;x.title=o.x;const w=document.createElement('span');w.className='w';w.textContent='あと'+leftTxt(o.t-now);
+    d.append(t,x,w);d.onclick=()=>admGo(o.tab);box.appendChild(d);});}
+// 👥 毎日遊んだ人（2週間）
+function dashChart(r){const box=$('dash-chart');if(!box)return;box.innerHTML='';const T=r.today||{};
+  const days=(r.days||[]).concat(T.d?[{d:T.d,dau:T.dau||0,nu:T.nu||0,today:1}]:[]);
+  if(!days.some(x=>x.dau)){box.innerHTML='<div class="muted">まだデータがありません（毎日の人数がたまるとグラフになります）</div>';return;}
+  drawChart(box,{W:Math.max(260,Math.round(box.clientWidth||320)),H:150,values:days.map(x=>x.dau),labels:days.map(x=>x.today?'今日':dLabel(x.d)),every:3,partial:i=>!!days[i].today,fmt:v=>Math.round(v),
+    tips:days.map(x=>'<b>'+x.dau+'人</b>（新しく'+x.nu+'人）<small>'+(x.today?'今日（集計中）':dLabel(x.d))+'</small>')});}
+// 📜 最近の操作
+function dashAudit(r){const box=$('dash-audit');if(!box)return;box.innerHTML='';const L=r.audit||[];
+  if(!L.length){box.innerHTML='<div class="muted">まだ記録がありません</div>';return;}
+  L.forEach(x=>{const d=document.createElement('div');d.className='dl';const t=document.createElement('span');t.className='t';t.style.color='#aab3e0';t.textContent=ago(x.t);
+    const s=document.createElement('span');s.className='x';s.textContent=(AUDN[x.act]||x.act)+(x.tg?'：'+x.tg:x.d?'：'+x.d:'');s.title=s.textContent;
+    const w=document.createElement('span');w.className='w';w.textContent=x.by;d.append(t,s,w);d.onclick=()=>admGo('audit');box.appendChild(d);});}
+$('dash-audit-more').onclick=()=>admGo('audit');
+$('dash-chart-more').onclick=()=>{AN_V='use';admGo('bal');};
+// 予定の「あと◯分」を1分ごとに更新
+setInterval(()=>{if(page==='admin'&&ADM_TAB==='dash'&&ADM_R&&!document.hidden)dashPlan(ADM_R);},60000);
 </script>
 </body>
 </html>
