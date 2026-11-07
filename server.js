@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v15 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v16 — Express + Socket.io（サーバー権威型）
+// v16：NGワード・ブロック・NCの検算・端末情報（管理者用）・プロフィール・シーズン制ランキング・練習モード・PWA・プライバシーポリシー
 // メンテナンスモード（再開時刻の表示とミニゲーム）・フィードバック（採用でNCプレゼント）・お詫びNC付きお知らせ・ロッカーのお気に入り／お知らせページ・管理者画面（ユーザー管理／利用停止／警告／個別メッセージ／全員へのお知らせ）・通報（5人以上で管理者に通知）／録音ボイス・全エモートの動き・ガチャ演出強化とラインナップ・季節報酬と殿堂チャリの豪華化・短い引き継ぎコード／タイトル画面とロゴ・季節報酬の飾りを手描きに・描画の軽量化・エンドレスランキングにコース表示／自転車の種類（ペニー・ファージング等）・フレンドの観戦・ガチャ演出・ショップ限定アイテム／坂道（上りはブーストしないと遅い）・ときどき道に泥（踏むと3秒スピードダウン）・ランキングは端末バックアップでも復元
 // フレンドは承認制（申請 → 相手が承認してはじめて両方のリストに入る）
 // 対戦（ルームロビー / CPU / フレンドのワンタップ参加）＋ ランクマッチ（チャリランク）＋ エンドレスラン ＋ ランキング ＋ チャット/エモート
@@ -195,6 +196,7 @@ function nameProblem(n, uid) {            // 使えない理由（使えるな�
   if (!n) return 'invalid';
   const k = nkey(n);
   if (RESERVED.has(k) || /^ゲスト/.test(n)) return 'reserved';
+  if (ngHit(n)) return 'ng';   // NGワード入りの名前は使えない
   const e = nameReg.get(k);
   if (e && e.uid !== uid) return 'taken';
   return '';
@@ -256,7 +258,7 @@ function restoreBoards(id, name, best, rp, lv, ttl, bc) {
   if (r) { if (r.name !== name) { r.name = name; saveRanking(); } }
   else if (!useKV && best > 0) { ranking.push({ h, name, score: best, lv, c: courseOk(bc) ? bc : undefined, ts: Date.now() }); ranking.sort((a, b) => b.score - a.score); ranking = ranking.slice(0, 100); saveRanking(); }
   if (q) { if (q.name !== name) { q.name = name; saveRp(); } }
-  else if (!useKV && rp > 0) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
+  else if (!useKV && rp > 0 && restoreBoards.season === SEASON.id) { rpBoard.push({ h, name, rp, lv, ttl, ts: Date.now() }); rpBoard.sort((a, b) => b.rp - a.rp); rpBoard = rpBoard.slice(0, 100); saveRp(); }
 }
 function submitRp(id, name, rp, lv, ttl) {
   const h = hidOf(id), i = rpBoard.findIndex(r => r.h === h);
@@ -277,6 +279,7 @@ function restoreSigned(board, list) {
     if (!it || typeof it.h !== 'string' || !/^[0-9a-f]{16}$/.test(it.h) || typeof it.name !== 'string' || !Number.isFinite(it[key]) || !Number.isFinite(it.ts)) continue;
     const e = { h: it.h, name: cleanName(it.name, 'プレイヤー'), lv: clamp(parseInt(it.lv, 10) || 1, 1, 99), ttl: clean(it.ttl, ''), ts: it.ts, [key]: it[key] };
     if (board === 'run' && it.c != null) { if (!courseOk(it.c)) continue; e.c = it.c; }
+    if (board === 'rp' && SEASON.id && it.ts < seasonStart(SEASON.id)) continue;   // 前のシーズンの記録は戻さない
     if (e.name !== it.name || typeof it.sig !== 'string' || it.sig !== signE(board, Object.assign({}, e, { ttl: it.ttl || '' }))) continue;
     const cur = arr.find(x => x.h === e.h);
     if (!cur) { arr.push(e); n++; }
@@ -430,7 +433,7 @@ function resetMatch(R) { R.sc = [0, 0]; R.hist = []; R.round = 0; newRound(R); }
 function endRound(R, w, pen, text) {
   if (w >= 0) {
     R.sc[w]++;
-    if (R.ids[w]) io.to(R.ids[w]).emit('reward', { gain: 10 });
+    if (R.ids[w]) { io.to(R.ids[w]).emit('reward', { gain: 10 }); ecoAddSid(R.ids[w], 10); }
   }
   if (pen >= 0) R.sc[pen] = Math.max(0, R.sc[pen] - 1);
   for (const i of [0, 1]) prog(R, i, 'round', { win: w === i, dist: Math.max(0, Math.floor((R.P[i] ? R.P[i].z : 0) / 10)) });
@@ -603,7 +606,7 @@ function overEndless(R, kind, reason) {
   R.score = Math.floor(p.z / 10) + R.bonus;
   const res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0], R.course || 0);
   const coins = Math.floor(R.score / 40), sid = R.ids[0];
-  if (coins > 0) io.to(sid).emit('reward', { gain: coins });
+  if (coins > 0) { io.to(sid).emit('reward', { gain: coins }); ecoAddSid(sid, coins); }
   prog(R, 0, 'run', { score: R.score, dist: Math.floor(p.z / 10) });
   io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10, R.hostId), tok: myEntry('run', R.hostId) });
 }
@@ -775,12 +778,14 @@ function leaveRoom(socket) {
   }
   socket.data = {};
 }
+function blocked(sa, sb) { const a = sockOf(sa), b = sockOf(sb); return !!(a && b && ((a.nmBlocks && a.nmBlocks.has(b.nmPk)) || (b.nmBlocks && b.nmBlocks.has(a.nmPk)))); }
 function joinRoom(socket, R, d, reply) {
   if (!R) return reply({ ok: false, err: 'ルームが見つかりません' });
   if (R.mode !== 'versus' || R.ids[1] || R.isCpu) return reply({ ok: false, err: 'ルームに参加できません' });
   if (R.state !== 'lobby') return reply({ ok: false, err: 'ルームは対戦中です' });
   if (R.ids[0] === socket.id) return reply({ ok: false, err: '自分のルームには参加できません' });
   if (R.banned && socket.nmPk && R.banned.has(socket.nmPk)) return reply({ ok: false, err: 'このルームにはホストの判断で参加できません' });
+  if (blocked(R.ids[0], socket.id)) return reply({ ok: false, err: 'このルームには参加できません' });
   leaveRoom(socket);
   R.ids[1] = socket.id; R.ready = [false, false];
   setLook(R, 1, lookS(socket, d, 'プレイヤー2'));
@@ -833,6 +838,7 @@ function tryMatch() {
     let best = -1, bd = 1e9;
     for (let j = i + 1; j < rankQ.length; j++) {
       const b = rankQ[j], w = Math.max(wa, (now - b.t0) / 1000), win = 150 + w * 25, d = Math.abs(a.rp - b.rp);
+      if (blocked(a.sid, b.sid)) continue;   // どちらかがブロックしていたらマッチしない
       if (d <= win && d < bd) { bd = d; best = j; }
     }
     if (best >= 0) { const b = rankQ[best]; rankQ.splice(best, 1); rankQ.splice(i, 1); startRanked(a, b); return tryMatch(); }
@@ -847,6 +853,157 @@ setInterval(() => {
     io.to(q.sid).emit('rank_wait', { t: Math.floor(w), n: rankQ.length, bot: BOT_AFTER });
   }
 }, 1000);
+
+/* =====================================================================
+   NGワード（チャット・ユーザー名）と個人情報のガード
+   ・チャットでは引っかかった部分を「＊」に置き換える
+   ・ユーザー名にNGワードが入っていたら登録できない
+   ・管理者画面から言葉を追加・削除できる（MOD.ng）
+   ===================================================================== */
+// ひらがなに直してから探す言葉（カタカナ・全角半角・大文字小文字の違いは同じ扱い）
+const NG_ANY = ['しね', 'しんで', '死ね', '死んで', '氏ね', '4ね', 'タヒね', 'ころす', 'ころせ', '殺す', '殺せ', '殺した', 'きえろ', '消えろ', 'うざい', 'うぜえ', 'うぜー', 'きもい', 'きっしょ', 'きしょい',
+  'ばかやろ', 'ばかじゃね', 'ばかじゃない', '馬鹿', 'あほ', '阿呆', 'くそが', 'くそやろう', 'くたばれ', 'ぶさいく', 'ぶっころ', 'ぶっ殺',
+  'ちんこ', 'ちんぽ', 'まんこ', 'せっくす', 'おっぱい', 'えっち', 'sex', 'fuck', 'shit', 'bitch', 'dick', 'porn', 'がいじ', '障害者', 'しょうがいしゃ', '池沼', 'ちしょう', 'きちがい', '基地外', '気違い'];
+// カタカナのまま探す短い悪口（ひらがなにすると「ちかすぎ」などに誤反応するため）
+const NG_KATA = ['カス', 'ゴミ', 'クズ', 'バカ', 'ブス', 'デブ', 'ザコ', 'ハゲ', 'チビ', 'ガキ'];
+const kata2hira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const NG_SKIP = /[\s・_\-ー〜~.,!?！？。、*＊'"()（）「」]/;
+function ngWords() { return NG_ANY.concat(MOD.ng || []).map(w => kata2hira(String(w).normalize('NFKC').toLowerCase()).replace(new RegExp(NG_SKIP.source, 'g'), '')).filter(w => w.length >= 2); }
+// 文字列の中のNGワードの位置を探す（記号や伸ばし棒をはさんでもヒット）
+function ngScan(s) {
+  s = String(s || '').normalize('NFKC');
+  const chars = [...s], norm = [], map = [];
+  chars.forEach((ch, i) => { if (NG_SKIP.test(ch)) return; norm.push(kata2hira(ch.toLowerCase())); map.push(i); });
+  const ns = norm.join(''), hits = [];
+  for (const w of ngWords()) { let p = ns.indexOf(w); while (p >= 0) { hits.push([map[p], map[p + w.length - 1]]); p = ns.indexOf(w, p + 1); } }
+  for (const w of NG_KATA) { const re = new RegExp('(?<![ァ-ヶー])' + w + '(?![ァ-ヶ])', 'g'); let m; while ((m = re.exec(s))) { const a = [...s.slice(0, m.index)].length; hits.push([a, a + w.length - 1]); } }   // 「カスタード」などは除く
+  return { chars, hits };
+}
+const ngHit = s => ngScan(s).hits.length > 0;
+function ngMask(s) {
+  const { chars, hits } = ngScan(s);
+  for (const [a, b] of hits) for (let i = a; i <= b; i++) chars[i] = '＊';
+  let out = chars.join('');
+  // 個人情報（電話番号・URL・SNSのID）も隠す
+  out = out.replace(/\d[\d\-‐ー ]{5,}\d/g, m => '＊'.repeat([...m].length))
+    .replace(/(https?:\/\/|www\.)\S+/gi, m => '＊'.repeat(Math.min(8, m.length)))
+    .replace(/\S+\.(com|jp|net|org|me|ly|io|gg|tv)\b\S*/gi, m => '＊'.repeat(Math.min(8, m.length)))
+    .replace(/[@＠][\w.]{2,}/g, m => '＊'.repeat(Math.min(8, m.length)))
+    .replace(/(line|ライン|らいん|insta|インスタ|tiktok|ティックトック|discord|ディスコ)\s*(id|ＩＤ|アイディー)?\s*[:：は]?\s*[\w.\-]{3,}/gi, m => '＊'.repeat(Math.min(10, [...m].length)));
+  return { text: out, hit: out !== String(s || '').normalize('NFKC') };
+}
+
+/* =====================================================================
+   端末情報（管理者だけが見られる）：同じ「おまかせ」名前の人を見分けるため
+   ===================================================================== */
+function parseUA(ua, dv) {
+  ua = String(ua || ''); const touch = !!(dv && dv.touch);
+  let os = '不明', model = '', br = 'ブラウザ', m;
+  if ((m = ua.match(/iPhone OS (\d+)[._](\d+)/))) { os = 'iOS ' + m[1] + '.' + m[2]; model = 'iPhone'; }
+  else if ((m = ua.match(/iPad.*OS (\d+)[._](\d+)/))) { os = 'iPadOS ' + m[1] + '.' + m[2]; model = 'iPad'; }
+  else if ((m = ua.match(/Android (\d+(\.\d+)?)/))) { os = 'Android ' + m[1]; const mm = ua.match(/Android [\d.]+;\s*(?:[a-z]{2}[-_][a-z]{2};\s*)?([^;)]+?)(?:\sBuild|\))/i); model = mm ? mm[1].trim() : 'Android'; if (model === 'K') model = 'Android端末'; }
+  else if (/Macintosh/.test(ua)) { if (touch) { os = 'iPadOS'; model = 'iPad'; } else { m = ua.match(/Mac OS X (\d+)[._](\d+)/); os = 'macOS' + (m ? ' ' + m[1] + '.' + m[2] : ''); model = 'Mac'; } }
+  else if (/Windows NT/.test(ua)) { os = 'Windows'; model = 'PC'; }
+  else if (/CrOS/.test(ua)) { os = 'ChromeOS'; model = 'Chromebook'; }
+  else if (/Linux/.test(ua)) { os = 'Linux'; model = 'PC'; }
+  if (/Line\//i.test(ua)) br = 'LINEアプリ内'; else if (/Instagram/i.test(ua)) br = 'Instagramアプリ内'; else if (/FBAN|FBAV/i.test(ua)) br = 'Facebookアプリ内';
+  else if (/TikTok|musical_ly/i.test(ua)) br = 'TikTokアプリ内'; else if (/EdgA?\//.test(ua)) br = 'Edge'; else if (/SamsungBrowser/.test(ua)) br = 'Samsungブラウザ';
+  else if (/CriOS|Chrome\//.test(ua)) br = 'Chrome'; else if (/FxiOS|Firefox\//.test(ua)) br = 'Firefox'; else if (/Safari\//.test(ua)) br = 'Safari';
+  const dm = dv && typeof dv.model === 'string' ? dv.model.replace(/[<>&"'`]/g, '').trim().slice(0, 30) : '';   // Chrome系は端末から機種名を教えてもらえる
+  if (dm) model = dm;
+  return { os, model, br, s: [model, os, br].filter(Boolean).join('・') + (dv && dv.pwa ? '（ホーム画面）' : '') };
+}
+function deviceOf(socket, dv) {
+  const h = socket.handshake.headers || {}, ua = String(h['user-agent'] || '').slice(0, 240);
+  const ip = String(h['x-forwarded-for'] || socket.handshake.address || '').split(',')[0].trim();
+  dv = dv && typeof dv === 'object' ? dv : {};
+  const p = parseUA(ua, dv), sv = v => typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 40) : '';
+  return { s: p.s, os: p.os, model: p.model, br: p.br, ua, scr: sv(dv.scr), dpr: Number(dv.dpr) || 0, lang: sv(dv.lang), tz: sv(dv.tz), pwa: !!dv.pwa,
+    net: ip ? crypto.createHash('sha256').update('nm-net:' + ip).digest('hex').slice(0, 6) : '', t: Date.now() };
+}
+
+/* =====================================================================
+   プロフィール（ブロスタ風）：アイコン・ひとこと・成績。ほかのプレイヤーも見られる
+   Upstashでは1人1キー（nm:prof:<pk>）で保存（大きくなりすぎないように）
+   ===================================================================== */
+const PROF_FILE = process.env.PROF_FILE || path.join(__dirname, 'profiles.json');
+const PROF = new Map();   // pk -> profile
+let profLoaded = false;
+const saveProfFile = saver('prof', PROF_FILE, () => Object.fromEntries([...PROF].filter(([, p]) => p && !p._miss)), 4000);
+function loadProf(j) { if (useKV) return; if (j && typeof j === 'object') for (const [pk, p] of Object.entries(j)) if (cleanPk(pk) && p && typeof p === 'object') PROF.set(pk, p); profLoaded = true; }
+async function getProf(pk) {
+  if (PROF.has(pk)) { const p = PROF.get(pk); return p && p._miss ? null : p; }
+  if (!useKV) return null;
+  try { const p = await STORE.load('prof:' + pk); PROF.set(pk, p || { _miss: 1 }); return p || null; } catch (e) { return null; }
+}
+const profTimers = new Map();
+function putProf(pk, p) {
+  PROF.set(pk, p);
+  if (!useKV) return saveProfFile();
+  if (profTimers.has(pk)) return;
+  profTimers.set(pk, setTimeout(() => { profTimers.delete(pk); STORE.save('prof:' + pk, null, PROF.get(pk)); }, 5000));
+  PENDING.set('prof:' + pk, () => { clearTimeout(profTimers.get(pk)); profTimers.delete(pk); PENDING.delete('prof:' + pk); return STORE.save('prof:' + pk, null, PROF.get(pk), true); });
+}
+const PROF_MSG = 20;   // ひとことの種類の数（クライアントの PROF_MSGS と同じ）
+function cleanProf(d) {
+  const k = v => (typeof v === 'string' && /^[\w-]{1,24}$/.test(v)) ? v : '';
+  const n = (v, a, b) => clamp(Math.floor(Number(v) || 0), a, b);
+  const st = d && typeof d.st === 'object' && d.st ? d.st : {};
+  const ic = d && d.ic && typeof d.ic === 'object' ? { c: k(d.ic.c), k: k(d.ic.k) } : null;
+  const look = {}; for (const c of ['bike', 'skin', 'hair', 'fit', 'acc']) look[c] = k(d && d.look && d.look[c]) || (c === 'acc' ? 'none' : c === 'bike' ? 'std' : 'default');
+  return {
+    lv: n(d && d.lv, 1, 99), ic: ic && ic.c && ic.k ? ic : null, msg: n(d && d.msg, 0, PROF_MSG - 1), bg: n(d && d.bg, 0, 11), look,
+    ttl: k(d && d.ttl) || 'rookie', pl: k(d && d.pl) || 'normal', rp: n(d && d.rp, 0, 99999), sBest: n(d && d.sBest, 0, 99999), rkTop: n(d && d.rkTop, 0, 6), seaTop: n(d && d.seaTop, -1, 6),
+    tro: n(d && d.tro, 0, 999), st: { wins: n(st.wins, 0, 1e7), plays: n(st.plays, 0, 1e7), best: n(st.best, 0, 1e8), dist: n(st.dist, 0, 1e9), items: n(st.items, 0, 9999), login: n(st.login, 0, 99999), over: n(st.over, 0, 1e7), fr: n(st.fr, 0, 999) }
+  };
+}
+
+/* =====================================================================
+   シーズン（チャリランクは毎月1日 0:00 にリセット。日本時間）
+   ===================================================================== */
+const SEASON_FILE = process.env.SEASON_FILE || path.join(__dirname, 'season.json');
+const JST = 9 * 3600e3;
+const seasonIdAt = t => { const d = new Date(t + JST); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); };
+const seasonStart = id => { const [y, m] = id.split('-').map(Number); return Date.UTC(y, m - 1, 1) - JST; };
+const seasonEnd = id => { const [y, m] = id.split('-').map(Number); return Date.UTC(y, m, 1) - JST; };
+let SEASON = { id: '', hist: [] };
+const saveSeason = saver('season', SEASON_FILE, () => SEASON, 1000);
+function loadSeason(j) { if (j && typeof j.id === 'string') SEASON = { id: j.id, hist: Array.isArray(j.hist) ? j.hist.slice(-12) : [] }; }
+const seasonInfo = () => ({ id: SEASON.id, start: seasonStart(SEASON.id), end: seasonEnd(SEASON.id), prev: SEASON.hist[SEASON.hist.length - 1] || null });
+function checkSeason() {
+  const now = seasonIdAt(Date.now());
+  if (!SEASON.id) { SEASON.id = now; saveSeason(); return; }
+  if (SEASON.id === now) return;
+  // シーズン終了：上位10人を記録して、RPランキングをリセット
+  SEASON.hist.push({ id: SEASON.id, top: rpBoard.slice(0, 10).map(r => ({ name: r.name, rp: r.rp, lv: r.lv || 1, ttl: r.ttl || 'rookie' })) });
+  SEASON.hist = SEASON.hist.slice(-12);
+  SEASON.id = now; rpBoard = []; saveRp(); saveSeason();
+  console.log('シーズン切り替え: ' + now);
+  io.emit('season', seasonInfo());
+}
+setInterval(checkSeason, 60e3);
+
+/* =====================================================================
+   NCの検算（不正チェック）
+   NCや持ち物はプレイヤーの端末に保存しているので、書き換えられる可能性がある。
+   サーバーが知っている「もらえたはずのNCの上限」と、端末から届く「NC＋持ち物の価値」を比べて、
+   多すぎる人を管理者画面に出す（自動で罰したりはしない。最後は管理者が判断する）
+   ===================================================================== */
+const ECO_FILE = process.env.ECO_FILE || path.join(__dirname, 'economy.json');
+let ECO = {};
+const saveEco = saver('eco', ECO_FILE, () => ECO, 5000);
+function loadEco(j) { if (j && typeof j === 'object') ECO = j; }
+const ECO_DAY = 2000;      // 1日にクエスト・ログボなどで増やせるNCの目安（多めに見積もる）
+const RANK_BONUS = [0, 100, 150, 200, 300, 400, 1000];
+const lvBonusSum = (a, b) => { let s = 0; for (let L = a + 1; L <= b; L++) s += 30 + L * 5; return s; };
+function ecoBound(e, lv, rk, ach, pulls, sea, now) {
+  const days = Math.max(1, Math.ceil((now - e.bt) / 864e5));
+  let rb = 0; for (let i = (e.rk0 || 0) + 1; i <= rk; i++) rb += RANK_BONUS[i] || 0;
+  return Math.round(e.b + (e.srv || 0) * 1.55 + (e.gift || 0) + lvBonusSum(e.lv0 || 1, lv) + rb + Math.max(0, ach - (e.ach0 || 0)) * 1000
+    + Math.max(0, pulls - (e.p0 || 0)) * 15 + Math.max(0, sea - (e.s0 || 0)) * 3000 + days * ECO_DAY + 500);
+}
+function ecoAdd(pk, k, n) { const e = pk && ECO[pk]; if (!e || !(n > 0)) return; e[k] = (e[k] || 0) + n; saveEco(); }
+const ecoAddSid = (sid, n) => { const sk = sockOf(sid); if (sk) ecoAdd(sk.nmPk, 'srv', n); };
 
 /* =====================================================================
    運営（管理者）機能：お知らせ・警告・個別メッセージ・利用停止・通報
@@ -866,6 +1023,7 @@ function loadMod(j) {
   if (!j || typeof j !== 'object') return;
   for (const k of ['bans', 'warns', 'pmsg', 'reports', 'seen', 'gifts', 'claims']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
   if (Array.isArray(j.feedback)) MOD.feedback = j.feedback.slice(0, 300);
+  if (Array.isArray(j.ng)) MOD.ng = j.ng.filter(w => typeof w === 'string').slice(-300);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
   if (Array.isArray(j.notices)) MOD.notices = j.notices.slice(0, 100);
   MOD.nid = Math.max(1, parseInt(j.nid, 10) || 1);
@@ -878,14 +1036,14 @@ const repCount = pk => { const r = MOD.reports[pk]; return r ? new Set(r.list.ma
 const adminSockets = () => [...io.sockets.sockets.values()].filter(s => s.isAdmin);
 function userRow(pk) {
   const name = nameOfPk(pk), sid = byPk.get(pk), sk = sockOf(sid), seen = MOD.seen[pk] || {}, b = banOf(pk);
-  return { pk, name: name || seen.n || '（名前なし）', reg: !!name, lv: (sk && sk.nmLv) || seen.lv || 1, online: !!sk, st: sk ? statusOf(sid) : 'offline', seen: seen.t || 0, since: seen.c || 0,
+  return { pk, name: name || seen.n || '（名前なし）', reg: !!name, dv: seen.d || '', net: seen.net || '', eco: ECO[pk] && ECO[pk].flag ? 1 : 0, lv: (sk && sk.nmLv) || seen.lv || 1, online: !!sk, st: sk ? statusOf(sid) : 'offline', seen: seen.t || 0, since: seen.c || 0,
     rep: repCount(pk), warn: (MOD.warns[pk] || []).length, ban: b ? { until: b.until || 0, reason: b.reason || '' } : null };
 }
 function flagged() { return Object.keys(MOD.reports).filter(pk => repCount(pk) >= REPORT_ALERT).map(pk => Object.assign(userRow(pk), { reasons: MOD.reports[pk].list.slice(-10) })).sort((a, b) => b.rep - a.rep); }
 // 停止中のユーザーは、お知らせを見る以外の操作をできなくする
-const BAN_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read']);
+const BAN_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'eco', 'nc_fix_ok']);
 // メンテナンス中（管理者以外）にできること
-const MAINT_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'notice_claim', 'gift_claim', 'feedback', 'name_check']);
+const MAINT_ALLOW = new Set(['hello', 'notices_get', 'warn_ack', 'pg', 'msg_read', 'notice_claim', 'gift_claim', 'feedback', 'name_check', 'eco', 'nc_fix_ok', 'profile_set', 'blocks_set']);
 const maintInfo = () => MOD.maint && MOD.maint.on ? { on: true, until: MOD.maint.until || 0, msg: MOD.maint.msg || '', auto: !!MOD.maint.auto } : { on: false };
 function kickForMaint(sk) { try { qRemove(sk.id); leaveRoom(sk); } catch (e) {} }
 function setMaint(on, o) {
@@ -916,6 +1074,12 @@ function applyBan(sk, b) {
 function deliverMod(socket) {
   const pk = socket.nmPk; if (!pk) return;
   MOD.seen[pk] = Object.assign(MOD.seen[pk] || { c: Date.now() }, { t: Date.now(), n: socket.nmRegName || socket.nmName || (MOD.seen[pk] || {}).n || '', lv: socket.nmLv });
+  const dv = socket.nmDv;
+  if (dv) {   // 端末の要約だけ名簿に、くわしい情報はプロフィールの中（管理者だけが見られる）に保存
+    const se = MOD.seen[pk]; se.d = dv.s; se.net = dv.net;
+    se.ds = [dv.s].concat((se.ds || []).filter(x => x !== dv.s)).slice(0, 3);
+    getProf(pk).then(p => { p = Object.assign({}, p || {}); p._dv = dv; p._dvs = [{ s: dv.s, net: dv.net, scr: dv.scr, t: dv.t }].concat((p._dvs || []).filter(x => x.s !== dv.s || x.net !== dv.net)).slice(0, 5); putProf(pk, p); });
+  }
   saveMod();
   socket.isAdmin = isAdminUid(socket.nmUid);
   socket.emit('admin', socket.isAdmin);
@@ -942,13 +1106,13 @@ io.on('connection', socket => {
     if (!pk || !n || !n.gift) return rp(cb)({ ok: false, err: '受け取れません' });
     const l = MOD.claims[id] = MOD.claims[id] || [];
     if (l.includes(pk)) return rp(cb)({ ok: false, err: 'もう受け取っています' });
-    l.push(pk); saveMod(); rp(cb)({ ok: true, amount: n.gift, id });
+    l.push(pk); saveMod(); ecoAdd(pk, 'gift', n.gift); rp(cb)({ ok: true, amount: n.gift, id });
   });
   socket.on('gift_claim', (d, cb) => {
     const pk = socket.nmPk, id = parseInt(d && d.id, 10), l = pk && MOD.gifts[pk], g = l && l.find(x => x.id === id);
     if (!g) return rp(cb)({ ok: false, err: 'もう受け取っています' });
     MOD.gifts[pk] = l.filter(x => x.id !== id); if (!MOD.gifts[pk].length) delete MOD.gifts[pk];
-    saveMod(); rp(cb)({ ok: true, amount: g.amount, id });
+    saveMod(); ecoAdd(pk, 'gift', g.amount); rp(cb)({ ok: true, amount: g.amount, id });
   });
   // フィードバック（ご意見・要望・バグ報告）
   socket.on('feedback', (d, cb) => {
@@ -964,6 +1128,40 @@ io.on('connection', socket => {
     const nn = MOD.feedback.filter(x => x.st === 'new').length;
     for (const s of adminSockets()) { s.emit('adm_fb', { name: f.name, cat }); s.emit('adm_fbn', nn); }
   });
+  // ===== ブロック（チャット・マッチング・ルーム参加・フレンド申請を止める） =====
+  socket.on('blocks_set', d => { socket.nmBlocks = new Set((Array.isArray(d) ? d : []).map(cleanPk).filter(Boolean).slice(0, 200)); });
+  // ===== プロフィール =====
+  socket.on('profile_set', d => {
+    const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
+    const now = Date.now(); if (now - (socket.profT || 0) < 2500) return; socket.profT = now;
+    getProf(pk).then(old => { const p = Object.assign(cleanProf(d), { t: now }); if (old) { p._dv = old._dv; p._dvs = old._dvs; } putProf(pk, p); });
+  });
+  socket.on('profile_get', async (d, cb) => {
+    cb = rp(cb); if (!d || typeof d !== 'object') return cb({ ok: false });
+    let pk = cleanPk(d.pk);
+    if (!pk && typeof d.name === 'string') { const e = nameReg.get(nkey(validName(d.name) || '')); if (e) pk = e.pk; }
+    if (!pk) return cb({ ok: false, err: 'プレイヤーが見つかりません' });
+    const p = await getProf(pk), name = nameOfPk(pk) || (MOD.seen[pk] || {}).n || 'プレイヤー', sk = sockOf(byPk.get(pk));
+    const out = p ? Object.assign({}, p) : null; if (out) { delete out._dv; delete out._dvs; }   // 端末情報は管理者以外には見せない
+    cb({ ok: true, pk, name, reg: !!nameOfPk(pk), online: !!sk, st: sk ? statusOf(sk.id) : 'offline', p: out, ban: !!banOf(pk) });
+  });
+  // ===== NCの検算（端末から「NC＋持ち物の価値」が届く） =====
+  socket.on('eco', d => {
+    const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
+    const now = Date.now(); if (now - (socket.ecoT || 0) < 6000) return; socket.ecoT = now;
+    const n = k => clamp(Math.floor(Number(d[k]) || 0), 0, 1e9);
+    const coins = n('coins'), w = coins + n('inv'), lv = clamp(n('lv'), 1, 99), rk = clamp(n('rk'), 0, 6), ach = n('ach'), pulls = n('pulls'), sea = n('sea');
+    let e = ECO[pk];
+    if (!e || e.reset) e = ECO[pk] = { b: w, bt: now, lv0: lv, rk0: rk, ach0: ach, p0: pulls, s0: sea, srv: 0, gift: 0 };   // 最初の報告を基準にする
+    const bound = ecoBound(e, lv, rk, ach, pulls, sea, now);
+    e.c = coins; e.w = w; e.bound = bound; e.t = now;
+    if (w > bound) {
+      const first = !e.flag; e.flag = { t: (e.flag && e.flag.t) || now, w, bound };
+      if (first) { const name = nameOfPk(pk) || socket.nmName || 'プレイヤー'; for (const s of adminSockets()) s.emit('adm_alert', { name, n: 0, eco: 1 }); }
+    }
+    saveEco();
+  });
+  socket.on('nc_fix_ok', () => { const e = socket.nmPk && ECO[socket.nmPk]; if (e && e.fix != null) { delete e.fix; e.reset = true; delete e.flag; saveEco(); } });
   socket.on('notices_get', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ notices: MOD.notices }); });
   socket.on('warn_ack', id => { const pk = socket.nmPk, l = pk && MOD.warns[pk]; if (!l) return; for (const w of l) if (w.id === id) w.ack = Date.now(); saveMod(); });
   socket.on('msg_read', () => { const pk = socket.nmPk, l = pk && MOD.pmsg[pk]; if (!l) return; l.forEach(m => { m.read = 1; }); saveMod(); });
@@ -983,20 +1181,22 @@ io.on('connection', socket => {
   });
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
-  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
+  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
     banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV })));
   socket.on('adm_users', adm((d, cb) => {
     const q = typeof d.q === 'string' ? d.q.normalize('NFKC').toLowerCase().trim() : '', pks = new Set([...nameReg.values()].map(e => e.pk));
     for (const pk of Object.keys(MOD.seen)) pks.add(pk);
     for (const sk of io.sockets.sockets.values()) if (sk.nmPk) pks.add(sk.nmPk);
     let list = [...pks].map(userRow);
-    if (q) list = list.filter(u => u.name.normalize('NFKC').toLowerCase().includes(q));
+    if (q) list = list.filter(u => u.name.normalize('NFKC').toLowerCase().includes(q) || (u.dv || '').toLowerCase().includes(q) || u.net === q || u.pk.startsWith(q));
     const sort = d.sort || 'seen';
     list.sort((a, b) => sort === 'rep' ? b.rep - a.rep : sort === 'lv' ? b.lv - a.lv : (b.online - a.online) || (b.seen - a.seen));
     cb({ ok: true, total: list.length, list: list.slice(0, 5000) });   // 全員を表示
   }));
-  socket.on('adm_user', adm((d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
-    cb({ ok: true, u: userRow(pk), reports: ((MOD.reports[pk] || {}).list || []).slice(-30).reverse(), warns: (MOD.warns[pk] || []).slice(-20).reverse(), msgs: (MOD.pmsg[pk] || []).slice(-20).reverse() }); }));
+  socket.on('adm_user', adm(async (d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
+    const p = await getProf(pk), net = (MOD.seen[pk] || {}).net, e = ECO[pk];
+    const same = net ? Object.keys(MOD.seen).filter(x => x !== pk && MOD.seen[x].net === net).slice(0, 20).map(userRow) : [];
+    cb({ ok: true, u: userRow(pk), dv: p && p._dv ? p._dv : null, dvs: (p && p._dvs) || [], same, eco: e ? { c: e.c, w: e.w, bound: e.bound, flag: e.flag || null, fix: e.fix } : null, reports: ((MOD.reports[pk] || {}).list || []).slice(-30).reverse(), warns: (MOD.warns[pk] || []).slice(-20).reverse(), msgs: (MOD.pmsg[pk] || []).slice(-20).reverse() }); }));
   socket.on('adm_action', adm((d, cb) => {
     const pk = cleanPk(d.pk), act = d.act, text = txt(d.text, 300), now = Date.now();
     if (!pk) return cb({ ok: false, err: '相手がいません' });
@@ -1012,6 +1212,11 @@ io.on('connection', socket => {
       if (!text) return cb({ ok: false, err: 'メッセージを入れてください' });
       const m = { id: MOD.nid++, title: txt(d.title, 40) || '運営からのお知らせ', text, t: now }; (MOD.pmsg[pk] = MOD.pmsg[pk] || []).push(m); MOD.pmsg[pk] = MOD.pmsg[pk].slice(-30); if (sk) sk.emit('pmsgs', [m]);
     } else if (act === 'clearrep') delete MOD.reports[pk];
+    else if (act === 'ncfix') {   // NCを指定した数に戻す（端末につながったときに反映）
+      const c = Math.max(0, Math.round(Number(d.amount) || 0)); const e = ECO[pk] = ECO[pk] || { b: 0, bt: now };
+      e.fix = c; delete e.flag; saveEco(); if (sk) sk.emit('nc_fix', { coins: c });
+    }
+    else if (act === 'ncok') { const e = ECO[pk]; if (e) { e.reset = true; delete e.flag; saveEco(); } }   // 問題なしとして、今の値を基準にし直す
     else if (act === 'gift') { if (!giveGift(pk, d.amount, txt(d.title, 40) || '運営からのプレゼント', text)) return cb({ ok: false, err: 'NCの数を入れてください' }); }
     else return cb({ ok: false, err: '不明な操作' });
     saveMod(); cb({ ok: true, u: userRow(pk) });
@@ -1027,6 +1232,14 @@ io.on('connection', socket => {
     io.emit('notice_new', n); cb({ ok: true, n });
   }));
   socket.on('adm_notice_del', adm((d, cb) => { const id = parseInt(d.id, 10); MOD.notices = MOD.notices.filter(n => n.id !== id); delete MOD.claims[id]; saveMod(); io.emit('notices', MOD.notices); cb({ ok: true }); }));
+  // NGワードの追加・削除（基本のリストに足す言葉）
+  socket.on('adm_ng', adm((d, cb) => {
+    MOD.ng = MOD.ng || []; const w = txt(d.w, 20);
+    if (d.act === 'add' && w && !MOD.ng.includes(w)) MOD.ng.push(w);
+    if (d.act === 'del') MOD.ng = MOD.ng.filter(x => x !== w);
+    MOD.ng = MOD.ng.slice(-300); saveMod(); cb({ ok: true, ng: MOD.ng });
+  }));
+  socket.on('adm_ngtest', adm((d, cb) => cb({ ok: true, out: ngMask(txt(d.text, 100)).text })));
   // フィードバック一覧・採用（採用するとNCをプレゼント）
   socket.on('adm_fb_list', adm((d, cb) => cb({ ok: true, list: MOD.feedback.slice(0, 300) })));
   socket.on('adm_fb_act', adm((d, cb) => {
@@ -1066,16 +1279,21 @@ io.on('connection', socket => {
     socket.nmPk = pk; byPk.set(pk, socket.id);
     socket.nmLv = clamp(parseInt(d && d.lv, 10) || 1, 1, 99);
     socket.nmName = validName(d && d.name) || '';
+    socket.nmDv = deviceOf(socket, d && d.dv);
+    socket.nmBlocks = new Set((Array.isArray(d && d.blocks) ? d.blocks : []).map(cleanPk).filter(Boolean).slice(0, 200));
     const lf = cleanFid(d && d.fid); if (lf) { socket.nmFid = lf; byFid.set(lf, socket.id); }
     const n = validName(d && d.name), why = nameProblem(n, uid);
     if (!why) {
       claimName(n, uid, pk); socket.nmRegName = n; socket.emit('name_status', { ok: true, name: n });
       socket.emit('friend_inbox', inboxOf(pk));
       const nt = fnote.get(pk); if (nt && nt.length) { nt.forEach(x => { x.name = nameOfPk(x.pk) || x.name || ''; }); socket.emit('friend_notice', nt); fnote.delete(pk); saveFriends(); }
+      restoreBoards.season = clean(d && d.season, '');
       restoreBoards(id, n, clamp(parseInt(d && d.best, 10) || 0, 0, 1e7), clamp(parseInt(d && d.rp, 10) || 0, 0, 99999), socket.nmLv, clean(d && d.ttl, 'rookie'), d ? parseInt(d.bestC, 10) : undefined);
     }
     else { socket.nmRegName = null; socket.emit('name_status', { ok: false, reason: why, name: n || '', suggest: suggestName() }); }
     deliverMod(socket);   // 停止・警告・お知らせ・管理者かどうか
+    socket.emit('season', seasonInfo());
+    const e = ECO[pk]; if (e && e.fix != null) socket.emit('nc_fix', { coins: e.fix });
   });
   // ユーザー名：入力中の空きチェック／登録（変更）／おまかせ候補
   socket.on('name_check', (v, cb) => { const n = validName(v), why = nameProblem(n, socket.nmUid); rp(cb)(why ? { ok: false, reason: why } : { ok: true, name: n }); });
@@ -1120,11 +1338,12 @@ io.on('connection', socket => {
     socket.restored = true;
     rp(cb)({ added: restoreSigned('run', d.run) + restoreSigned('rp', d.rp) });
   });
-  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId) }); });
+  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId), season: seasonInfo() }); });
   socket.on('rank_report', (d, cb) => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
     socket.rkOk = false;
     const id = clean(d.id, ''); if (!id) return rp(cb)({ ok: false });
+    if (d.season !== SEASON.id) return rp(cb)({ ok: false, err: 'season' });
     rp(cb)({ ok: true, rank: submitRp(id, socket.nmRegName || 'ゲスト', clamp(parseInt(d.rp, 10) || 0, 0, 99999), clamp(parseInt(d.lv, 10) || 1, 1, 99), clean(d.ttl, 'rookie')) });
   });
   // ランクマッチの待ち行列に入る／抜ける
@@ -1140,6 +1359,7 @@ io.on('connection', socket => {
   socket.on('solo', d => {
     leaveRoom(socket); qRemove(socket.id);
     const code = 'SOLO_' + socket.id, R = newRoom(code, socket, d, { isCpu: true });
+    if (d && d.tut) { R.skill = 0.05; R.tut = true; }   // 練習モード：とても弱いCPU
     setLook(R, 1, { name: 'CPU', bike: ['std', 'road', 'mtb', 'bmx', 'mini'][Math.floor(Math.random() * 5)], skin: ['default', 'gold', 'cyber', 'ocean'][Math.floor(Math.random() * 4)], hair: ['helmet', 'short_b', 'spiky'][Math.floor(Math.random() * 3)], fit: ['jersey', 'racer', 'hoodie'][Math.floor(Math.random() * 3)], acc: 'none', trail: 'none', lv: clamp((R.lvs[0] || 1) + Math.floor(rnd(-2, 3)), 1, 99), pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: 0 });
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
@@ -1183,6 +1403,7 @@ io.on('connection', socket => {
     if (!me || !socket.nmRegName) return rp(cb)({ ok: false, err: 'ユーザー名を登録してから申請してください' });
     if (!to || to === me) return rp(cb)({ ok: false, err: 'このプレイヤーには申請できません' });
     if (!nameOfPk(to)) return rp(cb)({ ok: false, err: 'プレイヤーが見つかりません' });
+    const tsk = sockOf(byPk.get(to)); if ((tsk && tsk.nmBlocks && tsk.nmBlocks.has(me)) || (socket.nmBlocks && socket.nmBlocks.has(to))) return rp(cb)({ ok: true, state: 'sent', name: nameOfPk(to) });
     if (delReq(me, to)) {   // 相手からも申請が来ていた → その場で成立
       notify(to, { t: 'acc', pk: me }); pushInbox(me);
       return rp(cb)({ ok: true, state: 'mutual', name: nameOfPk(to) });
@@ -1236,10 +1457,10 @@ io.on('connection', socket => {
     const nowT = Date.now(); if (nowT - (socket.lastChat || 0) < 600) return; socket.lastChat = nowT;
     const t = d && d.t; let v = d && d.v;
     if (t === 'e') { if (!EMOTES.includes(v)) return; }
-    else if (t === 'x') { v = cleanText(v, 30); if (!v) return; }
+    else if (t === 'x') { v = cleanText(v, 30); if (!v) return; v = ngMask(v).text; }   // NGワード・個人情報は＊に
     else return;
     const slot = socket.data.slot, msg = { from: slot, name: R.names[slot], t, v };
-    for (const i of [0, 1]) if (R.ids[i]) io.to(R.ids[i]).emit('chat', msg);
+    for (const i of [0, 1]) if (R.ids[i]) { const rs = sockOf(R.ids[i]); if (rs && rs !== socket && rs.nmBlocks && rs.nmBlocks.has(socket.nmPk)) continue; io.to(R.ids[i]).emit('chat', msg); }   // ブロックした相手のチャットは届けない
     if (R.spec) for (const sid of R.spec) io.to(sid).emit('chat', msg);
     if (R.isCpu && Math.random() < 0.6) setTimeout(() => {
       if (!rooms.has(R.code) || !R.ids[0]) return;
@@ -1291,9 +1512,10 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000;
 // 保存データを読み込んでから受付開始
 (async () => {
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
+  checkSeason();
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
   server.listen(PORT, () => console.log('listening on ' + PORT));
   // Render無料プランのスリープ（＝保存データが消える）を防ぐため、自分のURLへ10分ごとにアクセス
