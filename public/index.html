@@ -1072,10 +1072,10 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 <div id="lvup" class="hide"><div class="lvup-in"><b>LEVEL UP!</b><span id="lvup-n"></span><span id="lvup-r" class="muted"></span><span id="lvup-u" style="color:#8cf08c;font-size:.85em;text-align:center"></span></div></div>
 <div id="rotate"><div class="ph"></div><b>スマホを横向きにしてください</b><span class="muted">横画面専用です</span></div>
 <div id="boot" class="modal"><b>読み込み中…</b></div>
-<div id="title" class="hide"><canvas id="tcv"></canvas><a id="title-pp" href="privacy.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">プライバシーポリシー・利用規約</a></div>
+<div id="title" class="hide"><canvas id="tcv"></canvas><a id="title-pp" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー・利用規約</a></div>
 <div id="toast"></div>
 <audio id="custom-crash-audio" src="マイ録音.m4a" preload="auto"></audio>
-<script src="/socket.io/socket.io.js"></script>
+<script src="/sio.min.js"></script>
 <script>
 'use strict';
 /* ===== ガチャの設定 ===== */
@@ -3864,7 +3864,7 @@ function drawRoom(t){
 /* =====================================================================
    描画基盤：横画面に自動フィット（論理サイズ W×H、高さ基準 540）
    ===================================================================== */
-const socket=io();
+const socket=io({auth:{zv:1}});   // v23：軽い送り方（'z'）を使える画面だとサーバーに伝える
 const cv=$('c');let ctx=cv.getContext('2d');
 let W=960,H=540,SC=1,DPR=1,QUAL=1;
 function resize(){
@@ -4859,9 +4859,10 @@ function computeS(){
 }
 function sendInp(force){
   inpS=computeS();if(!inGame||SPEC)return;
-  const q=Math.round(inpS*50)/50,nowT=performance.now();
+  const q=Math.round(inpS*20)/20,nowT=performance.now();   // v23：0.05きざみ・1秒20回まで（大きく切ったときと、まっすぐに戻したときはすぐ送る）
   if(q===lastS&&!force)return;
-  if(force||q===0||nowT-lastSendT>=33||Math.abs(q-(lastS||0))>.3){lastS=q;lastSendT=nowT;socket.emit('inp',{s:q});}
+  if(force||q===0||nowT-lastSendT>=50||Math.abs(q-(lastS||0))>.3){lastS=q;lastSendT=nowT;socket.emit('inp',q);}
+  else if(!sendInp.tm)sendInp.tm=setTimeout(()=>{sendInp.tm=0;sendInp();},55);   // 間引いた分も、少しあとで必ず送る
 }
 const roleKind=()=>mode==='endless'?'boost':(D&&D.att===slot?'brake':'boost');
 function doAct(kind){if(!inGame||SPEC||!D||D.s!=='play')return;if(mode==='versus'&&D.el<3)return;socket.emit('act',{k:kind});}
@@ -5190,9 +5191,10 @@ function rbkMerge(local,server,key){
   for(const e of server){if(!e||!e.h||!e.sig)continue;const c=m.get(e.h);if(!c||(key==='score'?e.score>=c.score:e.ts>=(c.ts||0)))m.set(e.h,e);}
   return[...m.values()].sort((a,b)=>b[key]-a[key]).slice(0,120);
 }
+let RBV='';   // v23：前に受け取ったランキングの番号（変わっていなければサーバーは全部を送らない）
 function rankBackup(){
-  socket.emit('rank_backup',{},r=>{
-    if(!r)return;const bk=rbkLoad(),mine=r.mine||{};
+  socket.emit('rank_backup',{v:RBV},r=>{
+    if(!r||r.same)return;RBV=r.v||'';const bk=rbkLoad(),mine=r.mine||{};
     LS.set(RBK,JSON.stringify({run:rbkMerge(bk.run,(r.run||[]).concat(mine.run?[mine.run]:[]),'score'),rp:rbkMerge(bk.rp,(r.rp||[]).concat(mine.rp?[mine.rp]:[]),'rp'),t:Date.now()}));
   });
 }
@@ -5295,6 +5297,19 @@ socket.on('prog',p=>{   // サーバーで起きた出来事 → クエスト進
   }
 });
 socket.on('st',onSnap);
+// v23：軽い送り方（'z'）を、今までと同じ形に戻してから使う
+//  m：名前・レベル・スキンなど（変わったときだけ届く） l：状態・得点など（変わったときだけ） u：泥の位置 f：毎回届く位置など
+let ZM=null,ZL=null,ZU=[];const OBN=['car','bus','cone','cop'];
+socket.on('z',z=>{
+  if(z.m)ZM=z.m;if(z.l)ZL=z.l;if(z.u)ZU=z.u;if(!ZM||!ZL||!z.f)return;
+  const [md,course,names,lvs,ranked,cos]=ZM,[st,rd,att,sc,hist,msg,sub,fx,brakes]=ZL,f=z.f;
+  const P=(f[2]||[]).map((a,i)=>{if(!a)return null;const c=cos[i]||[];
+    return {x:a[0],z:a[1],v:a[2],mud:a[3],vx:a[4],brk:a[5]&1,boost:(a[5]>>1)&1,cd:a[6],bcd:a[7],brakes:brakes[i]||0,bike:c[0],skin:c[1],hair:c[2],fit:c[3],acc:c[4],trail:c[5]};});
+  const obs=(f[3]||[]).map(a=>({id:a[0],k:typeof a[1]==='number'?OBN[a[1]]:a[1],x:a[2],z:a[3],c:a[4]<0?undefined:a[4],vz:a[5],d:a[6]||undefined}));
+  const S={mode:md,s:st,t:f[0],el:f[1],rd,att,sc,hist,msg,sub,course,names,lvs,ranked:!!ranked,fx:fx||null,P,obs,mud:ZU.map(a=>({id:a[0],x:a[1],z:a[2]}))};
+  const x=f[4]||[];if(md==='versus'){S.bgGap=x[0];S.bgBx=x[1];S.bgBoost=!!x[2];}else{S.score=x[0];S.combo=x[1];S.ev=x[2]||[];}
+  onSnap(S);
+});
 // フレンド申請の受信・お知らせ（承認された／お断り／削除）
 socket.on('friend_inbox',list=>{
   if(!Array.isArray(list)||!SV)return;
@@ -5620,7 +5635,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v22',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v23',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5885,7 +5900,7 @@ function admOverview(quiet){
         const rs=document.createElement('small');rs.textContent=[...new Set(u.reasons.map(q=>q.reason))].join('・');x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
     if(r.ecoFlags&&r.ecoFlags.length){const f=document.createElement('div');f.className='adm-eco';f.innerHTML='<b>💰 NCが多すぎるユーザー（書き換えの疑い・'+r.ecoFlags.length+'人）</b><div class="muted">サーバーが知っている「もらえたはずのNC」より多い人です。タップして「修正する」か「問題なし」を選んでください。</div>';
       r.ecoFlags.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（所持 '+(u.coins||0).toLocaleString()+' NC）';
-        const rs=document.createElement('small');rs.textContent='価値 '+u.w.toLocaleString()+' ／ 上限の目安 '+u.bound.toLocaleString();x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
+        const rs=document.createElement('small');rs.textContent=(u.why&&u.why.length?'⚠ '+u.why.join('・')+'　':'')+'価値 '+u.w.toLocaleString()+' ／ 上限の目安 '+u.bound.toLocaleString();x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
     if(r.banned.length){const f=document.createElement('div');f.className='panel';f.style.cssText='display:flex;flex-direction:column;gap:.3em';f.innerHTML='<b>⛔ 停止中のユーザー（'+r.banned.length+'人）</b>';r.banned.forEach(u=>f.appendChild(userRowEl(u)));al.appendChild(f);}
     // 🚫 NGワード
     renderNg(r.ng||[]);$('ng-base').textContent='（基本 '+r.ngBase+'語 ＋ 追加 '+(r.ng||[]).length+'語）';
@@ -5957,8 +5972,8 @@ function openAdmUser(pk,quiet){
       if(r.dvs&&r.dvs.length>1){const d=document.createElement('div');d.innerHTML='<b>使ったことのある端末：</b>';d.appendChild(document.createTextNode(r.dvs.map(x=>x.s+'（回線 '+x.net+'・'+fmtD(x.t)+'）').join(' ／ ')));de.appendChild(d);}}
     else de.textContent='まだ情報がありません（v16以降にログインすると記録されます）';
     const e=r.eco,ee=$('au-eco');ee.innerHTML='';
-    if(e){ee.innerHTML='所持 <b class="big-nc"></b> NC <small class="muted"></small><br>NC＋持ち物の価値 <b></b> ／ 上限の目安 <b></b>'+(e.flag?'<br><span style="color:#ffb300">⚠ 上限をこえています（'+fmtD(e.flag.t)+'から）</span>':'<br><span style="color:#8cf08c">✔ 問題なし</span>')+(e.fix!=null?'<br>修正待ち：'+e.fix+' NC（次にログインしたときに反映）':'');
-      const bs=ee.querySelectorAll('b');bs[0].textContent=(e.c||0).toLocaleString();bs[1].textContent=(e.w||0).toLocaleString();bs[2].textContent=(e.bound||0).toLocaleString();ee.querySelector('small').textContent='（'+ago(u.nct)+'に報告）';
+    if(e){ee.innerHTML='所持 <b class="big-nc"></b> NC <small class="muted"></small><br>NC＋持ち物の価値 <b></b> ／ 上限の目安 <b></b>'+(e.flag?'<br><span style="color:#ffb300">⚠ '+(e.flag.why&&e.flag.why.length?'おかしな報告があります（'+fmtD(e.flag.t)+'から）<br><span class="au-why"></span>':'上限をこえています（'+fmtD(e.flag.t)+'から）')+'</span>':'<br><span style="color:#8cf08c">✔ 問題なし</span>')+(e.fix!=null?'<br>修正待ち：'+e.fix+' NC（次にログインしたときに反映）':'');
+      const bs=ee.querySelectorAll('b');bs[0].textContent=(e.c||0).toLocaleString();bs[1].textContent=(e.w||0).toLocaleString();bs[2].textContent=(e.bound||0).toLocaleString();ee.querySelector('small').textContent='（'+ago(u.nct)+'に報告）';const wy=ee.querySelector('.au-why');if(wy)wy.textContent='理由：'+e.flag.why.join('・');
       if(!quiet)$('au-nc').value=Math.max(0,Math.min(e.c||0,(e.c||0)-((e.w||0)-(e.bound||0))));}
     else{ee.textContent='まだ報告がありません';if(!quiet)$('au-nc').value='';}
     if(!quiet){$('au-gift').value='0';}
@@ -6374,7 +6389,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v22',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v23',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7041,6 +7056,14 @@ $('dash-audit-more').onclick=()=>admGo('audit');
 $('dash-chart-more').onclick=()=>{AN_V='use';admGo('bal');};
 // 予定の「あと◯分」を1分ごとに更新
 setInterval(()=>{if(page==='admin'&&ADM_TAB==='dash'&&ADM_R&&!document.hidden)dashPlan(ADM_R);},60000);
+
+/* =====================================================================
+   v23：セキュリティ
+   ・ページの「CSP」（ページに入っていない命令は動かさない）で何かが止められたら、運営の「🐞 エラー」に知らせる
+     （ふつうは何も起きない。もし表示や音がおかしくなったときに、原因がすぐわかるように）
+   ===================================================================== */
+document.addEventListener('securitypolicyviolation',e=>{try{reportErr('CSPで止めました：'+(e.violatedDirective||e.effectiveDirective||'')+' '+String(e.blockedURI||'').slice(0,80),e.sourceFile,e.lineNumber,e.columnNumber,'','csp');}catch(er){}});
+$('title-pp').addEventListener('click',e=>e.stopPropagation());   // タイトル画面の「プライバシーポリシー」を押してもゲームが始まらないように
 </script>
 </body>
 </html>
