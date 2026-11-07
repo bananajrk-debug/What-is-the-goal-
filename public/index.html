@@ -36,6 +36,7 @@ button,input,textarea{font-family:inherit;font-weight:800;color:inherit}
 .btn.big{font-size:1.16em;padding:.55em 1em}
 .btn.sm{font-size:.85em;padding:.32em .7em;border-width:2px;box-shadow:0 3px 0 var(--ln);border-radius:10px}
 .btn small{display:block;font-size:.62em;opacity:.9;font-weight:800}
+select.tx{background:#0b0f24;color:#fff;border:3px solid var(--ln);border-radius:12px;padding:.36em .55em;font-size:inherit;font-family:inherit;font-weight:800;outline:none;min-width:0;max-width:100%}
 input.tx,textarea.tx{background:#0b0f24;color:#fff;border:3px solid var(--ln);border-radius:12px;padding:.42em .7em;font-size:inherit;outline:none;min-width:0;-webkit-user-select:text;user-select:text}
 input.tx:focus,textarea.tx:focus{border-color:var(--b2)}
 .coin{display:inline-grid;place-items:center;width:1.35em;height:1.35em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6b0,#ffc21a 55%,#c98a00);border:2px solid #6b4500;font-size:.72em;color:#6b4500;font-weight:900;flex:0 0 auto}
@@ -309,6 +310,32 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .adm-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:.6em}@media (max-width:760px){.adm-grid{grid-template-columns:1fr}}
 .adm-grid .panel{display:flex;flex-direction:column;gap:.4em}
 .adm-grid>*,.adm-acts>div{min-width:0}.adm-grid .row,.adm-acts .row{flex-wrap:wrap}#au-q{min-width:8em}
+/* ===== v21：一斉配布・ショップ/ガチャ設定・ランキング管理・分析・操作の記録 ===== */
+.adm-lbl{font-weight:900;font-size:.82em;color:#cdbfff;margin-top:.2em}
+.ad-gifts{display:flex;gap:.5em;flex-wrap:wrap}.ad-gifts label{display:flex;flex-direction:column;gap:.15em;font-size:.82em;font-weight:900;flex:1;min-width:6.5em}.ad-gifts .tx{width:100%}
+.ad-items{display:flex;flex-wrap:wrap;gap:.3em}.ad-items span{background:#2d3b8a;border:2px solid var(--ln);border-radius:999px;padding:.12em .6em;font-size:.82em;font-weight:900;cursor:pointer}
+.ad-it{display:flex;flex-direction:column;gap:.1em;background:rgba(255,255,255,.06);border-radius:10px;padding:.4em .55em;margin:.25em 0}.ad-it small{opacity:.85}.ad-it.on{border-left:4px solid #8cf08c}
+.gift-items{display:flex;flex-wrap:wrap;justify-content:center;gap:.35em;max-width:22em}.gift-items:empty{display:none}
+.gift-items span{background:rgba(0,0,0,.3);border:2px solid var(--ln);border-radius:12px;padding:.2em .6em;font-weight:900;font-size:.92em}
+.dot.sale{background:#ff9100!important;min-width:auto!important;padding:0 .35em;font-size:.56em!important;border-radius:6px!important;top:-5px!important;right:-8px!important}
+.shop-sale{background:linear-gradient(90deg,#ff3d00,#ff9100,#ff3d00);background-size:200% 100%;animation:evr 3s linear infinite;border:3px solid var(--ln);border-radius:14px;padding:.45em .8em;color:#fff;font-weight:900;text-align:center;box-shadow:0 3px 0 var(--ln);text-shadow:0 2px 0 rgba(0,0,0,.3)}
+.shop-sale small{display:block;font-size:.78em;opacity:.95}
+.salep{color:#ffd23f}.salep s{color:#c9cff5;opacity:.75;font-size:.85em;margin-left:.2em}
+#ms-ribbon{position:absolute;left:50%;top:calc(3.3em + var(--st));transform:translateX(-50%);z-index:6;pointer-events:none;background:linear-gradient(90deg,#b71c1c,#ef6c00,#b71c1c);background-size:200% 100%;animation:evr 3s linear infinite;color:#fff;font-weight:900;font-size:.85em;padding:.2em 1em;border-radius:0 0 12px 12px;border:3px solid var(--ln);border-top:none;box-shadow:0 3px 0 rgba(0,0,0,.35);white-space:nowrap}
+#ms-ribbon.low{top:calc(5.05em + var(--st))}
+.ag-t{width:100%;border-collapse:collapse;font-size:.85em}.ag-t th,.ag-t td{padding:.2em .25em;text-align:center}.ag-t th{color:#cdbfff;font-size:.85em}.ag-t .tx{width:100%;padding:.25em .4em;text-align:right}
+.ar-row{display:flex;align-items:center;gap:.5em;background:rgba(255,255,255,.06);border-radius:10px;padding:.35em .5em}.ar-row .rk{width:2.2em;text-align:center;font-weight:900;color:#ffd23f}.ar-row .grow{min-width:0}.ar-row b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ar-row small{opacity:.8}.ar-row .sc{font-weight:900;font-size:1.1em;white-space:nowrap}
+.aa-row{display:flex;gap:.5em;align-items:flex-start;background:rgba(255,255,255,.06);border-radius:10px;padding:.35em .55em}.aa-row .t{font-size:.78em;opacity:.8;white-space:nowrap;min-width:6.6em}.aa-row .grow{min-width:0}.aa-row .d{font-size:.85em;opacity:.9;word-break:break-all}
+.aa-row .tg{color:#9fd0ff;cursor:pointer;text-decoration:underline}
+#au-kpi{grid-template-columns:repeat(auto-fill,minmax(8.6em,1fr));gap:.4em}#au-kpi .acard{padding:.3em .55em}#au-kpi .acard small{font-size:.72em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#au-kpi .acard b{font-size:1.25em}
+.an-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(19em,1fr));gap:.6em}
+.an-chart{background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.08);border-radius:14px;padding:.5em .6em .3em}.an-chart b{font-size:.92em}.an-chart small{display:block;color:#aab3e0;font-size:.75em;margin-bottom:.2em}
+.an-chart svg{width:100%;height:auto;display:block;overflow:visible}.an-chart svg text{fill:#aab3e0;font-size:10px;font-family:inherit}
+.an-tip{position:fixed;z-index:400;pointer-events:none;background:#0b0f24;color:#eef1ff;border:2px solid #4a5aa8;border-radius:10px;padding:.3em .55em;font-size:.8em;font-weight:800;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.an-tip small{display:block;color:#aab3e0;font-weight:700}
+.ai-list{display:flex;flex-direction:column;gap:.25em}.ai-row{display:grid;grid-template-columns:1.6em minmax(0,11em) 1fr 3.4em;align-items:center;gap:.45em;font-size:.86em}
+.ai-row .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.ai-row .bar{height:.75em;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}.ai-row .bar i{display:block;height:100%;background:#4a94f0;border-radius:0 4px 4px 0}
+.ai-row .v{text-align:right;font-weight:900}.ai-row .r{text-align:center;color:#aab3e0}
 /* ===== 管理者画面（v17：タブ切り替え。スクロールするのは中身の部分だけ） ===== */
 #pg-admin.on{display:flex;flex-direction:column;overflow:hidden;gap:.5em}
 .adm-tabs{display:flex;gap:.3em;overflow-x:auto;scrollbar-width:none;flex:none;padding:.1em 0 .3em}.adm-tabs::-webkit-scrollbar{display:none}
@@ -533,11 +560,11 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 
 <!-- ===== ロビー ===== -->
 <div id="lobby">
-  <div id="ev-ribbon" class="hide"></div>
+  <div id="ev-ribbon" class="hide"></div><div id="ms-ribbon" class="hide"></div>
   <header id="topbar">
     <div id="logo">なにが<br>目的なん？</div>
     <nav id="tabs">
-      <button class="tab on" data-t="home">ロビー</button><button class="tab" data-t="locker">ロッカー</button><button class="tab" data-t="shop">ショップ</button><button class="tab" data-t="gacha">ガチャ</button><button class="tab" data-t="quest">クエスト<span class="dot hide" id="q-dot">0</span></button><button class="tab" data-t="rank">ランキング</button><button class="tab" data-t="course">コース</button><button class="tab" data-t="friends">フレンド<span class="dot hide" id="f-dot">0</span></button>
+      <button class="tab on" data-t="home">ロビー</button><button class="tab" data-t="locker">ロッカー</button><button class="tab" data-t="shop">ショップ<span class="dot sale hide" id="s-dot">SALE</span></button><button class="tab" data-t="gacha">ガチャ</button><button class="tab" data-t="quest">クエスト<span class="dot hide" id="q-dot">0</span></button><button class="tab" data-t="rank">ランキング</button><button class="tab" data-t="course">コース</button><button class="tab" data-t="friends">フレンド<span class="dot hide" id="f-dot">0</span></button>
     </nav>
     <div id="lvbox"><b id="lv-num">Lv1</b><div class="xpbar"><i id="xp-fill"></i></div></div>
     <div id="wallet"><span class="coin">NC</span><b id="disp-coin">0</b></div>
@@ -571,7 +598,8 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     </section>
     <section id="pg-shop" class="pg">
       <div class="scroll ssc" style="display:flex;flex-direction:column;gap:.6em">
-      <div class="shop-head"><b>🛒 今日のおすすめ（20%OFF）</b><span class="muted" id="shop-timer"></span></div>
+      <div id="shop-sale" class="shop-sale hide"></div>
+      <div class="shop-head"><b id="shop-feat-h">🛒 今日のおすすめ（20%OFF）</b><span class="muted" id="shop-timer"></span></div>
       <div id="shop-feat"></div>
       <div class="shop-head"><b>🏪 ショップ限定アイテム</b><span class="muted">ガチャには出ません。ここでしか買えない！</span></div>
       <div class="chips" id="shop-so-cats"></div>
@@ -632,12 +660,16 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
         <button data-a="users">👥 ユーザー</button>
         <button data-a="live">👀 試合中<i id="at-live" class="hide"></i></button>
         <button data-a="news">📢 お知らせ</button>
+        <button data-a="dist">🎁 配布<i id="at-dist" class="hide"></i></button>
         <button data-a="fb">💡 フィードバック<i id="at-fb" class="hide"></i></button>
         <button data-a="event">🎉 イベント<i id="at-event" class="hide">中</i></button>
+        <button data-a="shopadm">🛒 ショップ・ガチャ<i id="at-sale" class="hide">SALE</i></button>
         <button data-a="maint">🛠 メンテナンス<i id="at-maint" class="hide">中</i></button>
+        <button data-a="rank">🏆 ランキング</button>
+        <button data-a="bal">📈 分析</button>
         <button data-a="ng">🚫 NGワード</button>
         <button data-a="err">🐞 エラー<i id="at-err" class="hide"></i></button>
-        <button data-a="bal">📈 バランス</button>
+        <button data-a="audit">📜 操作の記録</button>
         <button data-a="data">💾 データ<i id="at-data" class="hide">!</i></button>
       </nav>
       <div class="adm-body">
@@ -680,6 +712,17 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <input id="am-msg" class="tx" maxlength="200" placeholder="メッセージ（例：v17へのアップデートを行っています）">
           <div class="row"><button id="am-start" class="btn red grow">メンテナンス開始</button><button id="am-end" class="btn green grow">メンテナンス終了</button></div>
           <div class="muted">開始すると、あなた以外のプレイヤーは試合から外れて「メンテナンス中」の画面（チャリ・ランが遊べます）になります。</div>
+        </div>
+        <div class="panel adm-panel" id="adm-msched-panel">
+          <b>📅 メンテナンスの予約</b><div id="ams-state"></div>
+          <div class="row" style="align-items:center"><span>始まり</span><input id="ams-at" class="tx" type="datetime-local"></div>
+          <div class="row ams-quick"><span class="muted">すぐ選ぶ：</span><button data-q="30" class="btn sm dark">30分後</button><button data-q="60" class="btn sm dark">1時間後</button><button data-q="t2" class="btn sm dark">あすの2:00</button><button data-q="t5" class="btn sm dark">あすの5:00</button></div>
+          <div class="row" style="align-items:center"><span>終わり</span><input id="ams-until" class="tx" type="datetime-local"><button data-len="30" class="btn sm dark ams-len">＋30分</button><button data-len="60" class="btn sm dark ams-len">＋1時間</button><button data-len="120" class="btn sm dark ams-len">＋2時間</button></div>
+          <label class="muted"><input type="checkbox" id="ams-auto" checked> 終わりの時刻に自動で終了する</label>
+          <input id="ams-msg" class="tx" maxlength="200" placeholder="メンテナンス中に出すメッセージ（なくてもOK）">
+          <label class="muted"><input type="checkbox" id="ams-notice" checked> 📢 予約したことをお知らせで全員に伝える</label>
+          <div class="row"><button id="ams-set" class="btn blue grow">📅 予約する</button><button id="ams-cancel" class="btn dark grow">予約を取り消す</button></div>
+          <div class="muted">時間になると自動でメンテナンスが始まります。始まる1時間前からロビーの上に「まもなくメンテナンス」と表示され、10分前と1分前にもお知らせします。</div>
         </div></div></div>
         <!-- 🎉 イベント -->
         <div class="ap" data-a="event"><div class="ap-scroll"><div class="panel adm-panel">
@@ -693,6 +736,56 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <div class="row"><button id="ae-start" class="btn green grow">🎉 イベントを始める</button><button id="ae-stop" class="btn red grow">終了する</button></div>
           <div class="muted">NCの倍率は試合（対戦・エンドレス）でもらえるNCに、XPの倍率はすべてのXPにかかります。終わりの時刻になると自動で終わります。</div>
         </div></div></div>
+        <!-- 🎁 一斉配布 -->
+        <div class="ap ap2" data-a="dist">
+          <div class="ap-col"><div class="ap-head"><b>🎁 みんなにプレゼントを配る</b></div><div class="ap-scroll ap-form">
+            <div class="adm-lbl">だれに</div>
+            <div class="chips" id="ad-to"></div>
+            <div class="row hide" id="ad-days-row" style="align-items:center"><span>この</span><select id="ad-days" class="tx"><option value="1">1日</option><option value="3">3日</option><option value="7" selected>1週間</option><option value="14">2週間</option><option value="30">30日</option></select><span>に遊びに来た人</span></div>
+            <div class="row" style="align-items:center"><span>レベル</span><input id="ad-lv" class="tx" type="number" min="0" max="99" value="0" style="width:5em"><span class="muted">以上（0ならだれでも）</span></div>
+            <label class="muted"><input type="checkbox" id="ad-reg"> ユーザー名を登録している人だけ</label>
+            <div id="ad-all-opts"><label class="muted"><input type="checkbox" id="ad-old"> 今いるプレイヤーだけ（これから始める人はもらえない。お詫びのときに）</label>
+              <div class="row" style="align-items:center"><span>受け取れる期間</span><select id="ad-valid" class="tx"><option value="3">3日</option><option value="7">1週間</option><option value="14" selected>2週間</option><option value="30">30日</option><option value="60">60日</option></select><span class="muted">（その間にログインした人がもらえます）</span></div></div>
+            <div class="adm-lbl">なにを</div>
+            <div class="ad-gifts"><label>💰 NC<input id="ad-nc" class="tx" type="number" min="0" max="100000" step="50" value="0"></label><label>🎟 ガチャ券<input id="ad-tk" class="tx" type="number" min="0" max="100" value="0"></label><label>💎 かけら<input id="ad-sh" class="tx" type="number" min="0" max="10000" step="5" value="0"></label></div>
+            <div class="row" style="align-items:center"><select id="ad-icat" class="tx"></select><select id="ad-ikey" class="tx grow"></select><button id="ad-iadd" class="btn sm blue">＋ アイテム</button></div>
+            <div id="ad-items" class="ad-items"></div>
+            <div class="adm-lbl">メッセージ</div>
+            <input id="ad-title" class="tx" maxlength="40" placeholder="タイトル（例：🎉 1周年記念プレゼント）">
+            <textarea id="ad-text" class="tx" maxlength="300" rows="2" placeholder="ひとこと（なくてもOK）"></textarea>
+            <label class="muted" id="ad-push-l"><input type="checkbox" id="ad-push" checked> 🔔 通知をオンにしている人のスマホにも知らせる</label>
+            <div id="ad-count" class="adm-note"></div>
+            <button id="ad-send" class="btn green">🎁 配布する</button>
+          </div></div>
+          <div class="ap-col"><div class="ap-head"><b class="grow">📋 配布中・これまでの配布</b><button id="ad-ref" class="btn sm blue">↻</button></div><div class="ap-scroll"><div id="ad-active"></div><div id="ad-hist"></div></div></div>
+        </div>
+        <!-- 🛒 ショップ・ガチャ -->
+        <div class="ap ap2" data-a="shopadm">
+          <div class="ap-col"><div class="ap-head"><b>🏷 セール</b></div><div class="ap-scroll ap-form">
+            <div id="as-state"></div>
+            <div class="row" style="align-items:center"><span>割引</span><div class="chips" id="as-pct"></div></div>
+            <div class="adm-lbl">セールにするもの</div><div class="chips" id="as-cats"></div>
+            <div class="row" style="align-items:center"><span>始まり</span><input id="as-from" class="tx" type="datetime-local"><span class="muted">（空なら今すぐ）</span></div>
+            <div class="row" style="align-items:center"><span>終わり</span><input id="as-until" class="tx" type="datetime-local"></div>
+            <div class="row as-quick"><span class="muted">すぐ選ぶ：</span><button data-h="3" class="btn sm dark">3時間</button><button data-h="24" class="btn sm dark">1日</button><button data-h="wk" class="btn sm dark">この週末</button><button data-h="168" class="btn sm dark">1週間</button></div>
+            <input id="as-title" class="tx" maxlength="30" placeholder="セールの名前（例：週末セール）なくてもOK">
+            <label class="muted"><input type="checkbox" id="as-notice" checked> 📢 お知らせも自動で送る（始まる時刻に合わせて）</label>
+            <div class="row"><button id="as-start" class="btn green grow">🏷 セールを始める</button><button id="as-stop" class="btn red grow">終了する</button></div>
+            <div class="muted">「今日のおすすめ（20%OFF）」と重なったときは、割引が大きいほうになります。ガチャの値段は右の「ガチャの設定」で変えられます。</div>
+          </div></div>
+          <div class="ap-col"><div class="ap-head"><b class="grow">🎰 ガチャの設定</b><span id="ag-st" class="tagb tagd"></span></div><div class="ap-scroll ap-form">
+            <table class="ag-t" id="ag-t"></table>
+            <div class="ad-gifts"><label>1回の値段<input id="ag-c1" class="tx" type="number" min="1" max="10000"></label><label>10連の値段<input id="ag-c10" class="tx" type="number" min="1" max="100000"></label>
+              <label>10連の保証<select id="ag-g" class="tx"><option value="0">なし</option><option value="2">R以上</option><option value="3">EPIC以上</option><option value="4">LEGEND</option></select></label></div>
+            <div id="ag-sum" class="adm-note"></div>
+            <div class="row"><button id="ag-save" class="btn green grow">💾 保存して全員に反映</button><button id="ag-reset" class="btn dark grow">最初の設定に戻す</button></div>
+            <div class="muted">保存すると、遊んでいる人の画面にもすぐ反映されます（確率の表示も自動で変わります）。確率は合計が100にならなくても、割合として計算します。</div>
+          </div></div>
+        </div>
+        <!-- 🏆 ランキング -->
+        <div class="ap" data-a="rank"><div class="ap-head"><div class="chips grow" id="ar-board"></div><button id="ar-ref" class="btn sm blue">↻ 更新</button><button id="ar-reset" class="btn sm red">全部リセット</button></div>
+          <div class="muted" id="ar-note">おかしな記録は 🗑 で1件ずつ消せます。消した記録は、その人の端末に残っている控えからも元に戻りません（新しく出した記録はまた載ります）。</div>
+          <div class="ap-scroll" id="ar-list"></div></div>
         <!-- 🚫 NGワード -->
         <div class="ap" data-a="ng"><div class="ap-scroll"><div class="panel adm-panel" id="adm-ng-panel">
           <b>🚫 NGワード <small class="muted" id="ng-base"></small></b>
@@ -706,8 +799,15 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
         <div class="ap" data-a="err"><div class="ap-head"><b class="grow">🐞 プレイヤーの画面で起きたエラー</b><button id="ae-ref" class="btn sm blue">↻ 更新</button><button id="ae-clear" class="btn sm dark">全部消す</button></div>
           <div class="muted">ゲームの画面でエラーが起きると、自動でここに届きます（同じエラーは1つにまとめて回数を数えます）。直したら「解決」で消してください。</div><div class="ap-scroll" id="ae-list"></div></div>
         <!-- 📈 バランス -->
-        <div class="ap" data-a="bal"><div class="ap-head"><b class="grow">📈 ラウンドの決着のしかた</b><button id="ab-reset" class="btn sm dark">記録をリセット</button></div>
-          <div class="chips" id="ab-grp"></div><div class="ap-scroll"><div id="ab-sum" class="adm-note"></div><div id="ab-table"></div></div></div>
+        <div class="ap" data-a="bal"><div class="ap-head"><div class="chips grow" id="an-sub"></div><button id="an-ref" class="btn sm blue">↻ 更新</button></div>
+          <div class="ap-scroll an-v" data-v="use"><div id="au-kpi" class="adm-cards"></div><div id="au-charts" class="an-charts"></div></div>
+          <div class="ap-scroll an-v hide" data-v="items"><div class="row" style="align-items:center"><div class="chips grow" id="ai-src"></div><button id="ai-reset" class="btn sm dark">記録をリセット</button></div><div id="ai-sum" class="adm-note"></div><div id="ai-list" class="ai-list"></div></div>
+          <div class="ap-scroll an-v hide" data-v="bal"><div class="row" style="align-items:center"><b class="grow">⚖ ラウンドの決着のしかた</b><button id="ab-reset" class="btn sm dark">記録をリセット</button></div>
+            <div class="chips" id="ab-grp"></div><div id="ab-sum" class="adm-note"></div><div id="ab-table"></div></div>
+          <div id="an-tip" class="an-tip hide"></div></div>
+        <!-- 📜 操作の記録 -->
+        <div class="ap" data-a="audit"><div class="ap-head"><input id="aa-q" class="tx grow" placeholder="名前・内容で検索"><select id="aa-f" class="tx"><option value="">すべて</option><option value="u">ユーザーへの対応</option><option value="dist">配布</option><option value="notice">お知らせ</option><option value="maint">メンテナンス</option><option value="set">イベント・セール・設定</option><option value="rank">ランキング</option><option value="data">データ</option></select><button id="aa-ref" class="btn sm blue">↻</button></div>
+          <div class="muted">だれが・いつ・何をしたかが自動で残ります（新しい順・最大500件）。</div><div class="ap-scroll" id="aa-list"></div></div>
         <!-- 💾 データ（Upstash・バックアップ） -->
         <div class="ap" data-a="data"><div class="ap-scroll">
           <div class="panel adm-panel"><b>💾 保存先（Upstash）</b><div id="ad-kv"></div>
@@ -851,7 +951,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   <textarea id="fb-text" class="tx" maxlength="600" rows="4" placeholder="内容（600文字まで）"></textarea>
   <div class="row"><button id="fb-cancel" class="btn dark grow">やめる</button><button id="fb-send" class="btn green grow">送信する</button></div></div></div>
 <div id="gift-modal" class="modal hide"><div class="box giftbox"><div class="gift-ic">🎁</div><b id="gift-title"></b><div id="gift-text"></div>
-  <div class="gift-amt"><span class="coin">NC</span><b id="gift-amt"></b></div><button id="gift-ok" class="btn big green">受け取る</button></div></div>
+  <div class="gift-amt" id="gift-amt-row"><span class="coin">NC</span><b id="gift-amt"></b></div><div id="gift-items" class="gift-items"></div><button id="gift-ok" class="btn big green">受け取る</button></div></div>
 <div id="maint-ov" class="hide"><div class="mtbox">
   <div class="mt-h"><span class="mt-ic">🛠</span><div><b id="mt-title">ただいまメンテナンス中です</b><div id="mt-until"></div><div id="mt-msg" class="muted"></div></div><button id="mt-news" class="btn sm blue">📢 お知らせ</button></div>
   <div class="run-wrap"><canvas id="run-cv" width="1200" height="300"></canvas><div id="run-hint">タップ / スペースで ジャンプ（長押しで高く）</div></div>
@@ -2768,7 +2868,7 @@ function itemCard(c,k,o){
   d.className='card r'+(it.r||1)+(o.sel?' sel':'');cv.width=220;cv.height=152;d.appendChild(cv);
   drawThumb(cv,c,k,600);
   if(o.owned){const s=document.createElement('span');s.className='own';s.textContent=o.ownLabel||'所持';d.appendChild(s);}
-  if(o.off){const s=document.createElement('span');s.className='off';s.textContent='20%OFF';d.appendChild(s);}
+  if(o.off||(typeof o.sub==='string'&&o.sub.includes('salep'))){const it=CAT[c][k],pc=it.p>0?Math.round((1-priceOf(c,k)/it.p)*100):20;if(pc>0){const s=document.createElement('span');s.className='off';s.textContent=pc+'%OFF';d.appendChild(s);}}   // 割引の%（セール中はセールの%）
   else if(it.so&&!SV.inv[c].includes(k)){const s=document.createElement('span');s.className='solo';s.textContent='ショップ限定';d.appendChild(s);}
   const nm=document.createElement('span');nm.className='nm';
   const b=document.createElement('b');b.textContent=it.n;nm.appendChild(b);nm.appendChild(document.createElement('br'));
@@ -2841,19 +2941,19 @@ function priceOf(c,k){const p=CAT[c][k].p;return dailyFeatured().some(([a,b])=>a
 let shopSoCat='all';
 function renderShop(){
   const fb=$('shop-feat');fb.innerHTML='';
-  dailyFeatured().forEach(([c,k])=>{const own=SV.inv[c].includes(k);fb.appendChild(itemCard(c,k,{owned:own,off:!own,sub:own?'所持済み':'<span class="coin">NC</span>'+priceOf(c,k),onClick:()=>openItem(c,k)}));});
+  dailyFeatured().forEach(([c,k])=>{const own=SV.inv[c].includes(k);fb.appendChild(itemCard(c,k,{owned:own,off:!own,sub:own?'所持済み':priceTag(c,k),onClick:()=>openItem(c,k)}));});
   // ショップ限定アイテム（ガチャには出ない）
   const so=allItems().filter(([c,k])=>CAT[c][k].so),soc=['all',...new Set(so.map(([c])=>c))];
   const sc=$('shop-so-cats');sc.innerHTML='';soc.forEach(c=>{const b=document.createElement('button');b.className='chip'+(c===shopSoCat?' on':'');b.textContent=c==='all'?'すべて（'+so.length+'）':CATN[c];b.onclick=()=>{shopSoCat=c;renderShop();};sc.appendChild(b);});
   const sb=$('shop-so');sb.innerHTML='';
   so.filter(([c])=>shopSoCat==='all'||c===shopSoCat).sort((a,b)=>(SV.inv[a[0]].includes(a[1])?1:0)-(SV.inv[b[0]].includes(b[1])?1:0)||CAT[a[0]][a[1]].p-CAT[b[0]][b[1]].p)
-    .forEach(([c,k])=>{const own=SV.inv[c].includes(k);sb.appendChild(itemCard(c,k,{owned:own,sub:own?'所持済み':'<span class="coin">NC</span>'+priceOf(c,k),onClick:()=>openItem(c,k)}));});
+    .forEach(([c,k])=>{const own=SV.inv[c].includes(k);sb.appendChild(itemCard(c,k,{owned:own,sub:own?'所持済み':priceTag(c,k),onClick:()=>openItem(c,k)}));});
   chips($('shop-cats'),Object.keys(CATN),shopCat,c=>{shopCat=c;renderShop();});
   const box=$('shop-list');box.innerHTML='';
   const ord=it=>(it.ev?4e4+it.ev:it.rk!=null?3e4+it.rk:it.lv!=null?2e4+it.lv:it.g?1e4:0)+(it.p||0);
   const keys=Object.keys(CAT[shopCat]).sort((a,b)=>ord(CAT[shopCat][a])-ord(CAT[shopCat][b]));
   keys.forEach(k=>{const it=CAT[shopCat][k],own=SV.inv[shopCat].includes(k);
-    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':isSpecial(it)?reqText(it):'<span class="coin">NC</span>'+priceOf(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
+    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':isSpecial(it)?reqText(it):priceTag(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
   shopTimer();renderShopExtra();
 }
 function untilMidnight(){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const s=Math.max(0,(m-n)/1000|0);return Math.floor(s/3600)+'時間'+String(Math.floor(s%3600/60)).padStart(2,'0')+'分';}
@@ -5472,7 +5572,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v20',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v21',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5872,7 +5972,7 @@ $('blk-close').onclick=()=>$('blk-modal').classList.add('hide');
 const DEFAULT_INV=newSave().inv;
 function invWorth(){let s=0;const g10=GACHA_CONFIG.cost10/10;
   for(const c in CAT)for(const k of SV.inv[c]){const it=CAT[c][k];if(!it||DEFAULT_INV[c].includes(k)||isSpecial(it))continue;
-    if(it.g)s+=g10;else if(it.p>0)s+=it.so?Math.round(it.p*.8):Math.min(Math.round(it.p*.8),g10);}
+    if(it.g)s+=g10;else if(it.p>0)s+=it.so?Math.round(it.p*.5):Math.min(Math.round(it.p*.5),g10);}   // セール（最大50%OFF）で買っても多く見積もらないように
   return Math.floor(s);}
 // NCの報告：1分に1回は必ず。試合やクエストなどでNCが増えたときは、すぐ（数秒以内）に報告する
 let ecoT=0,ecoTm=null,ecoLastC=-1;
@@ -6232,7 +6332,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v20',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v21',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -6273,7 +6373,7 @@ const pOn=(t,k)=>t==='tt'?SV.title===k:SV.prof[t]===k;
 function pcard(t,k,onClick,label){
   const o=pdict(t)[k],d=document.createElement('div'),own=pOwned(t,k);d.className='pcard'+(own?' own':'')+(own&&pOn(t,k)?' on':'');
   const pv=document.createElement('div');pv.className='pv';pPreview(t,k,pv);d.appendChild(pv);
-  const b=document.createElement('b');b.textContent=o.n;const sm=document.createElement('small');sm.innerHTML=label!=null?label:own?(pOn(t,k)?'✔ 設定中':'所持'):'<span class="coin">NC</span> '+o.p;d.append(b,sm);
+  const b=document.createElement('b');b.textContent=o.n;const sm=document.createElement('small');sm.innerHTML=label!=null?label:own?(pOn(t,k)?'✔ 設定中':'所持'):pPriceTag(t,k);d.append(b,sm);
   if(own){const tg=document.createElement('span');tg.className='tg';tg.textContent='所持';d.appendChild(tg);}
   d.onclick=()=>{initAudio();if(AU.ctx)SFX.click();onClick();};return d;
 }
@@ -6282,7 +6382,7 @@ let BM=null;
 function openBuy(o){
   BM=o;const pv=$('bm-prev');pv.style.background='';
   if(o.kind==='p'){const it=pdict(o.t)[o.k];pPreview(o.t,o.k,pv,true);$('bm-name').textContent=it.n;$('bm-desc').textContent=PITEMS[o.t]+'（ほかのプレイヤーのプロフィールにも表示されます）';
-    $('bm-price').innerHTML='<span class="coin">NC</span> '+it.p+'　<small class="muted">（持っている '+SV.coins.toLocaleString()+'）</small>';$('bm-ok').textContent='買って設定する';$('bm-ok').disabled=SV.coins<it.p;}
+    const pr=pPrice(o.t,o.k);$('bm-price').innerHTML=pPriceTag(o.t,o.k)+'　<small class="muted">（持っている '+SV.coins.toLocaleString()+'）</small>';$('bm-ok').textContent='買って設定する';$('bm-ok').disabled=SV.coins<pr;}
   else{const it=CAT[o.c][o.k];pv.innerHTML='';const cv=document.createElement('canvas');cv.width=220;cv.height=152;drawThumb(cv,o.c,o.k,600);pv.appendChild(cv);
     $('bm-name').textContent=it.n;$('bm-desc').innerHTML='<span class="rar'+o.r+'">'+RN[o.r]+'</span> ・ '+esc(CATN[o.c])+(it.g?' ・ ガチャ限定':'');
     $('bm-price').innerHTML='💎 '+EXCH[o.r]+'　<small class="muted">（持っている 💎'+SV.shard+'）</small>';$('bm-ok').textContent='かけらで交換する';$('bm-ok').disabled=SV.shard<EXCH[o.r];}
@@ -6292,8 +6392,8 @@ $('bm-cancel').onclick=()=>{$('bm-modal').classList.add('hide');BM=null;};
 $('bm-modal').addEventListener('click',e=>{if(e.target.id==='bm-modal')$('bm-cancel').onclick();});
 $('bm-ok').onclick=()=>{
   const o=BM;if(!o)return;
-  if(o.kind==='p'){const it=pdict(o.t)[o.k];if(SV.coins<it.p){toast('NCが足りません');return;}if(pOwned(o.t,o.k))return;
-    SV.coins-=it.p;SV.pinv[o.t].push(o.k);if(o.t==='tt')SV.title=o.k;else SV.prof[o.t]=o.k;
+  if(o.kind==='p'){const it=pdict(o.t)[o.k],pr=pPrice(o.t,o.k);if(SV.coins<pr){toast('NCが足りません');return;}if(pOwned(o.t,o.k))return;
+    SV.coins-=pr;SV.pinv[o.t].push(o.k);if(o.t==='tt')SV.title=o.k;else SV.prof[o.t]=o.k;
     toast('🎉 「'+it.n+'」を買って設定しました！');}
   else{if(SV.shard<EXCH[o.r]){toast('かけらが足りません');return;}if(SV.inv[o.c].includes(o.k))return;
     SV.shard-=EXCH[o.r];SV.inv[o.c].push(o.k);toast('💎 「'+CAT[o.c][o.k].n+'」と交換しました！ ロッカーで装備できます');}
@@ -6505,7 +6605,325 @@ function renderBal(){
 }
 $('ab-reset').onclick=()=>{if(!confirmTwice($('ab-reset'),'リセットする？'))return;socket.emit('adm_stats_reset',r=>{if(r&&r.ok){BAL_S=r.stats;renderBal();toast('記録をリセットしました');}});};
 // タブを開いたときに読み込む
-document.querySelectorAll('#adm-tabs button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.a==='err')admErrs();if(b.dataset.a==='bal')admBal();}));
+document.querySelectorAll('#adm-tabs button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.a==='err')admErrs();}));   // 📈 分析は v21 の anSub で読み込む
+
+/* =====================================================================
+   v21：プレゼントの中身（NC・ガチャ券・かけら・アイテム）・セール・ガチャ設定の反映・人気アイテムの記録・メンテナンスの予約
+        管理者：🎁 一斉配布／🛒 ショップ・ガチャ／🏆 ランキング／📈 分析（利用状況・人気アイテム・バランス）／📜 操作の記録
+   ===================================================================== */
+
+/* ----- 🎁 プレゼント（一斉配布にも対応：NC・ガチャ券・かけら・アイテム） ----- */
+function giftItemName(x){const it=CAT[x.c]&&CAT[x.c][x.k];if(it)return (CATN[x.c]||'')+'「'+it.n+'」';const d=PITEMS[x.c]&&pdict(x.c)[x.k];return d?PITEMS[x.c]+'「'+d.n+'」':(x.n||'アイテム');}
+function showGift(){if(!GIFTQ.length||inGame||!$('gift-modal').classList.contains('hide'))return;const g=GIFTQ[0];
+  $('gift-title').textContent=g.title||'運営からのプレゼント';$('gift-text').textContent=g.text||'';
+  $('gift-amt').textContent='+'+(g.amount||0).toLocaleString();$('gift-amt-row').classList.toggle('hide',!g.amount);
+  const box=$('gift-items');box.innerHTML='';const add=t=>{const s=document.createElement('span');s.textContent=t;box.appendChild(s);};
+  if(g.tk)add('🎟 ガチャ券 ×'+g.tk);if(g.shard)add('💎 かけら ×'+g.shard);(g.items||[]).forEach(x=>add('🎁 '+giftItemName(x)));
+  $('gift-ok').disabled=false;$('gift-modal').classList.remove('hide');if(AU.ctx)SFX.pop();}
+// 受け取ったものを端末の記録に入れる（持っているアイテムは かけら に変える）
+function applyGift(r){const got=[];let sh=r.shard>0?r.shard:0;
+  if(r.amount>0){SV.coins+=r.amount;got.push(r.amount.toLocaleString()+' NC');}
+  if(r.tk>0){SV.tk=(SV.tk||0)+r.tk;got.push('ガチャ券'+r.tk+'枚');}
+  for(const x of r.items||[]){const it=CAT[x.c]&&CAT[x.c][x.k];
+    if(it){if(SV.inv[x.c].includes(x.k)){sh+=SHARD[it.r||1]||1;got.push(it.n+'（持っていたので💎に）');}else{SV.inv[x.c].push(x.k);got.push(it.n);}continue;}
+    const d=PITEMS[x.c]&&pdict(x.c)[x.k];if(d&&!SV.pinv[x.c].includes(x.k)){SV.pinv[x.c].push(x.k);got.push(d.n);}}
+  if(sh){SV.shard=(SV.shard||0)+sh;got.push('かけら'+sh);}
+  saveNow();updateTop();if(page==='home')updateHome();updateTicketUI();shardUI();if(page==='shop')renderShop();if(AU.ctx)SFX.coin();setTimeout(ecoSoon,300);
+  return got;}
+$('gift-ok').onclick=()=>{const g=GIFTQ[0];if(!g)return;$('gift-ok').disabled=true;
+  socket.emit('gift_claim',{id:g.id},r=>{GIFTQ.shift();$('gift-modal').classList.add('hide');
+    if(r&&r.ok){const got=applyGift(r);toast('🎁 '+(got.join('・')||'プレゼント')+' を受け取りました！',3800);}else toast((r&&r.err)||'受け取れませんでした');setTimeout(showGift,400);});};
+
+/* ----- 🏷 セール（管理者がボタンで開始。おすすめの20%OFFと重なったら、割引が大きいほう） ----- */
+var SALE={on:false};
+function saleLive(){return !!(SALE&&SALE.on&&Date.now()>=(SALE.from||0)&&Date.now()<SALE.until);}
+function salePct(c){return saleLive()&&(!SALE.cats||!SALE.cats.length||SALE.cats.includes(c))?SALE.pct:0;}
+function priceOf(c,k){const p=CAT[c][k].p;let m=dailyFeatured().some(([a,b])=>a===c&&b===k)?.8:1;const s=salePct(c);if(s)m=Math.min(m,1-s/100);return m<1?Math.round(p*m):p;}
+function priceTag(c,k){const p=priceOf(c,k),o=CAT[c][k].p;return '<span class="coin">NC</span>'+(p<o?'<span class="salep">'+p+' <s>'+o+'</s></span>':p);}
+function pPrice(t,k){const p=pdict(t)[k].p,s=salePct('prof');return s?Math.round(p*(1-s/100)):p;}
+function pPriceTag(t,k){const p=pPrice(t,k),o=pdict(t)[k].p;return '<span class="coin">NC</span> '+(p<o?'<span class="salep">'+p+' <s>'+o+'</s></span>':p);}
+const SALE_CATN=c=>c==='prof'?'プロフィールアイテム':CATN[c]||c;
+function saleWhat(s){return s.cats&&s.cats.length?s.cats.map(SALE_CATN).join('・'):'ショップ全品';}
+let saleWas=false;
+function saleUI(){const live=saleLive(),b=$('shop-sale');$('s-dot').classList.toggle('hide',!live);
+  $('shop-feat-h').textContent='🛒 今日のおすすめ（'+(saleLive()&&SALE.pct>20?'セール中は最大'+SALE.pct+'%OFF':'20%OFF')+'）';
+  if(SALE.on&&Date.now()<SALE.until){b.innerHTML='';const t=document.createElement('div');t.textContent='🏷 '+(SALE.title?SALE.title+'：':'')+saleWhat(SALE)+' '+SALE.pct+'%OFF'+(live?'！':'');
+    const sm=document.createElement('small');sm.textContent=live?'のこり '+leftTxt(SALE.until-Date.now()):fmtD(SALE.from)+' から始まります';b.append(t,sm);b.classList.remove('hide');}
+  else b.classList.add('hide');
+  if(live!==saleWas){saleWas=live;if(page==='shop'&&SV)renderShop();}}
+socket.on('sale',s=>{const was=saleLive();SALE=s&&s.on?s:{on:false};saleUI();if(page==='shop'&&SV)renderShop();
+  if(!was&&saleLive()&&!inGame)toast('🏷 セール開催中！ '+saleWhat(SALE)+'が'+SALE.pct+'%OFF',3800);if(page==='admin')asState();});
+setInterval(saleUI,30000);
+
+/* ----- 🎰 ガチャの設定（管理者が画面で変えたら、全員の画面にすぐ反映） ----- */
+var GC_DEF=JSON.parse(JSON.stringify(GACHA_CONFIG)),GC_ON=false;
+function applyGcfg(c){if(!c)return;const C=GACHA_CONFIG;
+  for(const k of ['rates','refund','shard','exchange'])C[k]=Object.assign({},GC_DEF[k],c[k]||{});
+  C.cost1=+c.cost1||GC_DEF.cost1;C.cost10=+c.cost10||GC_DEF.cost10;C.guarantee10=c.guarantee10!=null?+c.guarantee10:GC_DEF.guarantee10;
+  const r=C.rates,a=[0,+r.C||0,+r.R||0,+r.EPIC||0,+r.LEGEND||0],t=a.reduce((x,y)=>x+y,0)||1;a.forEach((v,i)=>{RW[i]=v*100/t;});
+  ['C','R','EPIC','LEGEND'].forEach((k,i)=>{REFUND[i+1]=+C.refund[k]||0;SHARD[i+1]=+C.shard[k]||0;EXCH[i+1]=Math.max(1,+C.exchange[k]||1);});
+  gachaTexts();updateTicketUI();if(page==='shop'&&SV)renderShop();}
+socket.on('gcfg',c=>{if(!c)return;GC_ON=!c.reset;applyGcfg(c.reset?GC_DEF:c);if(page==='admin'&&ADM_TAB==='shopadm')agFill();});
+
+/* ----- 📊 人気のアイテム：ガチャで出た・ショップで買った・交換したアイテムを運営に知らせる（だれが、は送らない集計用） ----- */
+var ISQ=[];
+function istat(s,c,k,r,p){ISQ.push({s,c,k,r:r||0,p:p||0});if(ISQ.length>=10)istFlush();}
+function istFlush(){if(!ISQ.length||!socket.connected)return;socket.emit('istat',ISQ.splice(0,10));}
+setInterval(istFlush,8000);
+{const ro=rollOne;rollOne=function(minR){const o=ro(minR);try{istat(o.dup?'dup':'gacha',o.c,o.k,o.r);}catch(e){}return o;};}
+{const ib=$('im-buy').onclick;$('im-buy').onclick=()=>{const m=IM&&{c:IM.c,k:IM.k,own:SV.inv[IM.c].includes(IM.k),p:priceOf(IM.c,IM.k)};ib();
+  if(m&&!m.own&&SV.inv[m.c].includes(m.k))istat('shop',m.c,m.k,0,m.p);};}
+{const bo=$('bm-ok').onclick;$('bm-ok').onclick=()=>{const o=BM&&Object.assign({},BM),had=o&&(o.kind==='p'?pOwned(o.t,o.k):SV.inv[o.c].includes(o.k)),pr=o&&o.kind==='p'?pPrice(o.t,o.k):0;bo();if(!o||had)return;
+  if(o.kind==='p'){if(pOwned(o.t,o.k))istat('prof',o.t,o.k,0,pr);}else if(SV.inv[o.c].includes(o.k))istat('ex',o.c,o.k,o.r,EXCH[o.r]);};}
+
+/* ----- 🛠 メンテナンスの予約（1時間前からロビーの上に表示・10分前と1分前にお知らせ） ----- */
+var MSCHED=null;const MS_WARN={};
+socket.on('maint',m=>{MSCHED=m&&!m.on&&m.sched&&m.sched.at>Date.now()?m.sched:null;msRibbon();if(page==='admin')amsState();});
+function msRibbon(){const r=$('ms-ribbon'),s=MSCHED,now=Date.now();
+  if(!s||now>=s.at||s.at-now>3600e3||MAINT.on){r.classList.add('hide');return;}
+  const left=s.at-now;r.textContent='🛠 '+fmtHM(s.at)+'からメンテナンス（あと'+leftTxt(left)+'）';r.classList.remove('hide');r.classList.toggle('low',!$('ev-ribbon').classList.contains('hide'));
+  for(const [k,ms] of [['10',600e3],['1',60e3]])if(left<=ms&&!MS_WARN[s.at+'-'+k]){MS_WARN[s.at+'-'+k]=1;toast('🛠 あと'+k+'分でメンテナンスが始まります'+(inGame?'（試合は途中で終わります）':''),5000);}}
+setInterval(msRibbon,15000);
+
+/* =====================================================================
+   🛠 管理者画面（v21）
+   ===================================================================== */
+document.querySelectorAll('#adm-tabs button').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.a;
+  if(a==='dist')admDist();if(a==='shopadm'){asState();agFill();}if(a==='rank')admRank();if(a==='audit')admAudit();if(a==='maint')amsState();if(a==='bal')anSub(AN_V);}));
+// 開いている間は1分ごとに更新（入力中はそのまま）
+setInterval(()=>{if(page!=='admin'||!IS_ADMIN||document.hidden)return;const f=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#pg-admin input,#pg-admin textarea,#pg-admin select');if(f)return;
+  if(ADM_TAB==='dist')admDist(true);if(ADM_TAB==='audit')admAudit();if(ADM_TAB==='bal'&&AN_V==='use')admUsage();if(ADM_TAB==='rank')admRank();},60000);
+// ダッシュボードにカードを足す
+{const ex=admExtra;admExtra=function(r){ex(r);const cb=$('adm-cards');if(!cb)return;
+  const add=(lb,v,cl,tab,cb2)=>{const c=document.createElement('button');c.className='acard'+(cl?' '+cl:'');const s=document.createElement('small');s.textContent=lb;const b=document.createElement('b');b.textContent=v;c.append(s,b);c.onclick=()=>{admTab(tab);if(cb2)cb2();};cb.appendChild(c);};
+  if(r.dau!=null)add('👥 今日遊んだ人（新しく'+(r.nu||0)+'人）',r.dau+'人','','bal',()=>anSub('use'));
+  if(r.sale){SALE=r.sale.on?r.sale:{on:false};saleUI();}
+  add('🏷 セール',saleLive()?SALE.pct+'%OFF中':SALE.on?'予定あり':'なし',saleLive()?'warn':'','shopadm',()=>{asState();agFill();});
+  add('🎁 配布中（全員向け）',(r.bgN||0)+'件','','dist',()=>admDist());
+  add('📅 メンテナンスの予約',MSCHED?fmtHM(MSCHED.at):'なし',MSCHED?'warn':'','maint',amsState);
+  tabBadge('at-dist',r.bgN||0);tabBadge('at-sale',saleLive()?1:0,'SALE');};}
+// 時刻の入力（datetime-local）
+const dtVal=id=>$(id).value?new Date($(id).value).getTime():0;
+function quickRange(fromId,untilId,h){const from=dtVal(fromId)||Date.now();let until;
+  if(h==='wk'){const d=new Date();d.setDate(d.getDate()+(7-d.getDay())%7);d.setHours(23,59,0,0);until=d.getTime();if(!$(fromId).value){const s=new Date(d);s.setDate(s.getDate()-1);s.setHours(0,0,0,0);if(s.getTime()>Date.now())$(fromId).value=toLocalInput(s.getTime());}}
+  else until=from+(+h)*3600e3;$(untilId).value=toLocalInput(until);}
+
+/* ----- 🎁 一斉配布 ----- */
+let AD_TO='all',AD_ITEMS=[];
+function adOpts(){miniChips($('ad-to'),[['all','👥 全員'],['recent','📅 最近遊びに来た人']],AD_TO,v=>{AD_TO=v;adOpts();adCount();});
+  $('ad-days-row').classList.toggle('hide',AD_TO!=='recent');$('ad-all-opts').classList.toggle('hide',AD_TO!=='all');$('ad-push-l').classList.toggle('hide',AD_TO!=='all');}
+function adCats(){const s=$('ad-icat');s.innerHTML='';const op=(v,t)=>{const o=document.createElement('option');o.value=v;o.textContent=t;s.appendChild(o);};
+  for(const c in CATN)op(c,CATN[c]);for(const t in PITEMS)op(t,'👤 '+PITEMS[t]);adKeys();}
+function adKeys(){const c=$('ad-icat').value,s=$('ad-ikey');s.innerHTML='';const D=CAT[c]||pdict(c);
+  Object.keys(D).sort((a,b)=>(D[b].r||0)-(D[a].r||0)).forEach(k=>{const it=D[k];if(CAT[c]&&(DEFAULT_INV[c]||[]).includes(k))return;
+    const o=document.createElement('option');o.value=k;o.textContent=(CAT[c]?'['+RN[it.r||1]+'] ':'')+it.n+(it.g?'（ガチャ限定）':it.so?'（ショップ限定）':'');s.appendChild(o);});}
+$('ad-icat').onchange=adKeys;
+$('ad-iadd').onclick=()=>{const c=$('ad-icat').value,k=$('ad-ikey').value;if(!k)return;if(AD_ITEMS.some(x=>x.c===c&&x.k===k)){toast('もう入っています');return;}
+  if(AD_ITEMS.length>=10){toast('アイテムは10個までです');return;}const D=CAT[c]||pdict(c);AD_ITEMS.push({c,k,n:D[k].n});adItems();adCount();};
+function adItems(){const b=$('ad-items');b.innerHTML='';AD_ITEMS.forEach((x,i)=>{const s=document.createElement('span');s.textContent='🎁 '+x.n+' ✕';s.title='タップで外す';s.onclick=()=>{AD_ITEMS.splice(i,1);adItems();adCount();};b.appendChild(s);});}
+const adNum=(id,max)=>Math.max(0,Math.min(max,Math.round(+$(id).value||0)));
+function adBody(){return {to:AD_TO,days:+$('ad-days').value,lvMin:adNum('ad-lv',99),regOnly:$('ad-reg').checked,oldOnly:$('ad-old').checked,valid:+$('ad-valid').value,
+  amount:adNum('ad-nc',100000),tk:adNum('ad-tk',100),shard:adNum('ad-sh',10000),items:AD_ITEMS.slice(),title:$('ad-title').value.trim(),text:$('ad-text').value.trim(),push:$('ad-push').checked};}
+function giftWhat(b){return [b.amount?b.amount.toLocaleString()+' NC':'',b.tk?'🎟 ガチャ券×'+b.tk:'',b.shard?'💎 かけら×'+b.shard:'',...(b.items||[]).map(x=>'🎁 '+(x.n||x.k))].filter(Boolean).join('　');}
+let adCT=0;
+function adCount(){clearTimeout(adCT);adCT=setTimeout(()=>{const b=adBody();socket.emit('adm_dist_count',b,r=>{if(!r||!r.ok)return;const e=$('ad-count');e.innerHTML='';
+  const t=document.createElement('div');t.innerHTML='<b>対象：</b>';t.appendChild(document.createTextNode(b.to==='all'?'いまわかっているプレイヤー '+r.n+'人 ＋ 受け取れる期間中に'+(b.oldOnly?'ログインした人（今いる人だけ）':'ログインした人（新しく始めた人も）'):r.n+'人（すぐに届きます）'));
+  const w=document.createElement('div');w.innerHTML='<b>中身：</b>';w.appendChild(document.createTextNode(giftWhat(b)||'（まだ選んでいません）'));e.append(t,w);});},250);}
+['ad-days','ad-lv','ad-reg','ad-old','ad-nc','ad-tk','ad-sh','ad-valid'].forEach(id=>{$(id).addEventListener('input',adCount);$(id).addEventListener('change',adCount);});
+$('ad-send').onclick=()=>{const b=adBody();if(!b.amount&&!b.tk&&!b.shard&&!b.items.length){toast('配るものを選んでください');return;}
+  if(!confirmTwice($('ad-send'),'本当に配る？'))return;
+  socket.emit('adm_dist',b,r=>{if(r&&r.ok){toast(b.to==='all'?'🎁 全員向けに配布しました（期間中にログインした人が受け取れます）':'🎁 '+r.n+'人に配布しました',3800);
+    ['ad-nc','ad-tk','ad-sh'].forEach(id=>$(id).value='0');$('ad-title').value='';$('ad-text').value='';AD_ITEMS=[];adItems();admDist();}
+    else toast((r&&r.err)||'配布できませんでした');});};
+$('ad-ref').onclick=()=>admDist();
+function admDist(quiet){if(!quiet){adOpts();if(!$('ad-icat').options.length)adCats();adCount();}
+  socket.emit('adm_dist_list',r=>{if(!r||!r.ok)return;const now=Date.now(),A=$('ad-active'),H=$('ad-hist');A.innerHTML='';H.innerHTML='';
+    const act=r.active.filter(g=>g.until>now);tabBadge('at-dist',act.length);
+    const hd=(t)=>{const b=document.createElement('b');b.textContent=t;return b;};
+    A.appendChild(hd('🎁 全員向けで受け取れるもの（'+act.length+'件）'));
+    if(!r.active.length)A.insertAdjacentHTML('beforeend','<div class="muted">ありません</div>');
+    r.active.slice().reverse().forEach(g=>{const on=g.until>now,d=document.createElement('div');d.className='ad-it'+(on?' on':'');
+      const b=document.createElement('b');b.textContent=g.title;const w=document.createElement('small');w.textContent=giftWhat(g);
+      const c=document.createElement('small');c.textContent=[g.lvMin>1?'Lv'+g.lvMin+'以上':'',g.regOnly?'名前登録済み':'',g.oldOnly?'今いる人だけ':''].filter(Boolean).join('・')||'条件なし';
+      const s=document.createElement('small');s.textContent='✅ '+g.got+'人が受け取り ・ '+(on?fmtD(g.until)+' まで':'終了しました');d.append(b,w,c,s);
+      if(on){const x=document.createElement('button');x.className='btn sm dark';x.textContent='配布を終了する';x.style.alignSelf='flex-start';x.onclick=()=>{if(!confirmTwice(x,'終了する？'))return;socket.emit('adm_dist_stop',{id:g.id},rr=>{if(rr&&rr.ok){toast('配布を終了しました');admDist(true);}});};d.appendChild(x);}
+      A.appendChild(d);});
+    H.appendChild(hd('📋 これまでの配布'));if(!r.hist.length)H.insertAdjacentHTML('beforeend','<div class="muted">まだありません</div>');
+    r.hist.forEach(x=>{const d=document.createElement('div');d.className='ad-it';const b=document.createElement('b');b.textContent=x.title;const w=document.createElement('small');w.textContent=x.what;
+      const s=document.createElement('small');s.textContent=fmtD(x.t)+' ・ '+x.by+' ・ '+x.cond+' ・ '+(x.all?'対象 '+x.n+'人＋これから':x.n+'人に配布');d.append(b,w,s);H.appendChild(d);});});}
+
+/* ----- 🏷 セール（管理者） ----- */
+let AS_PCT=30,AS_CATS=[];
+const AS_ALL=[...Object.keys(CATN),'prof'];
+function asState(){const s=SALE,e=$('as-state'),live=saleLive();
+  e.innerHTML=s.on?(live?'<b style="color:#ffd23f">● セール中：</b>':'<b style="color:#8fd0ff">● 予定：</b>')+'<span></span>':'<b style="color:#8cf08c">● いまはセールなし</b>';
+  if(s.on)e.querySelector('span').textContent=saleWhat(s)+' '+s.pct+'%OFF（'+(s.from?fmtD(s.from)+' 〜 ':'')+fmtD(s.until)+' まで）'+(s.title?'「'+s.title+'」':'');
+  $('as-stop').disabled=!s.on;$('as-start').textContent=s.on?'🏷 内容を変えて始めなおす':'🏷 セールを始める';tabBadge('at-sale',live?1:0,'SALE');
+  miniChips($('as-pct'),[10,20,30,40,50].map(v=>[v,v+'%OFF']),AS_PCT,v=>{AS_PCT=v;asState();});
+  const cb=$('as-cats');cb.innerHTML='';const chip=(lb,on,fn)=>{const b=document.createElement('button');b.className='chip'+(on?' on':'');b.textContent=lb;b.onclick=()=>{if(AU.ctx)SFX.click();fn();asState();};cb.appendChild(b);};
+  chip('すべて',!AS_CATS.length,()=>{AS_CATS=[];});
+  AS_ALL.forEach(c=>chip(c==='prof'?'👤 プロフィール':CATN[c],AS_CATS.includes(c),()=>{AS_CATS=AS_CATS.includes(c)?AS_CATS.filter(x=>x!==c):[...AS_CATS,c];if(AS_CATS.length===AS_ALL.length)AS_CATS=[];}));}
+document.querySelectorAll('.as-quick button').forEach(b=>b.onclick=()=>quickRange('as-from','as-until',b.dataset.h));
+$('as-start').onclick=()=>{const until=dtVal('as-until'),from=dtVal('as-from');if(!until){toast('終わりの時刻を選んでください');return;}
+  if(!confirmTwice($('as-start'),(AS_CATS.length?'選んだもの':'全品')+AS_PCT+'%OFFで始める？'))return;
+  socket.emit('adm_sale',{on:true,pct:AS_PCT,cats:AS_CATS,from,until,title:$('as-title').value.trim(),notice:$('as-notice').checked},r=>{
+    if(r&&r.ok){SALE=r.sale.on?r.sale:{on:false};saleUI();asState();toast('🏷 セールを設定しました'+($('as-notice').checked?'（お知らせも送ります）':''));$('as-title').value='';}else toast((r&&r.err)||'設定できませんでした');});};
+$('as-stop').onclick=()=>{if(!confirmTwice($('as-stop'),'本当に終了する？'))return;socket.emit('adm_sale',{on:false},r=>{if(r&&r.ok){SALE={on:false};saleUI();asState();toast('セールを終了しました');}});};
+
+/* ----- 🎰 ガチャの設定（管理者） ----- */
+const AG_R=['C','R','EPIC','LEGEND'],AG_F=[['rates','出る確率(%)'],['refund','ダブりのNC'],['shard','ダブりの💎'],['exchange','交換に必要な💎']];
+function agFill(){const C=GACHA_CONFIG,t=$('ag-t');t.innerHTML='';const hr=document.createElement('tr');hr.innerHTML='<th>レア度</th>'+AG_F.map(f=>'<th>'+f[1]+'</th>').join('');t.appendChild(hr);
+  AG_R.forEach((r,i)=>{const tr=document.createElement('tr');tr.innerHTML='<td><span class="rar'+(i+1)+'">'+r+'</span></td>';
+    AG_F.forEach(([f])=>{const td=document.createElement('td'),inp=document.createElement('input');inp.type='number';inp.className='tx';inp.id='ag-'+f+'-'+r;inp.min=f==='exchange'?1:0;inp.step=f==='rates'?'0.1':'1';inp.value=C[f][r];inp.oninput=agSum;td.appendChild(inp);tr.appendChild(td);});t.appendChild(tr);});
+  $('ag-c1').value=C.cost1;$('ag-c10').value=C.cost10;$('ag-g').value=String(C.guarantee10|0);$('ag-st').textContent=GC_ON?'変更中':'最初の設定';$('ag-st').className='tagb '+(GC_ON?'tagw':'tagd');agSum();}
+function agRead(){const c={cost1:+$('ag-c1').value,cost10:+$('ag-c10').value,guarantee10:+$('ag-g').value};AG_F.forEach(([f])=>{c[f]={};AG_R.forEach(r=>{c[f][r]=+$('ag-'+f+'-'+r).value||0;});});return c;}
+['ag-c1','ag-c10','ag-g'].forEach(id=>$(id).addEventListener('input',()=>agSum()));
+function agSum(){const c=agRead(),tot=AG_R.reduce((a,r)=>a+c.rates[r],0)||1,box=$('ag-sum');
+  const pc=r=>c.rates[r]*100/tot,per=c.cost10/10,minc=Math.min(c.cost1,per);
+  const L=['<b>実際の確率：</b>'+AG_R.map(r=>r+' '+fmtP(pc(r))).join('・')+'（合計 '+Math.round(tot*100)/100+' を100%として計算）',
+    '<b>LEGENDが出るまで：</b>平均 約'+(pc('LEGEND')>0?Math.round(100/pc('LEGEND')):'—')+'回（約'+(pc('LEGEND')>0?Math.round(100/pc('LEGEND')*minc).toLocaleString():'—')+' NC）',
+    '<b>10連：</b>'+c.cost10+' NC（1回あたり '+Math.round(per*10)/10+' NC'+(c.cost1*10>c.cost10?'・'+Math.round((c.cost1*10-c.cost10)/c.cost1*10)/10+'回分おトク':'')+'）'];
+  const back=AG_R.reduce((a,r)=>a+pc(r)/100*c.refund[r],0);L.push('<b>全部持っている人がまわしたとき：</b>1回あたり平均 約'+Math.round(back*10)/10+' NC が戻ります');
+  if(back>=minc)L.push('<b style="color:#ff8a80">⚠ 戻るNCの平均が1回の値段（'+Math.round(minc*10)/10+' NC）以上です。まわすほどNCが増えてしまいます</b>');
+  if(c.cost10>c.cost1*10)L.push('<b style="color:#ffb300">⚠ 10連が1回×10より高くなっています</b>');
+  box.innerHTML=L.join('<br>');}
+$('ag-save').onclick=()=>{const c=agRead();if(!(AG_R.reduce((a,r)=>a+c.rates[r],0)>0)){toast('確率の合計が0です');return;}if(!confirmTwice($('ag-save'),'全員に反映する？'))return;
+  socket.emit('adm_gcfg',{cfg:c},r=>{if(r&&r.ok){toast('🎰 ガチャの設定を保存しました（全員に反映）');}else toast((r&&r.err)||'保存できませんでした');});};
+$('ag-reset').onclick=()=>{if(!confirmTwice($('ag-reset'),'最初の設定に戻す？'))return;socket.emit('adm_gcfg',{reset:1},r=>{if(r&&r.ok)toast('🎰 最初の設定に戻しました');});};
+
+/* ----- 🏆 ランキングの管理 ----- */
+let AR_B='run',AR_D=null;
+function admRank(){socket.emit('adm_rank_list',r=>{if(!r||!r.ok)return;AR_D=r;renderRank();});}
+function renderRank(){miniChips($('ar-board'),[['run','🏃 エンドレス（'+((AR_D&&AR_D.run.length)||0)+'）'],['rp','🏆 チャリランク（'+((AR_D&&AR_D.rp.length)||0)+'）']],AR_B,v=>{AR_B=v;renderRank();});
+  const L=(AR_D&&AR_D[AR_B])||[],box=$('ar-list'),st=box.scrollTop;box.innerHTML='';const rs=AR_D&&AR_D.reset&&AR_D.reset[AR_B];
+  $('ar-note').textContent='おかしな記録は 🗑 で1件ずつ消せます。消した記録は、その人の端末に残っている控えからも元に戻りません（新しく出した記録はまた載ります）。'+(rs?'　最後のリセット：'+fmtD(rs):'');
+  if(!L.length){box.innerHTML='<div class="adm-note">記録はありません</div>';return;}
+  L.forEach(e=>{const d=document.createElement('div');d.className='ar-row';const rk=document.createElement('span');rk.className='rk';rk.textContent=e.i<=3?['🥇','🥈','🥉'][e.i-1]:e.i;
+    const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent='Lv'+e.lv+'　'+e.name;b.className='pf-link';b.title='ユーザー一覧で探す';
+    b.onclick=()=>{admTab('users');$('au-q').value=e.name;admUsers();};
+    const sm=document.createElement('small');sm.textContent=(AR_B==='run'?(e.c!=null&&COURSES[e.c]?COURSES[e.c].n:'コース不明'):(TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':''))+'　'+(e.ts?fmtD(e.ts):'');g.append(b,sm);
+    const sc=document.createElement('span');sc.className='sc';sc.textContent=AR_B==='run'?Number(e.score).toLocaleString():rankInfo(e.rp).name+' '+e.rp+' RP';
+    const x=document.createElement('button');x.className='btn sm dark';x.textContent='🗑';x.title='この記録を消す';
+    x.onclick=()=>{if(!confirmTwice(x,'消す？'))return;socket.emit('adm_rank_del',{board:AR_B,h:e.h},r=>{if(r&&r.ok){toast('🗑 '+e.name+' の記録を消しました');admRank();}else toast((r&&r.err)||'消せませんでした');});};
+    d.append(rk,g,sc,x);box.appendChild(d);});box.scrollTop=st;}
+$('ar-ref').onclick=admRank;
+$('ar-reset').onclick=()=>{const nm=AR_B==='run'?'エンドレス':'チャリランク';if(!confirmTwice($('ar-reset'),nm+'を全部消す？'))return;
+  socket.emit('adm_rank_reset',{board:AR_B},r=>{if(r&&r.ok){toast('🏆 '+nm+'のランキングをリセットしました');admRank();}});};
+
+/* ----- 📈 分析（利用状況・人気のアイテム・バランス） ----- */
+let AN_V='use';
+function anSub(v){AN_V=v;miniChips($('an-sub'),[['use','👥 利用状況'],['items','🎁 人気のアイテム'],['bal','⚖ バランス']],v,anSub);
+  document.querySelectorAll('#pg-admin .an-v').forEach(p=>p.classList.toggle('hide',p.dataset.v!==v));tipHide();
+  if(v==='use')admUsage();if(v==='items')admItems();if(v==='bal')admBal();}
+$('an-ref').onclick=()=>anSub(AN_V);
+// グラフ（SVG）：1つのグラフに1つの色。棒・点にさわると数字が出る
+const SVGNS='http://www.w3.org/2000/svg',AN_C='#4a94f0';
+function svgEl(t,a){const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+function niceMax(v){if(!(v>0))return 1;const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;}
+function tipShow(e,html){const t=$('an-tip');t.innerHTML=html;t.classList.remove('hide');const w=t.offsetWidth,h=t.offsetHeight;
+  t.style.left=Math.max(6,Math.min(innerWidth-w-6,e.clientX-w/2))+'px';t.style.top=(e.clientY-h-14<6?e.clientY+18:e.clientY-h-14)+'px';}
+function tipHide(){const t=$('an-tip');if(t)t.classList.add('hide');}
+document.addEventListener('scroll',tipHide,true);
+function chartBox(title,sub){const d=document.createElement('div');d.className='an-chart';const b=document.createElement('b');b.textContent=title;const s=document.createElement('small');s.textContent=sub||'';d.append(b,s);return d;}
+// o: {values, labels, tips, every, fmt, max, line, partial(i)}
+function drawChart(box,o){
+  const W=320,H=132,L=32,R=6,T=8,B=18,pw=W-L-R,ph=H-T-B,n=o.values.length,vals=o.values.filter(v=>v!=null),mx=o.max||niceMax(Math.max(0,...vals));
+  const svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,role:'img'}),fmt=o.fmt||(v=>String(Math.round(v*10)/10));
+  for(const f of [0,.5,1]){const y=T+ph*(1-f);svg.appendChild(svgEl('line',{x1:L,x2:W-R,y1:y,y2:y,stroke:f?'rgba(255,255,255,.08)':'rgba(255,255,255,.28)','stroke-width':1}));
+    const t=svgEl('text',{x:L-5,y:y+3.5,'text-anchor':'end'});t.textContent=fmt(mx*f);svg.appendChild(t);}
+  const cw=pw/n,X=i=>L+cw*i+cw/2,Y=v=>T+ph*(1-Math.min(1,v/mx));
+  const guide=svgEl('line',{y1:T,y2:T+ph,stroke:'rgba(255,255,255,.35)','stroke-width':1,'stroke-dasharray':'3 3',visibility:'hidden'});
+  if(o.line){let d='',pen=false;o.values.forEach((v,i)=>{if(v==null){pen=false;return;}d+=(pen?'L':'M')+X(i).toFixed(1)+','+Y(v).toFixed(1);pen=true;});
+    svg.appendChild(guide);svg.appendChild(svgEl('path',{d,fill:'none',stroke:AN_C,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'}));
+    o.values.forEach((v,i)=>{if(v!=null)svg.appendChild(svgEl('circle',{cx:X(i),cy:Y(v),r:4,fill:AN_C,stroke:'#18204d','stroke-width':2,opacity:o.partial&&o.partial(i)?.5:1}));});}
+  else{const bw=Math.max(2,Math.min(16,cw-3));o.values.forEach((v,i)=>{if(!(v>0))return;const x=X(i)-bw/2,h=Math.max(1.5,ph*Math.min(1,v/mx)),y=T+ph-h,r=Math.min(4,bw/2,h);
+    svg.appendChild(svgEl('path',{d:'M'+x+','+(T+ph)+'V'+(y+r)+'Q'+x+','+y+' '+(x+r)+','+y+'H'+(x+bw-r)+'Q'+(x+bw)+','+y+' '+(x+bw)+','+(y+r)+'V'+(T+ph)+'Z',fill:AN_C,opacity:o.partial&&o.partial(i)?.5:1}));});svg.appendChild(guide);}
+  const ev=o.every||1;o.values.forEach((v,i)=>{if(o.lab?o.lab(i):(n-1-i)%ev===0){const t=svgEl('text',{x:X(i),y:H-5,'text-anchor':'middle'});t.textContent=o.labels[i];svg.appendChild(t);}
+    const hit=svgEl('rect',{x:L+cw*i,y:T,width:cw,height:ph,fill:'transparent'});hit.style.cursor='pointer';
+    const on=e=>{tipShow(e,o.tips[i]);guide.setAttribute('x1',X(i));guide.setAttribute('x2',X(i));guide.setAttribute('visibility','visible');};
+    hit.addEventListener('pointermove',on);hit.addEventListener('pointerdown',on);hit.addEventListener('pointerleave',()=>{tipHide();guide.setAttribute('visibility','hidden');});svg.appendChild(hit);});
+  box.appendChild(svg);return svg;}
+const dLabel=d=>(+d.slice(5,7))+'/'+(+d.slice(8,10));
+function admUsage(){socket.emit('adm_usage',r=>{if(r&&r.ok)renderUsage(r);});}
+function renderUsage(r){
+  const T=r.today,end=Date.parse(T.d+'T00:00:00+09:00'),days=[];
+  for(let i=29;i>=0;i--){const d=new Date(end-i*864e5+9*3600e3).toISOString().slice(0,10);days.push(i===0?Object.assign({},T,{d,today:1}):Object.assign({d,dau:0,nu:0,nret:0,ynu:0,m:0,e:0,peak:0,none:!r.days[d]},r.days[d]||{}));}
+  const kp=$('au-kpi');kp.innerHTML='';const past=days.slice(-8,-1).filter(x=>!x.none),avg=past.length?Math.round(past.reduce((a,x)=>a+x.dau,0)/past.length):0;
+  card(kp,'🟢 いまオンライン',r.online+'人','ok');card(kp,'👥 今日遊んだ人',T.dau+'人');card(kp,'🌱 今日はじめた人',T.nu+'人');
+  card(kp,'🔁 次の日も来た割合',T.ynu?Math.round(T.nret/T.ynu*100)+'%':'—','',null);card(kp,'📊 1日の平均（7日）',past.length?avg+'人':'—');
+  card(kp,'⏫ 今日の最大同時',T.peak+'人');card(kp,'⚔ 今日の試合',(T.m+(T.e||0))+'回');
+  const box=$('au-charts');box.innerHTML='';tipHide();
+  if(days.every(x=>x.none&&!x.today)&&!T.dau){box.innerHTML='<div class="adm-note">まだデータがありません。v21から記録を始めたので、明日からグラフになります。</div>';return;}
+  const L=days.map(x=>x.today?'今日':dLabel(x.d)),tl=x=>(x.today?'今日（集計中）':dLabel(x.d)),ptl=i=>!!days[i].today;
+  let c=chartBox('👥 毎日遊んだ人','その日にログインした人の数（30日）');box.appendChild(c);
+  drawChart(c,{values:days.map(x=>x.dau),labels:L,every:7,partial:ptl,fmt:v=>Math.round(v),tips:days.map(x=>'<b>'+x.dau+'人</b><small>'+tl(x)+(x.none&&!x.today?'・記録なし':'')+'</small>')});
+  c=chartBox('🌱 新しく始めた人','その日にはじめて遊んだ人の数');box.appendChild(c);
+  drawChart(c,{values:days.map(x=>x.nu),labels:L,every:7,partial:ptl,fmt:v=>Math.round(v),tips:days.map(x=>'<b>'+x.nu+'人</b><small>'+tl(x)+'</small>')});
+  c=chartBox('🔁 次の日も来た人の割合','前の日に始めた人のうち、次の日も遊びに来た人');box.appendChild(c);
+  drawChart(c,{line:1,max:100,values:days.map(x=>x.ynu?x.nret/x.ynu*100:null),labels:L,every:7,partial:ptl,fmt:v=>Math.round(v)+'%',
+    tips:days.map((x,i)=>x.ynu?'<b>'+Math.round(x.nret/x.ynu*100)+'%</b>（'+x.nret+'/'+x.ynu+'人）<small>'+(i?dLabel(days[i-1].d):'前の日')+'に始めた人が '+tl(x)+' にも'+'</small>':'<b>—</b><small>'+tl(x)+'：前の日に始めた人がいません</small>')});
+  const hd=days.slice(-15,-1).filter(x=>Array.isArray(x.h)),hv=Array.from({length:24},(_,h)=>hd.length?hd.reduce((a,x)=>a+(x.h[h]||0),0)/hd.length:(T.h?T.h[h]||0:0)),hm=Array.from({length:24},(_,h)=>Math.max(0,...hd.map(x=>x.h[h]||0),T.h?T.h[h]||0:0));
+  c=chartBox('⏰ 混む時間帯',hd.length?'1時間ごとの同時接続の平均（直近'+hd.length+'日）':'今日の1時間ごとの最大同時接続（明日から平均になります）');box.appendChild(c);
+  drawChart(c,{values:hv,labels:hv.map((_,h)=>h+'時'),lab:h=>h%3===0,tips:hv.map((v,h)=>'<b>'+h+'時台：平均 '+Math.round(v*10)/10+'人</b><small>いちばん多かった日 '+hm[h]+'人</small>')});
+  c=chartBox('⚔ 試合の数','対戦とエンドレスの合計（毎日）');box.appendChild(c);
+  drawChart(c,{values:days.map(x=>x.m+(x.e||0)),labels:L,every:7,partial:ptl,fmt:v=>Math.round(v),tips:days.map(x=>'<b>'+(x.m+(x.e||0))+'回</b><small>'+tl(x)+'・対戦 '+x.m+' ／ エンドレス '+(x.e||0)+'</small>')});
+}
+// 人気のアイテム
+let AI_S='gacha',AI_D=null;
+const AIS=[['gacha','🎰 ガチャで出た'],['dup','🔁 ガチャでダブった'],['shop','🛒 ショップで買われた'],['ex','💎 交換所'],['prof','👤 プロフィール']];
+function admItems(){socket.emit('adm_items',r=>{if(r&&r.ok){AI_D=r.st;renderItems();}});}
+function itemNm(key){const i=key.indexOf(':'),c=key.slice(0,i),k=key.slice(i+1),it=CAT[c]&&CAT[c][k];if(it)return {n:it.n,r:it.r||1,cat:CATN[c]};const d=PITEMS[c]&&pdict(c)[k];return {n:d?d.n:k,r:0,cat:PITEMS[c]||c};}
+function renderItems(){miniChips($('ai-src'),AIS,AI_S,v=>{AI_S=v;renderItems();});const S=AI_D;if(!S)return;
+  const M=S[AI_S]||{},L=Object.entries(M).sort((a,b)=>b[1]-a[1]),tot=L.reduce((a,b)=>a+b[1],0),nc=S.nc||{};
+  let h='記録の開始：'+fmtD(S.since)+'　・ 合計 <b>'+tot.toLocaleString()+'</b> 回（'+L.length+'種類）';
+  if(AI_S==='shop'||AI_S==='prof')h+='　・ 使われたNC <b>'+(nc[AI_S]||0).toLocaleString()+'</b>';
+  if(AI_S==='ex')h+='　・ 使われたかけら <b>💎'+(nc.ex||0).toLocaleString()+'</b>';
+  if((AI_S==='gacha'||AI_S==='dup')&&S.rar){const rt=S.rar.reduce((a,b)=>a+b,0);if(rt)h+='<br><b>実際に出たレア度：</b>'+[1,2,3,4].map(r=>RN[r]+' '+fmtP(S.rar[r]*100/rt)+'<span class="muted">（設定 '+fmtP(RW[r])+'）</span>').join(' ・ ')+'　<span class="muted">ガチャ '+rt.toLocaleString()+'回分</span>';}
+  $('ai-sum').innerHTML=h;const box=$('ai-list');box.innerHTML='';
+  if(!L.length){box.innerHTML='<div class="adm-note">まだ記録がありません（プレイヤーがアイテムを手に入れるたびに増えます）</div>';return;}
+  const mx=L[0][1];L.slice(0,40).forEach(([k,v],i)=>{const it=itemNm(k),d=document.createElement('div');d.className='ai-row';
+    d.innerHTML='<span class="r">'+(i+1)+'</span><span class="n"></span><span class="bar"><i style="width:'+Math.max(1,v/mx*100)+'%"></i></span><span class="v">'+v.toLocaleString()+'</span>';
+    const n=d.querySelector('.n');n.textContent=(it.r?'['+RN[it.r]+'] ':'')+it.n;n.title=it.cat+'・'+it.n;
+    d.onpointermove=e=>tipShow(e,'<b>'+esc(it.n)+'</b>　'+v.toLocaleString()+'回（'+fmtP(v*100/tot)+'）<small>'+esc(it.cat)+'</small>');d.onpointerleave=tipHide;box.appendChild(d);});}
+$('ai-reset').onclick=()=>{if(!confirmTwice($('ai-reset'),'リセットする？'))return;socket.emit('adm_items_reset',r=>{if(r&&r.ok){AI_D=r.st;renderItems();toast('記録をリセットしました');}});};
+
+/* ----- 📜 操作の記録 ----- */
+const AUDN={u_ban:'⛔ 利用停止',u_unban:'✅ 停止を解除',u_warn:'⚠️ 警告',u_msg:'✉️ 個別メッセージ',u_clearrep:'🧹 通報を消去',u_ncfix:'💰 NCを修正',u_ncok:'💰 NCは問題なしにした',u_gift:'🎁 個別にプレゼント',
+  notice:'📢 お知らせを送信',notice_sched:'📅 お知らせを予約',notice_del:'🗑 お知らせを削除',sched_del:'🗑 予約したお知らせを取り消し',dist:'🎁 一斉配布',dist_stop:'⏹ 配布を終了',
+  maint_start:'🛠 メンテナンス開始',maint_edit:'🛠 メンテナンスの内容を変更',maint_end:'🛠 メンテナンス終了',maint_auto_start:'🛠 予約したメンテナンスが開始',msched:'📅 メンテナンスを予約',msched_cancel:'📅 メンテナンスの予約を取り消し',
+  event:'🎉 イベントを設定',event_end:'🎉 イベントを終了',sale:'🏷 セールを設定',sale_end:'🏷 セールを終了',gcfg:'🎰 ガチャの設定を変更',rank_del:'🏆 ランキングの記録を削除',rank_reset:'🏆 ランキングをリセット',
+  fb_adopt:'💡 フィードバックを採用',fb_del:'💡 フィードバックを削除',ng_add:'🚫 NGワードを追加',ng_del:'🚫 NGワードを削除',err_clear:'🐞 エラーを全部消去',stats_reset:'📈 バランスの記録をリセット',items_reset:'📈 人気アイテムの記録をリセット',
+  backup:'💾 バックアップを保存',restore:'💾 バックアップから復元'};
+const audG=a=>/^(u_|fb_)/.test(a)?'u':/^dist/.test(a)?'dist':/^notice|^sched_del/.test(a)?'notice':/^(maint|msched)/.test(a)?'maint':/^rank/.test(a)?'rank':/^(backup|restore)$/.test(a)?'data':'set';
+let AA_L=[];
+function admAudit(){socket.emit('adm_audit',r=>{if(r&&r.ok){AA_L=r.list;renderAudit();}});}
+function renderAudit(){const q=$('aa-q').value.trim().toLowerCase(),f=$('aa-f').value,box=$('aa-list');box.innerHTML='';
+  const L=AA_L.filter(x=>(!f||audG(x.act)===f)&&(!q||[x.by,x.tg,x.d,AUDN[x.act]].some(s=>s&&String(s).toLowerCase().includes(q))));
+  if(!L.length){box.innerHTML='<div class="adm-note">'+(AA_L.length?'見つかりません':'まだ記録がありません（v21から記録しています）')+'</div>';return;}
+  const fr=document.createDocumentFragment();L.slice(0,300).forEach(x=>{const d=document.createElement('div');d.className='aa-row';const t=document.createElement('span');t.className='t';t.textContent=fmtD(x.t);
+    const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent=(AUDN[x.act]||x.act);const by=document.createElement('small');by.className='muted';by.textContent='　by '+x.by;g.append(b,by);
+    if(x.tg){const tg=document.createElement('div');tg.className='d';tg.append('→ ');const a=document.createElement('span');a.className='tg';a.textContent=x.tg;a.onclick=()=>{if(x.tpk)openAdmUser(x.tpk);};tg.appendChild(a);g.appendChild(tg);}
+    if(x.d){const dd=document.createElement('div');dd.className='d';dd.textContent=x.d;g.appendChild(dd);}d.append(t,g);fr.appendChild(d);});box.appendChild(fr);}
+$('aa-ref').onclick=admAudit;$('aa-q').addEventListener('input',renderAudit);$('aa-f').onchange=renderAudit;
+
+/* ----- 📅 メンテナンスの予約（管理者） ----- */
+function amsState(){const s=MSCHED,e=$('ams-state');
+  e.innerHTML=s?'<b style="color:#8fd0ff">● 予約あり：</b><span></span>':'<span class="muted">予約はありません</span>';
+  if(s)e.querySelector('span').textContent=fmtD(s.at)+' から'+(s.until?' '+fmtD(s.until)+' まで':'（終わりは未定）');
+  $('ams-cancel').disabled=!s;$('ams-set').textContent=s?'📅 予約を変更する':'📅 予約する';}
+const nextAt=h=>{const d=new Date();d.setHours(h,0,0,0);if(d.getTime()<Date.now()+60e3)d.setDate(d.getDate()+1);return d.getTime();};
+document.querySelectorAll('.ams-quick button').forEach(b=>{if(b.dataset.q==='t2')b.textContent='次の2:00';if(b.dataset.q==='t5')b.textContent='次の5:00';
+  b.onclick=()=>{const q=b.dataset.q;let t;if(q==='t2')t=nextAt(2);else if(q==='t5')t=nextAt(5);else{t=Date.now()+(+q)*60e3;t=Math.ceil(t/300e3)*300e3;}
+    $('ams-at').value=toLocalInput(t);if(!$('ams-until').value||dtVal('ams-until')<=t)$('ams-until').value=toLocalInput(t+3600e3);};});
+document.querySelectorAll('.ams-len').forEach(b=>b.onclick=()=>{const at=dtVal('ams-at');if(!at){toast('先に始まりの時刻を選んでください');return;}$('ams-until').value=toLocalInput(at+(+b.dataset.len)*60e3);});
+$('ams-set').onclick=()=>{const at=dtVal('ams-at'),until=dtVal('ams-until');if(!at){toast('始まりの時刻を選んでください');return;}
+  if(at<Date.now()+60e3){toast('始まりは1分以上先にしてください');return;}if(until&&until<=at){toast('終わりは始まりより後にしてください');return;}
+  if(!confirmTwice($('ams-set'),fmtHM(at)+'からで予約する？'))return;
+  socket.emit('adm_msched',{at,until,auto:$('ams-auto').checked,msg:$('ams-msg').value,notice:$('ams-notice').checked},r=>{
+    if(r&&r.ok){MSCHED=r.maint&&r.maint.sched;amsState();msRibbon();toast('📅 メンテナンスを予約しました'+($('ams-notice').checked?'（お知らせも送りました）':''));}else toast((r&&r.err)||'予約できませんでした');});};
+$('ams-cancel').onclick=()=>{if(!confirmTwice($('ams-cancel'),'取り消す？'))return;socket.emit('adm_msched',{cancel:1},r=>{if(r&&r.ok){MSCHED=null;amsState();msRibbon();toast('予約を取り消しました');}});};
+// バックアップから戻せる項目
+AD_PARTS.usage='利用状況のグラフ';AD_PARTS.items='人気アイテムの記録';
 </script>
 </body>
 </html>
