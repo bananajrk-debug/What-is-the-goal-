@@ -52,6 +52,7 @@ input.tx:focus,textarea.tx:focus{border-color:var(--b2)}
 #logo{font-weight:900;font-size:.98em;line-height:1;white-space:nowrap;color:#ffe56b;text-shadow:0 2px 0 var(--ln),2px 0 0 var(--ln),-2px 0 0 var(--ln),0 -2px 0 var(--ln);transform:rotate(-3deg);padding:0 .2em}
 #tabs{display:flex;gap:.3em;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding:.15em 0 .25em}
 #tabs::-webkit-scrollbar{display:none}
+#tabs{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.6em),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.6em),transparent);padding-right:1.2em}
 .tab{position:relative;flex:0 0 auto;border:3px solid var(--ln);border-radius:10px;background:#29347a;color:#d3daff;padding:.3em .65em;font-size:.88em;font-weight:900;cursor:pointer;box-shadow:0 3px 0 var(--ln)}
 .tab.on{background:linear-gradient(180deg,var(--y1),var(--y2));color:#2b1d00}
 .tab .dot{position:absolute;top:-6px;right:-6px;min-width:1.3em;height:1.3em;border-radius:999px;background:#ff3b30;color:#fff;font-size:.7em;display:grid;place-items:center;border:2px solid var(--ln)}
@@ -95,7 +96,7 @@ main{position:relative;flex:1;min-height:0}
 .rar1{color:#c9cfdf}.rar2{color:#6fc0ff}.rar3{color:#e19bff}.rar4{color:#ffd23f}
 .card.r2{background:linear-gradient(180deg,#2d6fc0,#1a2f63)}.card.r3{background:linear-gradient(180deg,#7a36c2,#2b1a5e)}.card.r4{background:linear-gradient(180deg,#d39b12,#5a3b06)}
 .scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:.1em .1em .4em}
-#pg-shop,#pg-rank,#pg-course,#pg-friends,#pg-quest{flex-direction:column}
+#pg-shop,#pg-rank,#pg-course,#pg-friends,#pg-quest{flex-direction:column}#pg-quest.on,#pg-shop.on{overflow:hidden}
 .shop-head{display:flex;align-items:center;gap:.6em;flex-wrap:wrap}
 .shop-head b{font-size:1.1em}
 #shop-feat,#shop-so{display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5em,1fr));gap:.65em}
@@ -180,7 +181,8 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 /* 設定メニュー */
 #side-menu{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:flex;justify-content:flex-end;font-size:clamp(12px,1.2vw + .9vh,16px)}
 #side-menu .sm-in{width:min(26em,92vw);height:100%;overflow:auto;background:#141b45;border-left:3px solid var(--ln);padding:calc(.7em + var(--st)) calc(.8em + var(--sr)) calc(.8em + var(--sb)) .8em;display:flex;flex-direction:column;gap:.7em;touch-action:pan-y}
-.sm-h{display:flex;justify-content:space-between;align-items:center;font-size:1.15em}
+.sm-h{display:flex;justify-content:space-between;align-items:center;font-size:1.15em;position:sticky;top:calc(-.7em - var(--st));z-index:3;background:#141b45;margin:calc(-.7em - var(--st)) -.2em 0;padding:calc(.7em + var(--st)) .2em .4em}
+#side-menu .sm-in{overscroll-behavior:contain}
 .sm-sec{background:rgba(0,0,0,.25);border:3px solid var(--ln);border-radius:14px;padding:.6em;display:flex;flex-direction:column;gap:.45em}
 .sm-sec label{display:flex;align-items:center;gap:.6em}
 .sm-sec input[type=range]{flex:1;accent-color:#ffd23f}
@@ -306,7 +308,33 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .nk.update{background:#1e88e5}.nk.maint{background:#ef6c00}.nk.info{background:#43a047}.nk.event{background:#d81b60}.nk.important{background:#c62828}.nk.personal{background:#8e24aa}.nk.warn{background:#ff9800}
 .adm-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:.6em}@media (max-width:760px){.adm-grid{grid-template-columns:1fr}}
 .adm-grid .panel{display:flex;flex-direction:column;gap:.4em}
-#pg-admin.on,#pg-news.on{display:block}#pg-admin>*{margin-bottom:.6em}.adm-grid>*,.adm-acts>div{min-width:0}.adm-grid .row,.adm-acts .row{flex-wrap:wrap}#au-q{min-width:8em}#adm-alerts:empty{display:none}
+.adm-grid>*,.adm-acts>div{min-width:0}.adm-grid .row,.adm-acts .row{flex-wrap:wrap}#au-q{min-width:8em}
+/* ===== 管理者画面（v17：タブ切り替え。スクロールするのは中身の部分だけ） ===== */
+#pg-admin.on{display:flex;flex-direction:column;overflow:hidden;gap:.5em}
+.adm-tabs{display:flex;gap:.3em;overflow-x:auto;scrollbar-width:none;flex:none;padding:.1em 0 .3em}.adm-tabs::-webkit-scrollbar{display:none}
+.adm-tabs button{flex:none;position:relative;border:3px solid var(--ln);border-radius:12px;background:#3a2a6e;color:#e6dcff;font-weight:900;font-size:.85em;padding:.35em .7em;cursor:pointer;box-shadow:0 3px 0 var(--ln);font-family:inherit}
+.adm-tabs button.on{background:linear-gradient(180deg,#c58bff,#8a2be2);color:#fff}
+.adm-tabs i{font-style:normal;margin-left:.35em;background:#ff3b30;color:#fff;border-radius:99px;padding:0 .45em;font-size:.85em}
+.adm-body{flex:1;min-height:0;position:relative}
+.ap{display:none;position:absolute;inset:0;flex-direction:column;gap:.45em}.ap.on{display:flex}
+.ap-head{display:flex;align-items:center;gap:.5em;flex-wrap:wrap;flex:none}
+.ap-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:flex;flex-direction:column;gap:.4em;padding:.1em .15em .6em}
+.ap2.on{flex-direction:row;gap:.7em}.ap-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:.4em;background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.08);border-radius:14px;padding:.5em}
+@media (max-width:700px){.ap2.on{flex-direction:column}}
+.ap-form textarea{min-height:5em;resize:vertical}
+.adm-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5em,1fr));gap:.5em}
+.acard{border:3px solid var(--ln);border-radius:14px;background:linear-gradient(180deg,#2a3577,#1a2156);padding:.5em .7em;display:flex;flex-direction:column;gap:.1em;cursor:pointer;box-shadow:0 3px 0 var(--ln);text-align:left;color:#fff;font-family:inherit}
+.acard small{opacity:.8;font-weight:800}.acard b{font-size:1.6em;line-height:1.15}.acard.warn{background:linear-gradient(180deg,#8a3a00,#5a2400)}.acard.bad{background:linear-gradient(180deg,#8e1b2c,#5c0f1c)}.acard.ok b{color:#8cf08c}
+.adm-note{background:rgba(255,255,255,.05);border-radius:12px;padding:.5em .7em;font-size:.88em;line-height:1.6}
+.adm-panel{display:flex;flex-direction:column;gap:.5em;max-width:42em}
+.lv-room{display:flex;align-items:center;gap:.6em;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:.45em .6em}
+.lv-room .grow{min-width:0}.lv-room b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lv-room small{opacity:.8}
+.aubox{width:min(52em,96vw);height:min(94vh,40em);overflow:hidden!important}
+.au-head{display:flex;align-items:flex-start;gap:.5em;flex:none;border-bottom:2px solid rgba(255,255,255,.12);padding-bottom:.4em}.au-head b{font-size:1.2em}
+.au-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:grid;grid-template-columns:1fr 1fr;gap:.5em;align-content:start;padding:.1em}
+@media (max-width:700px){.au-body{grid-template-columns:1fr}}
+.au-sec{background:rgba(255,255,255,.06);border-radius:12px;padding:.5em .6em;display:flex;flex-direction:column;gap:.35em;min-width:0}.au-sec:empty{display:none}.au-sec .row{flex-wrap:wrap}.au-wide{grid-column:1/-1}
+#au-hist .hi{font-size:.85em;padding:.2em 0;border-top:1px solid rgba(255,255,255,.08)}
 .adm-flag .fl small{opacity:.9}#au-modal .box{max-height:94vh;overflow:auto}
 .adm-flag{background:linear-gradient(90deg,#7f0000,#c62828);border:3px solid var(--ln);border-radius:14px;padding:.5em .7em;margin-bottom:.5em;color:#fff;box-shadow:0 3px 0 var(--ln)}
 .adm-flag .fl{display:flex;align-items:center;gap:.5em;background:rgba(0,0,0,.25);border-radius:10px;padding:.35em .5em;margin-top:.35em;cursor:pointer}
@@ -339,6 +367,17 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .pf-ride{width:11em;flex:none;display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,.2);border-radius:12px;padding:.3em}.pf-ride canvas{width:100%;height:auto}.pf-ride small{opacity:.7;font-size:.72em}
 .pf-btns{flex-wrap:wrap;justify-content:flex-end}
 .pebox>*,.profbox>*,.seabox>*,.lbbox>*,.htbox>*,.shbox>*{flex-shrink:0}
+/* v17：モーダルは見出しとボタンを固定して、中身だけスクロール */
+.profbox,.pebox{overflow:hidden!important}.profbox>.pf-mid,.pebox>.pe-icons{flex:1 1 auto!important;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.pebox .pe-icons{max-height:none}.pebox #pe-msgs{max-height:6.2em;overflow-y:auto}
+.qsc>.row,.qsc>.sec-title,.ssc>.shop-head,.ssc>.sec-title{position:sticky;top:-.15em;z-index:2;background:linear-gradient(180deg,#1b2459 75%,rgba(27,36,89,0));padding:.25em .2em .35em}
+.scroll{overscroll-behavior:contain}
+/* スクロールバーを細く・目立たないように（スクロールできる場所が分かるように少しだけ見せる） */
+.scroll,.ap-scroll,.au-body,#news-list,.pf-mid,.pe-icons,.sm-in,.afb-list,.ng-list{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.scroll::-webkit-scrollbar,.ap-scroll::-webkit-scrollbar,.au-body::-webkit-scrollbar,#news-list::-webkit-scrollbar,.pf-mid::-webkit-scrollbar,.pe-icons::-webkit-scrollbar,.sm-in::-webkit-scrollbar{width:6px;height:6px}
+.scroll::-webkit-scrollbar-thumb,.ap-scroll::-webkit-scrollbar-thumb,.au-body::-webkit-scrollbar-thumb,#news-list::-webkit-scrollbar-thumb,.pf-mid::-webkit-scrollbar-thumb,.pe-icons::-webkit-scrollbar-thumb,.sm-in::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:9px}
+.au-row{transition:background .15s}.au-row:active{background:rgba(255,255,255,.12)}
+.modal{overscroll-behavior:contain}
 #sea-badge{width:6.5em;height:6.5em}
 .pebox{max-height:92vh;overflow:auto}.pe-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.2em,1fr));gap:.4em;max-height:13em;overflow:auto}
 .pe-icons canvas{width:100%;aspect-ratio:1;border-radius:10px;border:3px solid transparent;cursor:pointer;background:#1d2557}.pe-icons canvas.on{border-color:#ffd23f}
@@ -499,6 +538,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       </div>
     </section>
     <section id="pg-shop" class="pg">
+      <div class="scroll ssc" style="display:flex;flex-direction:column;gap:.6em">
       <div class="shop-head"><b>🛒 今日のおすすめ（20%OFF）</b><span class="muted" id="shop-timer"></span></div>
       <div id="shop-feat"></div>
       <div class="shop-head"><b>🏪 ショップ限定アイテム</b><span class="muted">ガチャには出ません。ここでしか買えない！</span></div>
@@ -508,6 +548,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="chips" id="shop-cats"></div>
       <div class="grid big" id="shop-list"></div>
       <div class="muted">※見た目だけの変更です。速度・当たり判定は一切変わりません。勝利ポイント +10 NC ／ エンドレスラン 40点ごとに +1 NC ／ クエストでもNCがもらえます。</div>
+      </div>
     </section>
     <section id="pg-gacha" class="pg">
       <div class="stage"><div class="cvbox"><canvas id="gcv" style="touch-action:none"></canvas></div></div>
@@ -520,6 +561,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     </section>
     <section id="pg-quest" class="pg">
       <div id="q-all" class="qall off"><span style="font-size:1.6em">🎁</span><div class="grow"><b id="q-all-t">受け取れる報酬はありません</b><small id="q-all-s">クエストをクリアするとここからまとめて受け取れます</small></div><button id="q-all-btn" class="btn dark" disabled>まとめて受け取る</button></div>
+      <div class="scroll qsc" style="display:flex;flex-direction:column;gap:.45em">
       <div class="row"><b class="grow">📅 デイリークエスト</b><span class="muted" id="q-timer"></span></div>
       <div id="q-daily" style="display:flex;flex-direction:column;gap:.45em"></div>
       <div class="row" style="margin-top:.3em"><b class="grow">📆 ウィークリークエスト</b><span class="muted" id="qw-timer"></span></div>
@@ -527,6 +569,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div id="q-weekly" style="display:flex;flex-direction:column;gap:.45em"></div>
       <b class="sec-title">🏆 トロフィー <span id="tro-count" class="muted"></span></b>
       <div id="q-ach" style="display:flex;flex-direction:column;gap:.45em"></div>
+      </div>
     </section>
     <section id="pg-rank" class="pg">
       <div class="row"><div class="chips grow" id="rank-tabs"><button class="chip on" data-k="run">🏃 エンドレスラン</button><button class="chip" data-k="rp">🏆 チャリランク</button></div><span id="my-best" class="muted"></span><button id="rank-reload" class="btn sm blue">更新</button></div>
@@ -544,44 +587,65 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="scroll"><div id="friend-list-container" style="display:flex;flex-direction:column;gap:.35em"></div></div>
     </section>
     <section id="pg-admin" class="pg">
-      <div id="adm-alerts"></div>
-      <div class="adm-grid">
-        <div class="panel" id="adm-ng-panel">
-          <b>🚫 NGワード <small class="muted" id="ng-base"></small></b>
-          <div class="row"><input id="ng-w" class="tx grow" maxlength="20" placeholder="追加する言葉（ひらがな・カタカナは同じ扱い）"><button id="ng-add" class="btn sm red">追加</button></div>
-          <div id="ng-list" class="ng-list"></div>
-          <div class="row"><input id="ng-test" class="tx grow" maxlength="100" placeholder="ためしに文章を入れて確認"><button id="ng-try" class="btn sm dark">確認</button></div><div id="ng-out" class="muted"></div>
+      <nav class="adm-tabs" id="adm-tabs">
+        <button data-a="dash" class="on">📊 ダッシュボード</button>
+        <button data-a="todo">🚨 要対応<i id="at-todo" class="hide"></i></button>
+        <button data-a="users">👥 ユーザー</button>
+        <button data-a="live">👀 試合中<i id="at-live" class="hide"></i></button>
+        <button data-a="news">📢 お知らせ</button>
+        <button data-a="fb">💡 フィードバック<i id="at-fb" class="hide"></i></button>
+        <button data-a="maint">🛠 メンテナンス<i id="at-maint" class="hide">中</i></button>
+        <button data-a="ng">🚫 NGワード</button>
+      </nav>
+      <div class="adm-body">
+        <!-- 📊 ダッシュボード -->
+        <div class="ap on" data-a="dash"><div class="ap-scroll">
+          <div id="adm-cards" class="adm-cards"></div>
+          <div id="adm-stat" class="adm-note"></div>
+        </div></div>
+        <!-- 🚨 要対応（5人以上から通報・NCの疑い・停止中） -->
+        <div class="ap" data-a="todo"><div class="ap-head"><b>🚨 対応が必要なユーザー</b><span class="muted">タップすると詳しい画面が開きます</span></div><div class="ap-scroll" id="adm-alerts"></div></div>
+        <!-- 👥 ユーザー -->
+        <div class="ap" data-a="users">
+          <div class="ap-head"><input id="au-q" class="tx grow" placeholder="名前・機種・回線ID・#キーで検索"><select id="au-sort" class="tx"><option value="seen">最近ログイン順</option><option value="nc">NCが多い順</option><option value="rep">通報が多い順</option><option value="lv">レベル順</option></select><button id="au-go" class="btn sm blue">🔍 検索</button></div>
+          <div id="au-total" class="muted"></div>
+          <div class="ap-scroll" id="au-list"></div>
         </div>
-        <div class="panel" id="adm-maint-panel">
-          <b>🛠 メンテナンス</b><div id="am-state" class="muted"></div>
+        <!-- 👀 試合中 -->
+        <div class="ap" data-a="live"><div class="ap-head"><b class="grow">👀 いま試合中のルーム</b><button id="al-ref" class="btn sm blue">↻ 更新</button></div>
+          <div class="muted">運営はフレンドでなくても観戦できます。観戦していることは相手に表示されません。</div><div class="ap-scroll" id="adm-live"></div></div>
+        <!-- 📢 お知らせ -->
+        <div class="ap ap2" data-a="news">
+          <div class="ap-col"><div class="ap-head"><b>✏️ 全ユーザーにお知らせを送る</b></div><div class="ap-scroll ap-form">
+            <div class="row"><select id="an-kind" class="tx"><option value="update">アップデート</option><option value="maint">メンテナンス</option><option value="event">イベント</option><option value="info" selected>お知らせ</option><option value="important">重要</option></select><label class="muted"><input type="checkbox" id="an-pin"> 📌 上に固定</label></div>
+            <input id="an-title" class="tx" maxlength="60" placeholder="タイトル（例：v17 アップデートのお知らせ）">
+            <textarea id="an-body" class="tx" maxlength="2000" rows="4" placeholder="本文（改行できます）"></textarea>
+            <div class="row" style="align-items:center"><span>🎁 お詫びNC</span><input id="an-gift" class="tx" type="number" min="0" max="100000" step="50" value="0" style="width:7em"><span class="muted">0なら配らない（1人1回）</span></div>
+            <button id="an-send" class="btn green">📢 全ユーザーに送信</button>
+            <div class="muted">送ったお知らせはサーバーに保存されます。万一サーバーのデータが消えても、プレイヤーの端末に残っている控えから自動で元に戻ります。</div>
+          </div></div>
+          <div class="ap-col"><div class="ap-head"><b>📋 送信済みのお知らせ</b></div><div class="ap-scroll" id="adm-notices"></div></div>
+        </div>
+        <!-- 💡 フィードバック -->
+        <div class="ap" data-a="fb"><div class="ap-head"><b class="grow">💡 フィードバック <span id="afb-n" class="tagb tagr hide"></span></b><select id="afb-filter" class="tx"><option value="new">未対応</option><option value="adopted">採用済み</option><option value="all">すべて</option></select></div>
+          <div class="muted">「採用してNCを贈る」で、送ってくれた人にNCをプレゼントできます（0なら贈らずに採用だけ）。</div><div class="ap-scroll afb-list" id="afb-list"></div></div>
+        <!-- 🛠 メンテナンス -->
+        <div class="ap" data-a="maint"><div class="ap-scroll"><div class="panel adm-panel" id="adm-maint-panel">
+          <b>🛠 メンテナンス</b><div id="am-state"></div>
           <div class="row" style="align-items:center"><span>再開予定</span><input id="am-time" type="time" class="tx"><label class="muted"><input type="checkbox" id="am-auto" checked> その時間に自動で終了</label></div>
-          <input id="am-msg" class="tx" maxlength="200" placeholder="メッセージ（例：v15へのアップデートを行っています）">
+          <input id="am-msg" class="tx" maxlength="200" placeholder="メッセージ（例：v17へのアップデートを行っています）">
           <div class="row"><button id="am-start" class="btn red grow">メンテナンス開始</button><button id="am-end" class="btn green grow">メンテナンス終了</button></div>
           <div class="muted">開始すると、あなた以外のプレイヤーは試合から外れて「メンテナンス中」の画面（チャリ・ランが遊べます）になります。</div>
-        </div>
-        <div class="panel">
-          <b>💡 フィードバック <span id="afb-n" class="tagb tagr hide"></span></b>
-          <div class="row"><select id="afb-filter" class="tx"><option value="new">未対応</option><option value="adopted">採用済み</option><option value="all">すべて</option></select><span class="muted">採用するとNCをプレゼントできます</span></div>
-          <div id="afb-list" class="afb-list"></div>
-        </div>
-      </div>
-      <div class="adm-grid">
-        <div class="panel">
-          <b>📊 いまの状況</b><div id="adm-stat" class="muted"></div>
-          <b style="display:block;margin-top:.6em">📢 全ユーザーにお知らせを送る</b>
-          <div class="row"><select id="an-kind" class="tx"><option value="update">アップデート</option><option value="maint">メンテナンス</option><option value="event">イベント</option><option value="info" selected>お知らせ</option><option value="important">重要</option></select><label class="muted"><input type="checkbox" id="an-pin"> 上に固定</label></div>
-          <input id="an-title" class="tx" maxlength="60" placeholder="タイトル（例：v14 アップデートのお知らせ）">
-          <textarea id="an-body" class="tx" maxlength="2000" rows="4" placeholder="本文（改行できます）"></textarea>
-          <div class="row" style="align-items:center"><span>🎁 お詫びNC</span><input id="an-gift" class="tx" type="number" min="0" max="100000" step="50" value="0" style="width:7em"><span class="muted">0なら配らない（1人1回受け取れます）</span></div>
-          <button id="an-send" class="btn green">全ユーザーに送信</button>
-          <div id="adm-notices"></div>
-        </div>
-        <div class="panel">
-          <b>👥 ユーザー管理</b>
-          <div class="row"><input id="au-q" class="tx grow" placeholder="ユーザー名で検索"><select id="au-sort" class="tx"><option value="seen">最近ログイン順</option><option value="rep">通報が多い順</option><option value="lv">レベル順</option></select><button id="au-go" class="btn sm blue">検索</button></div>
-          <div id="au-total" class="muted"></div>
-          <div id="au-list"></div>
-        </div>
+        </div></div></div>
+        <!-- 🚫 NGワード -->
+        <div class="ap" data-a="ng"><div class="ap-scroll"><div class="panel adm-panel" id="adm-ng-panel">
+          <b>🚫 NGワード <small class="muted" id="ng-base"></small></b>
+          <div class="muted">チャットでは＊に置きかわり、ユーザー名には使えなくなります。ひらがな・カタカナ・全角半角の違いは同じ扱いです。</div>
+          <div class="row"><input id="ng-w" class="tx grow" maxlength="20" placeholder="追加する言葉"><button id="ng-add" class="btn sm red">＋ 追加</button></div>
+          <div id="ng-list" class="ng-list"></div>
+          <b>🧪 ためしに確認</b>
+          <div class="row"><input id="ng-test" class="tx grow" maxlength="100" placeholder="文章を入れると、チャットでどう見えるか確認できます"><button id="ng-try" class="btn sm dark">確認</button></div><div id="ng-out" class="muted"></div>
+        </div></div></div>
       </div>
     </section>
   </main>
@@ -648,22 +712,20 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   </div>
   <div id="res-promo" class="res-promo hide"></div>
 </div>
-<div id="au-modal" class="modal hide"><div class="box wide"><div class="row" style="align-items:center"><b class="grow" id="au-name"></b><button id="au-close" class="btn sm dark">閉じる</button></div>
-  <div id="au-info" class="muted"></div>
-  <div class="adm-acts">
-    <div><b>⛔ 利用停止</b><div class="row"><select id="au-days" class="tx"><option value="1">1日</option><option value="3">3日</option><option value="7" selected>7日</option><option value="14">14日</option><option value="30">30日</option><option value="0">無期限</option></select><input id="au-reason" class="tx grow" maxlength="300" placeholder="停止の理由（本人に表示されます）"></div>
-      <div class="row"><button id="au-ban" class="btn sm red">停止する</button><button id="au-unban" class="btn sm">停止を解除</button></div></div>
-    <div><b>⚠️ 警告／✉️ 個別メッセージ</b><textarea id="au-text" class="tx" maxlength="300" rows="2" placeholder="本人に表示される文章"></textarea>
-      <div class="row"><button id="au-warn" class="btn sm" style="background:#ff9800">警告を送る</button><button id="au-msg" class="btn sm blue">メッセージを送る</button><button id="au-clear" class="btn sm dark">通報をクリア</button></div></div>
-    <div><b>🎁 NCをプレゼント</b><div class="row" style="align-items:center"><input id="au-gift" class="tx" type="number" min="1" max="100000" step="50" value="300" style="width:7em"><span>NC</span><button id="au-gift-send" class="btn sm green">プレゼントする</button></div><div class="muted">上の文章欄の内容がメッセージとして一緒に届きます（空なら「運営からのプレゼント」）</div></div>
-  </div>
-  <div class="adm-acts">
-    <div><b>📱 端末情報</b><div id="au-dev" class="au-dev"></div></div>
-    <div><b>💰 NCの検算</b><div id="au-eco" class="au-dev"></div>
+<div id="au-modal" class="modal hide"><div class="box wide aubox">
+  <div class="au-head"><div class="grow"><b id="au-name"></b><div id="au-info" class="muted"></div></div><button id="au-watch" class="btn sm purple hide">👀 観戦</button><button id="au-close" class="iconbtn">✕</button></div>
+  <div class="au-body">
+    <div class="au-sec"><b>💰 NC</b><div id="au-eco" class="au-dev"></div>
       <div class="row" style="align-items:center"><input id="au-nc" class="tx" type="number" min="0" step="10" style="width:7em"><span>NCに</span><button id="au-ncfix" class="btn sm red">修正する</button><button id="au-ncok" class="btn sm green">問題なし</button></div></div>
-  </div>
-  <div id="au-same"></div>
-  <div id="au-hist"></div></div></div>
+    <div class="au-sec"><b>🎁 NCをプレゼント</b><div class="row" style="align-items:center"><input id="au-gift" class="tx" type="number" min="0" max="100000" step="50" value="0" style="width:7em"><span>NC</span><button id="au-gift-send" class="btn sm green">プレゼントする</button></div><div class="muted">下の文章欄の内容がメッセージとして一緒に届きます（空なら「運営からのプレゼント」）</div></div>
+    <div class="au-sec"><b>⚠️ 警告／✉️ 個別メッセージ</b><textarea id="au-text" class="tx" maxlength="300" rows="2" placeholder="本人に表示される文章"></textarea>
+      <div class="row"><button id="au-warn" class="btn sm" style="background:#ff9800">警告を送る</button><button id="au-msg" class="btn sm blue">メッセージを送る</button><button id="au-clear" class="btn sm dark">通報をクリア</button></div></div>
+    <div class="au-sec"><b>⛔ 利用停止</b><div class="row"><select id="au-days" class="tx"><option value="1">1日</option><option value="3">3日</option><option value="7" selected>7日</option><option value="14">14日</option><option value="30">30日</option><option value="0">無期限</option></select><input id="au-reason" class="tx grow" maxlength="300" placeholder="停止の理由（本人に表示されます）"></div>
+      <div class="row"><button id="au-ban" class="btn sm red">停止する</button><button id="au-unban" class="btn sm">停止を解除</button></div></div>
+    <div class="au-sec"><b>📱 端末情報</b><div id="au-dev" class="au-dev"></div></div>
+    <div class="au-sec" id="au-same"></div>
+    <div class="au-sec au-wide" id="au-hist"></div>
+  </div></div></div>
 <div id="rep-modal" class="modal hide"><div class="box"><b>🚩 プレイヤーを通報</b><div class="muted" id="rep-who"></div>
   <div class="chips" id="rep-reasons"></div>
   <textarea id="rep-text" class="tx" maxlength="120" rows="2" placeholder="くわしい内容（なくてもOK）"></textarea>
@@ -2461,6 +2523,7 @@ function showPage(t){
   if(t==='news'){openNews();return;}   // お知らせはロビーの中央に大きく出す
   page=t;
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  const tb=document.querySelector('.tab.on');if(tb&&tb.scrollIntoView)try{tb.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});}catch(e){}   // 選んだタブが見えるように
   document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+t));
   if(t==='home')updateHome();if(t==='locker')renderLocker();if(t==='shop')renderShop();if(t==='quest')renderQuests();
   if(t==='course')renderCourse();if(t==='rank')loadRanking();if(t==='friends'){renderFriends();pollFriends();}
@@ -4886,7 +4949,7 @@ socket.on('start',d=>{if(SPEC){SPEC=null;document.body.classList.remove('spec');
 socket.on('spec_start',d=>{
   if(MM)hideMM();SPEC={target:d.target||'フレンド',players:d.players||[],ranked:!!d.ranked,cpu:!!d.cpu};
   enterGame({slot:d.follow||0,mode:d.mode,course:d.course,room:false,ranked:false});
-  toast('👀 '+SPEC.target+' の試合を観戦中（V / 視点切替ボタンで相手の視点に）',3000);
+  toast(d.hidden?'👀 '+SPEC.target+' を観戦中（運営：相手には表示されません）':'👀 '+SPEC.target+' の試合を観戦中（V / 視点切替ボタンで相手の視点に）',3000);
 });
 socket.on('spec_end',d=>{if(SPEC)returnLobby((d&&d.why)||'観戦を終了しました');});
 socket.on('spec_n',n=>{specN=+n||0;});
@@ -5289,7 +5352,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v16',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v17',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5304,6 +5367,18 @@ function makeFavicon(){try{const f=document.createElement('canvas');f.width=f.he
    ===================================================================== */
 const KINDN={update:'アップデート',maint:'メンテナンス',info:'お知らせ',event:'イベント',important:'重要',personal:'あなたへ',warn:'警告'};
 let NEWS=[],PMSG=[],WARNQ=[],IS_ADMIN=false,BAN=null,CLAIMED=new Set(),GIFTQ=[],MAINT={on:false};
+// お知らせの控え（v17）：端末にも保存しておき、つながる前でも読める。サーバーのデータが消えていたら控えから元に戻す
+try{const c=JSON.parse(LS.get('nm_news_cache','[]'));if(Array.isArray(c))NEWS=c.filter(n=>n&&n.id&&n.title).slice(0,100);}catch(e){}
+try{const c=JSON.parse(LS.get('nm_claimed','[]'));if(Array.isArray(c))CLAIMED=new Set(c.map(Number));}catch(e){}
+let SRV_BORN=0,NEWS_SYNCED=false;
+const saveClaimed=()=>{try{LS.set('nm_claimed',JSON.stringify([...CLAIMED].slice(-200)));}catch(e){}};
+socket.on('nmeta',m=>{SRV_BORN=+(m&&m.born)||0;NEWS_SYNCED=false;});
+function syncNews(srv,cache){
+  // サーバーが作り直された（born が新しい）ときだけ、控えにあってサーバーにないお知らせを送り返す
+  const lost=SRV_BORN?cache.filter(n=>n.sig&&n.t<SRV_BORN&&!srv.some(x=>x.id===n.id)):[];
+  if(lost.length||CLAIMED.size)socket.emit('notices_restore',{list:lost.slice(0,50),claimed:[...CLAIMED].slice(-100)});
+}
+setTimeout(updateNewsDot,0);
 const fmtD=t=>{const d=new Date(t);return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
 const fmtHM=t=>{const d=new Date(t),n=new Date();const same=d.toDateString()===n.toDateString();return (same?'今日':(d.getMonth()+1)+'月'+d.getDate()+'日')+' '+d.getHours()+'時'+String(d.getMinutes()).padStart(2,'0')+'分';};
 function gainCoins(n){SV.coins+=n;saveNow();updateTop();if(page==='home')updateHome();if(AU.ctx)SFX.coin();}
@@ -5327,7 +5402,7 @@ function renderNews(){
     if(n.gift){const g=document.createElement('div');g.className='ngift';const got=CLAIMED.has(n.id);
       g.innerHTML='<span style="font-size:1.4em">🎁</span><span class="coin">NC</span><b class="grow">'+n.gift.toLocaleString()+' NC</b>';
       const bt=document.createElement('button');bt.className='btn sm '+(got?'dark':'green');bt.textContent=got?'受け取り済み':'受け取る';bt.disabled=got;
-      bt.onclick=()=>{bt.disabled=true;socket.emit('notice_claim',{id:n.id},r=>{if(r&&r.ok){CLAIMED.add(n.id);gainCoins(r.amount);toast('🎁 '+r.amount.toLocaleString()+' NC を受け取りました！');}else{toast((r&&r.err)||'受け取れませんでした');if(r&&r.err&&r.err.includes('もう'))CLAIMED.add(n.id);}renderNews();updateNewsDot();});};
+      bt.onclick=()=>{bt.disabled=true;socket.emit('notice_claim',{id:n.id},r=>{if(r&&r.ok){CLAIMED.add(n.id);saveClaimed();gainCoins(r.amount);toast('🎁 '+r.amount.toLocaleString()+' NC を受け取りました！');}else{toast((r&&r.err)||'受け取れませんでした');if(r&&r.err&&r.err.includes('もう'))CLAIMED.add(n.id);}renderNews();updateNewsDot();});};
       g.appendChild(bt);d.appendChild(g);}
     box.appendChild(d);}
   const mx=Math.max(0,...L.map(n=>n.t));try{LS.set('nm_news_seen',String(Math.max(s,mx)));}catch(e){}
@@ -5335,9 +5410,9 @@ function renderNews(){
   setTimeout(updateNewsDot,50);
 }
 $('news-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();openNews();};
-socket.on('notices',l=>{NEWS=Array.isArray(l)?l:[];updateNewsDot();if(newsOpen())renderNews();if(page==='admin')admOverview();});
-socket.on('claimed',l=>{CLAIMED=new Set(Array.isArray(l)?l:[]);updateNewsDot();if(newsOpen())renderNews();});
-socket.on('notice_new',n=>{if(!n)return;NEWS=[n].concat(NEWS.filter(x=>x.id!==n.id));updateNewsDot();if(newsOpen())renderNews();
+socket.on('notices',l=>{const prev=NEWS;NEWS=Array.isArray(l)?l:[];if(!NEWS_SYNCED){NEWS_SYNCED=true;syncNews(NEWS,prev);}try{LS.set('nm_news_cache',JSON.stringify(NEWS));}catch(e){}updateNewsDot();if(newsOpen())renderNews();if(page==='admin')admOverview(true);});
+socket.on('claimed',l=>{for(const id of (Array.isArray(l)?l:[]))CLAIMED.add(+id);saveClaimed();updateNewsDot();if(newsOpen())renderNews();});
+socket.on('notice_new',n=>{if(!n)return;NEWS=[n].concat(NEWS.filter(x=>x.id!==n.id));try{LS.set('nm_news_cache',JSON.stringify(NEWS));}catch(e){}updateNewsDot();if(newsOpen())renderNews();
   if(!inGame)toast('📢 '+(KINDN[n.kind]||'お知らせ')+'：'+n.title+(n.gift?'（🎁 '+n.gift+'NC）':''),3500);if(AU.ctx)SFX.pop();});
 socket.on('pmsgs',l=>{if(!Array.isArray(l))return;for(const m of l)if(!PMSG.some(x=>x.id===m.id))PMSG.push(m);updateNewsDot();if(newsOpen())renderNews();
   if(l.some(m=>!m.read)&&!inGame)toast('✉️ 運営からメッセージが届きました（📢 お知らせ）',3500);});
@@ -5489,54 +5564,92 @@ const RUN=(()=>{
   return {start(){if(!raf){last=0;raf=requestAnimationFrame(loop);}},state:()=>({st,score:Math.floor(score),hi,obs:obs.length}),jump};
 })();
 
-/* ===== 管理者画面（運営アカウントのときだけ表示） ===== */
-let ADM_FLAG=0,ADM_FBN=0;
+/* ===== 管理者画面（運営アカウントのときだけ表示）v17：タブで切り替え ===== */
+let ADM_FLAG=0,ADM_FBN=0,ADM_TAB='dash',ADM_R=null,admTimer=null;
 const admDot=()=>$('adm-dot').classList.toggle('hide',!(ADM_FLAG||ADM_FBN));
+const tabBadge=(id,n,txt)=>{const e=$(id);e.textContent=txt!=null?txt:n;e.classList.toggle('hide',!n);};
 socket.on('admin',v=>{IS_ADMIN=!!v;$('adm-btn').classList.toggle('hide',!IS_ADMIN);
   if(IS_ADMIN){$('maint-ov').classList.add('hide');socket.emit('adm_overview',r=>{if(r&&r.ok){ADM_FLAG=r.flagged.length+((r.ecoFlags||[]).length);ADM_FBN=r.fbNew;admDot();}});}});
 socket.on('adm_alert',a=>{if(!IS_ADMIN)return;ADM_FLAG=Math.max(1,ADM_FLAG);admDot();toast(a.eco?'💰 '+a.name+' のNCが多すぎます（不正の疑い・🛠 管理者画面）':'🚩 '+a.name+' が '+a.n+'人から通報されています（🛠 管理者画面）',5000);if(page==='admin')admOverview();});
 socket.on('adm_fb',a=>{if(!IS_ADMIN)return;toast('💡 '+a.name+' からフィードバック（'+a.cat+'）が届きました',4000);if(page==='admin')admFb();});
-function setFbn(n){ADM_FBN=+n||0;admDot();const b=$('afb-n');b.textContent='未対応 '+ADM_FBN;b.classList.toggle('hide',!ADM_FBN);}
+function setFbn(n){ADM_FBN=+n||0;admDot();const b=$('afb-n');b.textContent='未対応 '+ADM_FBN;b.classList.toggle('hide',!ADM_FBN);tabBadge('at-fb',ADM_FBN);}
 socket.on('adm_fbn',setFbn);
 $('adm-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();showPage('admin');};
+// タブ
+function admTab(t){ADM_TAB=t;document.querySelectorAll('#adm-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.a===t));document.querySelectorAll('#pg-admin .ap').forEach(p=>p.classList.toggle('on',p.dataset.a===t));
+  if(t==='users')admUsers();if(t==='live')admLive();if(t==='fb')admFb();}
+document.querySelectorAll('#adm-tabs button').forEach(b=>b.onclick=()=>{if(AU.ctx)SFX.click();admTab(b.dataset.a);});
+// 管理者画面を開いている間は自動で更新（NCなどの最新の報告が見える）
+setInterval(()=>{if(page!=='admin'||!IS_ADMIN||document.hidden)return;admOverview(true);if(ADM_TAB==='users')admUsers();if(ADM_TAB==='live')admLive();
+  if(AU_CUR&&!$('au-modal').classList.contains('hide')&&!document.activeElement.closest('#au-modal'))openAdmUser(AU_CUR.pk,true);},20000);
 let AU_CUR=null;
 const ago=t=>{if(!t)return '—';const s=(Date.now()-t)/1000;return s<60?'たった今':s<3600?Math.floor(s/60)+'分前':s<86400?Math.floor(s/3600)+'時間前':Math.floor(s/86400)+'日前';};
-function userTags(u){let h='';if(u.eco)h+='<span class="tagb" style="background:#b26a00">💰NC疑い</span> ';if(u.online)h+='<span class="tagb tago">オンライン</span> ';if(u.reg===false)h+='<span class="tagb">名前未登録</span> ';if(u.ban)h+='<span class="tagb">停止中'+(u.ban.until?'〜'+fmtD(u.ban.until):'（無期限）')+'</span> ';if(u.rep)h+='<span class="tagb tagr">通報'+u.rep+'人</span> ';if(u.warn)h+='<span class="tagb tagw">警告'+u.warn+'回</span>';return h;}
+function userTags(u){let h='';if(u.eco)h+='<span class="tagb" style="background:#b26a00">💰NC疑い</span> ';if(u.online)h+='<span class="tagb tago">'+({playing:'▶ 試合中',waiting:'ルーム待機'}[u.st]||'オンライン')+'</span> ';if(u.reg===false)h+='<span class="tagb">名前未登録</span> ';if(u.ban)h+='<span class="tagb">停止中'+(u.ban.until?'〜'+fmtD(u.ban.until):'（無期限）')+'</span> ';if(u.rep)h+='<span class="tagb tagr">通報'+u.rep+'人</span> ';if(u.warn)h+='<span class="tagb tagw">警告'+u.warn+'回</span>';return h;}
+const ncTxt=u=>u.nc!=null?'💰 '+u.nc.toLocaleString()+' NC（'+ago(u.nct)+'）':'💰 —';
 function userRowEl(u){const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent='Lv'+u.lv+'　'+u.name;
-  const sm=document.createElement('small');sm.innerHTML=userTags(u)+' 最終ログイン：'+ago(u.seen)+' ・ <span class="tagb tagd">#'+u.pk.slice(0,6)+'</span>';
-  if(u.dv){const dv=document.createElement('span');dv.textContent=' 📱'+u.dv+(u.net?'（回線 '+u.net+'）':'');sm.appendChild(dv);}
-  g.append(b,sm);d.appendChild(g);d.onclick=()=>openAdmUser(u.pk);return d;}
+  const sm=document.createElement('small');sm.innerHTML=userTags(u)+' <span class="tagb tagd">#'+u.pk.slice(0,6)+'</span> 最終ログイン：'+ago(u.seen);
+  const s2=document.createElement('small');s2.textContent=ncTxt(u)+(u.dv?'　📱 '+u.dv+(u.net?'（回線 '+u.net+'）':''):'');
+  g.append(b,sm,s2);d.appendChild(g);
+  if(u.st==='playing'){const w=document.createElement('button');w.className='btn sm purple';w.textContent='👀';w.title='見えないように観戦';w.onclick=e=>{e.stopPropagation();admWatch(u.pk);};d.appendChild(w);}
+  d.onclick=()=>openAdmUser(u.pk);return d;}
 function admMaintState(){const m=MAINT,e=$('am-state');
   e.innerHTML=m.on?'<b style="color:#ff8a80">● メンテナンス中</b>（'+(m.until?fmtHM(m.until)+' 再開予定'+(m.auto?'・自動で終了':''):'再開時刻なし')+'）':'<b style="color:#8cf08c">● 通常運転中</b>';
-  $('am-start').textContent=m.on?'内容を更新する':'メンテナンス開始';$('am-end').disabled=!m.on;}
-function admOverview(){
-  socket.emit('adm_overview',r=>{if(!r||!r.ok)return;MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
-    $('adm-stat').innerHTML='オンライン '+r.online+'人 ・ ユーザー '+r.users+'人 ・ 試合中のルーム '+r.rooms+'<br>保存先：'+(r.kv?'Upstash（再起動しても消えません）':'<b style="color:#ff8a80">サーバーのファイル（Renderの再起動で停止・お知らせが消えます。Upstashの設定をおすすめします）</b>');
-    const al=$('adm-alerts');al.innerHTML='';ADM_FLAG=r.flagged.length+((r.ecoFlags||[]).length);admDot();
-    if(r.flagged.length){const f=document.createElement('div');f.className='adm-flag';f.innerHTML='<b>🚩 '+r.flagged.length+'人が5人以上から通報されています</b>';
+  $('am-start').textContent=m.on?'内容を更新する':'メンテナンス開始';$('am-end').disabled=!m.on;tabBadge('at-maint',m.on?1:0,'中');}
+function card(box,label,val,cls,tab){const c=document.createElement('button');c.className='acard'+(cls?' '+cls:'');const s=document.createElement('small');s.textContent=label;const b=document.createElement('b');b.textContent=val;c.append(s,b);if(tab)c.onclick=()=>admTab(tab);box.appendChild(c);}
+function admOverview(quiet){
+  socket.emit('adm_overview',r=>{if(!r||!r.ok)return;ADM_R=r;MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
+    const todo=r.flagged.length+(r.ecoFlags||[]).length;ADM_FLAG=todo;admDot();tabBadge('at-todo',todo);tabBadge('at-live',r.live||0);
+    // 📊 ダッシュボード
+    const cb=$('adm-cards');cb.innerHTML='';
+    card(cb,'🟢 オンライン',r.online+'人','ok','users');card(cb,'👥 ユーザー',r.users+'人','','users');card(cb,'👀 試合中',(r.live||0)+'ルーム','','live');
+    card(cb,'🚨 要対応',todo+'人',todo?'bad':'ok','todo');card(cb,'💡 未対応フィードバック',r.fbNew+'件',r.fbNew?'warn':'ok','fb');card(cb,'⛔ 停止中',r.banned.length+'人','','todo');
+    card(cb,'📢 お知らせ',r.notices.length+'件','','news');card(cb,'🛠 メンテナンス',r.maint&&r.maint.on?'実施中':'通常',r.maint&&r.maint.on?'warn':'ok','maint');
+    $('adm-stat').innerHTML='<b>💾 保存先：</b>'+(r.kv?'<span style="color:#8cf08c">Upstash（再起動しても消えません）</span>':'<span style="color:#ff8a80">サーバーのファイル（Renderの再起動で、停止・フィードバック・NCの記録などが消えます。Upstashの設定をおすすめします）</span>')
+      +'<br><b>📢 お知らせ：</b>消えてもプレイヤーの端末の控えから自動で戻ります<br><b>💰 NC：</b>各プレイヤーの端末から1分ごと（増えたときはすぐ）に報告されます<br><b>🔄 この画面：</b>20秒ごとに自動で更新します';
+    // 🚨 要対応
+    const al=$('adm-alerts');al.innerHTML='';
+    if(!todo&&!r.banned.length)al.innerHTML='<div class="adm-note">✅ いま対応が必要なユーザーはいません</div>';
+    if(r.flagged.length){const f=document.createElement('div');f.className='adm-flag';f.innerHTML='<b>🚩 5人以上から通報されたユーザー（'+r.flagged.length+'人）</b>';
       r.flagged.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（通報'+u.rep+'人）'+(u.ban?' ⛔停止中':'');
         const rs=document.createElement('small');rs.textContent=[...new Set(u.reasons.map(q=>q.reason))].join('・');x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
-    if(r.ecoFlags&&r.ecoFlags.length){const f=document.createElement('div');f.className='adm-eco';f.innerHTML='<b>💰 NCが多すぎるユーザー（書き換えの疑い） '+r.ecoFlags.length+'人</b><div class="muted">サーバーが知っている「もらえたはずのNC」より多い人です。タップして確認し、「修正する」か「問題なし」を選んでください。</div>';
+    if(r.ecoFlags&&r.ecoFlags.length){const f=document.createElement('div');f.className='adm-eco';f.innerHTML='<b>💰 NCが多すぎるユーザー（書き換えの疑い・'+r.ecoFlags.length+'人）</b><div class="muted">サーバーが知っている「もらえたはずのNC」より多い人です。タップして「修正する」か「問題なし」を選んでください。</div>';
       r.ecoFlags.forEach(u=>{const x=document.createElement('div');x.className='fl';const nm=document.createElement('b');nm.className='grow';nm.textContent=u.name+'（所持 '+(u.coins||0).toLocaleString()+' NC）';
         const rs=document.createElement('small');rs.textContent='価値 '+u.w.toLocaleString()+' ／ 上限の目安 '+u.bound.toLocaleString();x.append(nm,rs);x.onclick=()=>openAdmUser(u.pk);f.appendChild(x);});al.appendChild(f);}
+    if(r.banned.length){const f=document.createElement('div');f.className='panel';f.style.cssText='display:flex;flex-direction:column;gap:.3em';f.innerHTML='<b>⛔ 停止中のユーザー（'+r.banned.length+'人）</b>';r.banned.forEach(u=>f.appendChild(userRowEl(u)));al.appendChild(f);}
+    // 🚫 NGワード
     renderNg(r.ng||[]);$('ng-base').textContent='（基本 '+r.ngBase+'語 ＋ 追加 '+(r.ng||[]).length+'語）';
-    if(r.banned.length){const f=document.createElement('div');f.className='panel';f.innerHTML='<b>⛔ 停止中のユーザー（'+r.banned.length+'人）</b>';r.banned.forEach(u=>f.appendChild(userRowEl(u)));al.appendChild(f);}
-    const nb=$('adm-notices');nb.innerHTML='<b style="display:block;margin-top:.5em">送信済みのお知らせ</b>';
-    r.notices.forEach(n=>{const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';g.innerHTML='<span class="nk '+n.kind+'">'+(KINDN[n.kind]||'')+'</span> ';const b=document.createElement('b');b.textContent=n.title+(n.gift?'（🎁'+n.gift+'NC）':'');g.appendChild(b);const sm=document.createElement('small');sm.textContent=fmtD(n.t);g.appendChild(sm);
-      const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';let dt=0;del.onclick=e=>{e.stopPropagation();if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';return;}socket.emit('adm_notice_del',{id:n.id},()=>admOverview());};d.append(g,del);nb.appendChild(d);});
+    // 📢 送信済み
+    const nb=$('adm-notices');nb.innerHTML='';if(!r.notices.length)nb.innerHTML='<div class="muted">まだありません</div>';
+    r.notices.forEach(n=>{const d=document.createElement('div');d.className='au-row';const g=document.createElement('div');g.className='grow';g.innerHTML='<span class="nk '+n.kind+'">'+(n.pin?'📌 ':'')+(KINDN[n.kind]||'')+'</span> ';const b=document.createElement('b');b.textContent=n.title+(n.gift?'（🎁'+n.gift+'NC）':'');g.appendChild(b);const sm=document.createElement('small');sm.textContent=fmtD(n.t);g.appendChild(sm);
+      const del=document.createElement('button');del.className='btn sm dark';del.textContent='削除';del.onclick=e=>{e.stopPropagation();if(!confirmTwice(del,'削除？'))return;socket.emit('adm_notice_del',{id:n.id},()=>admOverview());};d.append(g,del);nb.appendChild(d);});
   });
-  admUsers();admFb();
+  if(!quiet){if(ADM_TAB==='users')admUsers();if(ADM_TAB==='fb')admFb();if(ADM_TAB==='live')admLive();}
 }
 function admUsers(){
-  socket.emit('adm_users',{q:$('au-q').value,sort:$('au-sort').value},r=>{if(!r||!r.ok)return;const box=$('au-list');box.innerHTML='';
-    $('au-total').textContent=($('au-q').value.trim()?'見つかったユーザー ':'全ユーザー ')+r.total+'人';const fr=document.createDocumentFragment();r.list.forEach(u=>fr.appendChild(userRowEl(u)));box.appendChild(fr);});
+  socket.emit('adm_users',{q:$('au-q').value,sort:$('au-sort').value},r=>{if(!r||!r.ok)return;const box=$('au-list'),st=box.scrollTop;box.innerHTML='';
+    $('au-total').textContent=($('au-q').value.trim()?'見つかったユーザー ':'全ユーザー ')+r.total+'人（オンライン '+r.list.filter(u=>u.online).length+'人）';
+    const fr=document.createDocumentFragment();r.list.forEach(u=>fr.appendChild(userRowEl(u)));box.appendChild(fr);box.scrollTop=st;});
 }
 $('au-go').onclick=admUsers;$('au-q').addEventListener('keydown',e=>{if(e.key==='Enter')admUsers();});$('au-sort').onchange=admUsers;
+// 👀 試合中のルーム
+const MODEN={versus:'対戦',endless:'エンドレス'};
+function admLive(){
+  socket.emit('adm_rooms',r=>{if(!r||!r.ok)return;const box=$('adm-live');box.innerHTML='';tabBadge('at-live',r.list.length);
+    if(!r.list.length){box.innerHTML='<div class="adm-note">いま試合中のルームはありません</div>';return;}
+    r.list.forEach(x=>{const d=document.createElement('div');d.className='lv-room';const g=document.createElement('div');g.className='grow';const b=document.createElement('b');
+      const p0=x.ps[0],p1=x.ps[1];b.textContent=x.mode==='endless'?p0.name+'（エンドレス）':p0.name+' '+x.sc[0]+' - '+x.sc[1]+' '+(p1?p1.name:'');
+      const sm=document.createElement('small');sm.textContent=(x.tut?'🔰練習':x.ranked?'🏆ランクマッチ':x.cpu?'⚔CPU戦':MODEN[x.mode]||x.mode)+(x.mode==='versus'?'・ラウンド'+x.rd:'')+'・観戦者 '+x.spec+'人'+(x.me?'・あなたが観戦中':'');
+      g.append(b,sm);const w=document.createElement('button');w.className='btn sm purple';w.textContent='👀 観戦';w.onclick=()=>admWatch(p0.pk);d.append(g,w);
+      if(p1&&p1.pk){const w2=document.createElement('button');w2.className='btn sm dark';w2.textContent=p1.name+'側';w2.onclick=()=>admWatch(p1.pk);d.appendChild(w2);}
+      box.appendChild(d);});
+  });
+}
+$('al-ref').onclick=admLive;
+function admWatch(pk){initAudio();socket.emit('spectate',{pk,hidden:1},r=>{if(!r||!r.ok)toast((r&&r.err)||'観戦できません');else{$('au-modal').classList.add('hide');}});}
 $('an-send').onclick=()=>{const title=$('an-title').value.trim();if(!title){toast('タイトルを入れてください');return;}
   const gift=Math.max(0,Math.round(+$('an-gift').value||0)),btn=$('an-send');
-  if(!btn.dataset.c){btn.dataset.c='1';btn.textContent='本当に全員に送る？'+(gift?'（🎁'+gift+'NC付き）':'')+'（もう一度押す）';setTimeout(()=>{btn.dataset.c='';btn.textContent='全ユーザーに送信';},3000);return;}
-  btn.dataset.c='';btn.textContent='全ユーザーに送信';
-  socket.emit('adm_notice',{kind:$('an-kind').value,title,body:$('an-body').value,pin:$('an-pin').checked,gift},r=>{if(r&&r.ok){toast('📢 全ユーザーに送信しました');$('an-title').value='';$('an-body').value='';$('an-gift').value='0';admOverview();}else toast((r&&r.err)||'送信できませんでした');});};
+  if(!confirmTwice(btn,'本当に全員に送る？'+(gift?'（🎁'+gift+'NC付き）':'')))return;
+  socket.emit('adm_notice',{kind:$('an-kind').value,title,body:$('an-body').value,pin:$('an-pin').checked,gift},r=>{if(r&&r.ok){toast('📢 全ユーザーに送信しました');$('an-title').value='';$('an-body').value='';$('an-gift').value='0';$('an-pin').checked=false;admOverview();}else toast((r&&r.err)||'送信できませんでした');});};
 // メンテナンス
 function maintUntil(){const v=$('am-time').value;if(!v)return 0;const [h,m]=v.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(d.getTime()<=Date.now())d.setDate(d.getDate()+1);return d.getTime();}
 $('am-start').onclick=()=>{const until=maintUntil();if(!confirmTwice($('am-start'),until?fmtHM(until)+'再開で開始？':'再開時刻なしで開始？'))return;
@@ -5545,23 +5658,25 @@ $('am-end').onclick=()=>{if(!confirmTwice($('am-end'),'本当に終了する？'
 // フィードバック
 function admFb(){
   socket.emit('adm_fb_list',r=>{if(!r||!r.ok)return;const f=$('afb-filter').value,box=$('afb-list');box.innerHTML='';
-    const L=r.list.filter(x=>f==='all'||x.st===f);if(!L.length){box.innerHTML='<div class="muted">ありません</div>';return;}
+    const L=r.list.filter(x=>f==='all'||x.st===f);if(!L.length){box.innerHTML='<div class="adm-note">ありません</div>';return;}
     L.forEach(x=>{const d=document.createElement('div');d.className='afb';const h=document.createElement('div');
       h.innerHTML='<span class="tagb '+(x.st==='new'?'tagr':x.st==='adopted'?'tago':'')+'">'+(x.st==='new'?'未対応':x.st==='adopted'?'採用'+(x.reward?'（'+x.reward+'NC）':''):'対応済み')+'</span> <span class="tagb tagw"></span> <b></b> <small></small>';
-      h.children[1].textContent=x.cat;h.children[2].textContent='Lv'+x.lv+' '+x.name;h.children[3].textContent=fmtD(x.t);h.children[2].style.cursor='pointer';h.children[2].onclick=()=>openAdmUser(x.pk);
+      h.children[1].textContent=x.cat;h.children[2].textContent='Lv'+x.lv+' '+x.name;h.children[3].textContent=fmtD(x.t);h.children[2].className='pf-link';h.children[2].onclick=()=>openAdmUser(x.pk);
       const t=document.createElement('div');t.className='ft';t.textContent=x.text;d.append(h,t);
-      if(x.st==='new'){const row=document.createElement('div');row.className='row';const amt=document.createElement('input');amt.type='number';amt.className='tx';amt.value='300';amt.min='0';amt.step='50';amt.style.width='6em';
-        const ad=document.createElement('button');ad.className='btn sm green';ad.textContent='採用してNCを贈る';ad.onclick=()=>{if(!confirmTwice(ad,(+amt.value||0)+'NC贈る？'))return;socket.emit('adm_fb_act',{id:x.id,act:'adopt',amount:+amt.value||0},rr=>{if(rr&&rr.ok){toast('🎁 採用して'+(+amt.value||0)+'NCを贈りました');admFb();}});};
+      if(x.st==='new'){const row=document.createElement('div');row.className='row';const amt=document.createElement('input');amt.type='number';amt.className='tx';amt.value='0';amt.min='0';amt.step='50';amt.style.width='6em';
+        const ad=document.createElement('button');ad.className='btn sm green';ad.textContent='採用する';amt.oninput=()=>{ad.textContent=(+amt.value>0)?'採用して'+(+amt.value)+'NCを贈る':'採用する';};
+        ad.onclick=()=>{const a=Math.max(0,+amt.value||0);if(!confirmTwice(ad,a?a+'NC贈る？':'採用する？'))return;socket.emit('adm_fb_act',{id:x.id,act:'adopt',amount:a},rr=>{if(rr&&rr.ok){toast(a?'🎁 採用して'+a+'NCを贈りました':'採用しました');admFb();}});};
         const dn=document.createElement('button');dn.className='btn sm dark';dn.textContent='対応済みにする';dn.onclick=()=>socket.emit('adm_fb_act',{id:x.id,act:'reject'},()=>admFb());
-        row.append(amt,document.createTextNode('NC'),ad,dn);d.appendChild(row);}
+        row.append(document.createTextNode('🎁'),amt,document.createTextNode('NC'),ad,dn);d.appendChild(row);}
       else{const row=document.createElement('div');row.className='row';const dl=document.createElement('button');dl.className='btn sm dark';dl.textContent='削除';dl.onclick=()=>{if(confirmTwice(dl,'削除する？'))socket.emit('adm_fb_act',{id:x.id,act:'del'},()=>admFb());};row.appendChild(dl);d.appendChild(row);}
       box.appendChild(d);});
   });
 }
 $('afb-filter').onchange=admFb;
-function openAdmUser(pk){
-  socket.emit('adm_user',{pk},r=>{if(!r||!r.ok)return;AU_CUR=r.u;const u=r.u;
-    $('au-name').textContent='Lv'+u.lv+'　'+u.name;$('au-info').innerHTML=userTags(u)+'<br>最終ログイン：'+ago(u.seen)+(u.since?' ・ 初ログイン：'+fmtD(u.since):'')+' ・ 状態：'+({online:'ロビー',waiting:'ルーム待機中',playing:'プレイ中',offline:'オフライン'}[u.st]||u.st);
+function openAdmUser(pk,quiet){
+  socket.emit('adm_user',{pk},r=>{if(!r||!r.ok)return;if(quiet&&(!AU_CUR||AU_CUR.pk!==pk))return;AU_CUR=r.u;const u=r.u;
+    $('au-name').textContent='Lv'+u.lv+'　'+u.name+'　#'+u.pk.slice(0,6);$('au-info').innerHTML=userTags(u)+'<br>最終ログイン：'+ago(u.seen)+(u.since?' ・ 初ログイン：'+fmtD(u.since):'')+' ・ 状態：'+({online:'ロビー',waiting:'ルーム待機中',playing:'プレイ中',offline:'オフライン'}[u.st]||u.st);
+    $('au-watch').classList.toggle('hide',u.st!=='playing');
     $('au-ban').disabled=false;$('au-unban').disabled=!u.ban;
     const h=$('au-hist');h.innerHTML='';const sec=(t,l,f)=>{if(!l.length)return;const b=document.createElement('b');b.textContent=t;h.appendChild(b);l.forEach(x=>{const d=document.createElement('div');d.className='hi';d.textContent=f(x);h.appendChild(d);});};
     const dv=r.dv,de=$('au-dev');de.innerHTML='';
@@ -5570,16 +5685,18 @@ function openAdmUser(pk){
       if(r.dvs&&r.dvs.length>1){const d=document.createElement('div');d.innerHTML='<b>使ったことのある端末：</b>';d.appendChild(document.createTextNode(r.dvs.map(x=>x.s+'（回線 '+x.net+'・'+fmtD(x.t)+'）').join(' ／ ')));de.appendChild(d);}}
     else de.textContent='まだ情報がありません（v16以降にログインすると記録されます）';
     const e=r.eco,ee=$('au-eco');ee.innerHTML='';
-    if(e){ee.innerHTML='所持 <b></b> NC ／ NC＋持ち物の価値 <b></b> ／ 上限の目安 <b></b>'+(e.flag?'<br><span style="color:#ffb300">⚠ 上限をこえています（'+fmtD(e.flag.t)+'から）</span>':'<br><span style="color:#8cf08c">✔ 問題なし</span>')+(e.fix!=null?'<br>修正待ち：'+e.fix+' NC（次にログインしたときに反映）':'');
-      const bs=ee.querySelectorAll('b');bs[0].textContent=(e.c||0).toLocaleString();bs[1].textContent=(e.w||0).toLocaleString();bs[2].textContent=(e.bound||0).toLocaleString();
-      $('au-nc').value=Math.max(0,Math.min(e.c||0,(e.c||0)-((e.w||0)-(e.bound||0))));}
-    else{ee.textContent='まだ報告がありません';$('au-nc').value='';}
-    const sm=$('au-same');sm.innerHTML='';if(r.same&&r.same.length){const b=document.createElement('b');b.textContent='📶 同じ回線のユーザー（'+r.same.length+'人・サブ垢の確認に）';sm.appendChild(b);r.same.forEach(u=>sm.appendChild(userRowEl(u)));}
+    if(e){ee.innerHTML='所持 <b class="big-nc"></b> NC <small class="muted"></small><br>NC＋持ち物の価値 <b></b> ／ 上限の目安 <b></b>'+(e.flag?'<br><span style="color:#ffb300">⚠ 上限をこえています（'+fmtD(e.flag.t)+'から）</span>':'<br><span style="color:#8cf08c">✔ 問題なし</span>')+(e.fix!=null?'<br>修正待ち：'+e.fix+' NC（次にログインしたときに反映）':'');
+      const bs=ee.querySelectorAll('b');bs[0].textContent=(e.c||0).toLocaleString();bs[1].textContent=(e.w||0).toLocaleString();bs[2].textContent=(e.bound||0).toLocaleString();ee.querySelector('small').textContent='（'+ago(u.nct)+'に報告）';
+      if(!quiet)$('au-nc').value=Math.max(0,Math.min(e.c||0,(e.c||0)-((e.w||0)-(e.bound||0))));}
+    else{ee.textContent='まだ報告がありません';if(!quiet)$('au-nc').value='';}
+    if(!quiet){$('au-gift').value='0';}
+    const sm=$('au-same');sm.innerHTML='';if(r.same&&r.same.length){const b=document.createElement('b');b.textContent='📶 同じ回線のユーザー（'+r.same.length+'人・サブ垢の確認に）';sm.appendChild(b);r.same.forEach(x=>sm.appendChild(userRowEl(x)));}
     sec('🚩 通報（新しい順）',r.reports,x=>fmtD(x.t)+'　'+x.fromName+'：'+x.reason+(x.where?'（'+x.where+'）':'')+(x.text?'　「'+x.text+'」':''));
     sec('⚠️ 警告',r.warns,x=>fmtD(x.t)+'　'+x.text+(x.ack?'（確認済み）':'（未確認）'));
     sec('✉️ 個別メッセージ',r.msgs,x=>fmtD(x.t)+'　'+x.title+'：'+x.text);
     $('au-modal').classList.remove('hide');});
 }
+$('au-watch').onclick=()=>{if(AU_CUR)admWatch(AU_CUR.pk);};
 function admAct(act,extra){if(!AU_CUR)return;socket.emit('adm_action',Object.assign({pk:AU_CUR.pk,act},extra||{}),r=>{if(r&&r.ok){toast('完了しました');openAdmUser(AU_CUR.pk);admOverview();}else toast((r&&r.err)||'できませんでした');});}
 $('au-close').onclick=()=>$('au-modal').classList.add('hide');
 $('au-ban').onclick=()=>{const d=+$('au-days').value;if(!confirmTwice($('au-ban'),d?d+'日間停止する？':'無期限で停止する？'))return;admAct('ban',{days:d,text:$('au-reason').value});};
@@ -5629,10 +5746,13 @@ function invWorth(){let s=0;const g10=GACHA_CONFIG.cost10/10;
   for(const c in CAT)for(const k of SV.inv[c]){const it=CAT[c][k];if(!it||DEFAULT_INV[c].includes(k)||isSpecial(it))continue;
     if(it.g)s+=g10;else if(it.p>0)s+=it.so?Math.round(it.p*.8):Math.min(Math.round(it.p*.8),g10);}
   return Math.floor(s);}
-let ecoT=0,ecoTm=null;
-function ecoReport(){clearTimeout(ecoTm);ecoTm=null;if(!SV||!socket.connected)return;ecoT=Date.now();
+// NCの報告：1分に1回は必ず。試合やクエストなどでNCが増えたときは、すぐ（数秒以内）に報告する
+let ecoT=0,ecoTm=null,ecoLastC=-1;
+function ecoReport(){clearTimeout(ecoTm);ecoTm=null;if(!SV||!socket.connected)return;ecoT=Date.now();ecoLastC=SV.coins;
   socket.emit('eco',{coins:SV.coins,inv:invWorth(),lv:SV.lv,rk:SV.rkTop,ach:trophies(),pulls:SV.stats.gacha||0,sea:SV.seaN});}
-function ecoSoon(){if(ecoTm)return;ecoTm=setTimeout(ecoReport,Math.max(2000,15000-(Date.now()-ecoT)));}
+function ecoSoon(){if(ecoTm||!SV||SV.coins<=ecoLastC)return;ecoTm=setTimeout(ecoReport,Math.max(1500,6500-(Date.now()-ecoT)));}   // サーバーは6秒に1回まで受け付ける
+setInterval(()=>{if(SV&&socket.connected&&Date.now()-ecoT>=60000)ecoReport();},5000);
+socket.on('reward',()=>setTimeout(ecoSoon,300));
 socket.on('nc_fix',d=>{if(!d||!isFinite(d.coins))return;SV.coins=Math.max(0,Math.floor(d.coins));saveNow();updateTop();socket.emit('nc_fix_ok');
   toast('💰 運営によってNCが '+SV.coins.toLocaleString()+' NC に修正されました',4500);});
 
