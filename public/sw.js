@@ -1,6 +1,6 @@
 // なにが目的なん？ ONLINE — サービスワーカー（ホーム画面に追加・プッシュ通知）
 // ゲーム本体は常に最新を読み込む（ネット優先）。オフラインのときだけ保存しておいた画面を出す。
-const CACHE = 'nm-v21';
+const CACHE = 'nm-v22';
 const PRE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'privacy.html'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRE)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
