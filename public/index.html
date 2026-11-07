@@ -372,6 +372,14 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .pebox .pe-icons{max-height:none}.pebox #pe-msgs{max-height:6.2em;overflow-y:auto}
 .qsc>.row,.qsc>.sec-title,.ssc>.shop-head,.ssc>.sec-title{position:sticky;top:-.15em;z-index:2;background:linear-gradient(180deg,#1b2459 75%,rgba(27,36,89,0));padding:.25em .2em .35em}
 .scroll{overscroll-behavior:contain}
+.vl{width:3.6em;flex:none}.vv{font-style:normal;width:2.6em;text-align:right;font-size:.85em;opacity:.85}
+#mute-btn.on{background:linear-gradient(180deg,#ff6b6b,#c62828);color:#fff}
+#ev-ribbon{position:absolute;left:50%;top:calc(3.3em + var(--st));transform:translateX(-50%);z-index:6;pointer-events:none;background:linear-gradient(90deg,#ff6a2b,#ffd23f,#ff6a2b);background-size:200% 100%;animation:evr 3s linear infinite;color:#3a1500;font-weight:900;font-size:.85em;padding:.2em 1em;border-radius:0 0 12px 12px;border:3px solid var(--ln);border-top:none;box-shadow:0 3px 0 rgba(0,0,0,.35);white-space:nowrap}
+@keyframes evr{to{background-position:-200% 0}}
+.ev-kinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(9em,1fr));gap:.4em}
+.ev-kinds button{border:3px solid var(--ln);border-radius:12px;background:#2a3577;color:#fff;font-weight:900;padding:.45em;cursor:pointer;font-family:inherit}.ev-kinds button.on{background:linear-gradient(180deg,#ffd23f,#ff9800);color:#3a1500}
+.ad-parts{display:flex;flex-wrap:wrap;gap:.3em .8em}.ad-parts label{display:flex;gap:.3em;align-items:center;font-size:.88em}
+.kv-bar{height:.7em;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}.kv-bar i{display:block;height:100%;background:linear-gradient(90deg,#4caf50,#ffd23f,#f44336)}
 /* スクロールバーを細く・目立たないように（スクロールできる場所が分かるように少しだけ見せる） */
 .scroll,.ap-scroll,.au-body,#news-list,.pf-mid,.pe-icons,.sm-in,.afb-list,.ng-list{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
 .scroll::-webkit-scrollbar,.ap-scroll::-webkit-scrollbar,.au-body::-webkit-scrollbar,#news-list::-webkit-scrollbar,.pf-mid::-webkit-scrollbar,.pe-icons::-webkit-scrollbar,.sm-in::-webkit-scrollbar{width:6px;height:6px}
@@ -502,6 +510,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 
 <!-- ===== ロビー ===== -->
 <div id="lobby">
+  <div id="ev-ribbon" class="hide"></div>
   <header id="topbar">
     <div id="logo">なにが<br>目的なん？</div>
     <nav id="tabs">
@@ -594,8 +603,10 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
         <button data-a="live">👀 試合中<i id="at-live" class="hide"></i></button>
         <button data-a="news">📢 お知らせ</button>
         <button data-a="fb">💡 フィードバック<i id="at-fb" class="hide"></i></button>
+        <button data-a="event">🎉 イベント<i id="at-event" class="hide">中</i></button>
         <button data-a="maint">🛠 メンテナンス<i id="at-maint" class="hide">中</i></button>
         <button data-a="ng">🚫 NGワード</button>
+        <button data-a="data">💾 データ<i id="at-data" class="hide">!</i></button>
       </nav>
       <div class="adm-body">
         <!-- 📊 ダッシュボード -->
@@ -621,10 +632,11 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
             <input id="an-title" class="tx" maxlength="60" placeholder="タイトル（例：v17 アップデートのお知らせ）">
             <textarea id="an-body" class="tx" maxlength="2000" rows="4" placeholder="本文（改行できます）"></textarea>
             <div class="row" style="align-items:center"><span>🎁 お詫びNC</span><input id="an-gift" class="tx" type="number" min="0" max="100000" step="50" value="0" style="width:7em"><span class="muted">0なら配らない（1人1回）</span></div>
+            <div class="row" style="align-items:center"><span>📅 予約送信</span><input id="an-at" class="tx" type="datetime-local"><button id="an-at-clear" class="btn sm dark">今すぐ</button></div>
             <button id="an-send" class="btn green">📢 全ユーザーに送信</button>
             <div class="muted">送ったお知らせはサーバーに保存されます。万一サーバーのデータが消えても、プレイヤーの端末に残っている控えから自動で元に戻ります。</div>
           </div></div>
-          <div class="ap-col"><div class="ap-head"><b>📋 送信済みのお知らせ</b></div><div class="ap-scroll" id="adm-notices"></div></div>
+          <div class="ap-col"><div class="ap-head"><b>📋 予約中・送信済みのお知らせ</b></div><div class="ap-scroll"><div id="adm-sched"></div><div id="adm-notices"></div></div></div>
         </div>
         <!-- 💡 フィードバック -->
         <div class="ap" data-a="fb"><div class="ap-head"><b class="grow">💡 フィードバック <span id="afb-n" class="tagb tagr hide"></span></b><select id="afb-filter" class="tx"><option value="new">未対応</option><option value="adopted">採用済み</option><option value="all">すべて</option></select></div>
@@ -637,6 +649,18 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <div class="row"><button id="am-start" class="btn red grow">メンテナンス開始</button><button id="am-end" class="btn green grow">メンテナンス終了</button></div>
           <div class="muted">開始すると、あなた以外のプレイヤーは試合から外れて「メンテナンス中」の画面（チャリ・ランが遊べます）になります。</div>
         </div></div></div>
+        <!-- 🎉 イベント -->
+        <div class="ap" data-a="event"><div class="ap-scroll"><div class="panel adm-panel">
+          <b>🎉 期間限定イベント</b><div id="ae-state"></div>
+          <div class="ev-kinds" id="ae-kinds"></div>
+          <div class="row" style="align-items:center"><span>始まり</span><input id="ae-from" class="tx" type="datetime-local"><span class="muted">（空なら今すぐ）</span></div>
+          <div class="row" style="align-items:center"><span>終わり</span><input id="ae-until" class="tx" type="datetime-local"></div>
+          <div class="row ae-quick"><span class="muted">すぐ選ぶ：</span><button data-h="3" class="btn sm dark">3時間</button><button data-h="24" class="btn sm dark">1日</button><button data-h="wk" class="btn sm dark">この週末</button><button data-h="168" class="btn sm dark">1週間</button></div>
+          <label class="muted"><input type="checkbox" id="ae-notice" checked> 📢 お知らせも自動で送る（始まる時刻に合わせて）</label>
+          <input id="ae-msg" class="tx" maxlength="300" placeholder="お知らせにひとこと足す（なくてもOK）">
+          <div class="row"><button id="ae-start" class="btn green grow">🎉 イベントを始める</button><button id="ae-stop" class="btn red grow">終了する</button></div>
+          <div class="muted">NCの倍率は試合（対戦・エンドレス）でもらえるNCに、XPの倍率はすべてのXPにかかります。終わりの時刻になると自動で終わります。</div>
+        </div></div></div>
         <!-- 🚫 NGワード -->
         <div class="ap" data-a="ng"><div class="ap-scroll"><div class="panel adm-panel" id="adm-ng-panel">
           <b>🚫 NGワード <small class="muted" id="ng-base"></small></b>
@@ -646,6 +670,20 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <b>🧪 ためしに確認</b>
           <div class="row"><input id="ng-test" class="tx grow" maxlength="100" placeholder="文章を入れると、チャットでどう見えるか確認できます"><button id="ng-try" class="btn sm dark">確認</button></div><div id="ng-out" class="muted"></div>
         </div></div></div>
+        <!-- 💾 データ（Upstash・バックアップ） -->
+        <div class="ap" data-a="data"><div class="ap-scroll">
+          <div class="panel adm-panel"><b>💾 保存先（Upstash）</b><div id="ad-kv"></div>
+            <div class="row"><button id="ad-test" class="btn sm blue">🔌 接続テスト</button><span id="ad-test-r" class="muted"></span></div></div>
+          <div class="panel adm-panel"><b>📦 バックアップ</b>
+            <div class="muted">名簿・ランキング・フレンド申請・通報や停止・お知らせ・シーズン・NCの記録・プロフィールを1つのファイルに保存します。<b style="color:#ff8a80">プレイヤーの秘密の情報も入っているので、人には絶対に渡さないでください。</b></div>
+            <div class="row"><button id="ad-save" class="btn green">⬇ バックアップを保存</button><span id="ad-last" class="muted"></span></div>
+            <b>⬆ バックアップから戻す</b>
+            <div class="muted">Upstashを設定する前のデータを引っ越すときや、データが消えてしまったときに使います。選んだ項目は、ファイルの内容で上書きされます。</div>
+            <input id="ad-file" type="file" accept=".json,application/json" class="tx">
+            <div id="ad-parts" class="ad-parts"></div>
+            <button id="ad-load" class="btn red" disabled>このファイルで戻す</button><div id="ad-load-r" class="muted"></div>
+          </div>
+        </div></div>
       </div>
     </section>
   </main>
@@ -806,8 +844,12 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 <div id="side-menu" class="hide"><div class="sm-in">
   <div class="sm-h"><b>⚙ 設定</b><button id="close-menu-btn" class="iconbtn">✕</button></div>
   <div class="sm-sec">
-    <label>BGM <input type="range" id="vol-bgm" min="0" max="1" step="0.05"></label>
-    <label>効果音 <input type="range" id="vol-se" min="0" max="1" step="0.05"></label>
+    <div class="row" style="align-items:center"><b class="grow">🔊 音の設定</b><button id="mute-btn" class="btn sm dark">🔇 ミュート</button></div>
+    <label><span class="vl">全体</span><input type="range" id="vol-all" min="0" max="1" step="0.05"><i id="vv-all" class="vv"></i></label>
+    <label><span class="vl">BGM</span><input type="range" id="vol-bgm" min="0" max="1" step="0.05"><i id="vv-bgm" class="vv"></i></label>
+    <label><span class="vl">効果音</span><input type="range" id="vol-se" min="0" max="1" step="0.05"><i id="vv-se" class="vv"></i></label>
+    <label><span class="vl">ボイス</span><input type="range" id="vol-voice" min="0" max="1" step="0.05"><i id="vv-voice" class="vv"></i><button id="vo-test" class="btn sm dark" title="ためしに鳴らす">▶</button></label>
+    <div class="muted" style="font-size:.78em">ボイス＝「なにが目的なん？」などの声。0にすると声だけ消えます</div>
     <label>操作の感度 <input type="range" id="sens" min="0.6" max="1.6" step="0.05"></label>
   </div>
   <button id="btn-fs" class="btn blue">⛶ 全画面にする（横向き固定）</button>
@@ -1131,7 +1173,7 @@ function newSave(id){return {v:4,uid:uuid4(),id:id||six(),fid:'',nameReg:false,f
   eq:{bike:'std',skin:'default',hair:'default',fit:'default',acc:'none',trail:'none',se:'bell',bgm:'default',wfx:'confetti'},
   rp:0,rpBest:0,rkTop:0,rkStreak:0,rkPlay:0,rkWin:0,rkPend:null,title:'rookie',plate:'auto',
   slots:['wave','thumbs','laugh','wheelie'],friends:[],course:0,best:0,sens:1,
-  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},weekly:{wk:'',ids:[],prog:{},claimed:{},rw:false,rwKey:''},ach:{},vol:{bgm:.6,se:.85},ts:Date.now()};}
+  stats:{},daily:{date:'',ids:[],prog:{},claimed:{}},weekly:{wk:'',ids:[],prog:{},claimed:{},rw:false,rwKey:''},ach:{},vol:{all:1,bgm:.6,se:.85,voice:.9},mute:false,ts:Date.now()};}
 function fixSave(s){
   const d=newSave(s&&typeof s.id==='string'?s.id:undefined);
   if(!s||typeof s!=='object')return d;
@@ -1157,7 +1199,7 @@ function fixSave(s){
   o.fout=(Array.isArray(o.fout)?o.fout:[]).filter(e=>e&&typeof e==='object'&&PK_RE.test(e.k)&&!seen.has(e.k)).map(e=>({k:e.k,n:String(e.n||'').slice(0,10)})).slice(0,30);   // 申請中
   o._inboxSeen=isFinite(+o._inboxSeen)?+o._inboxSeen:0;
   if(typeof o.fid!=='string'||!FID_RE.test(o.fid))o.fid='';   // 旧フレンドID：自分を登録してくれていた人の移行用にだけ残す
-  o.nameReg=!!o.nameReg;
+  o.nameReg=!!o.nameReg;o.mute=!!o.mute;
   // v16：ブロック・プロフィール・ログインボーナス・ガチャ券・練習・シーズン
   o.blocks=(Array.isArray(o.blocks)?o.blocks:[]).filter(e=>e&&typeof e==='object'&&PK_RE.test(e.k)).map(e=>({k:e.k,n:String(e.n||'').slice(0,10)})).slice(0,200);
   const pf=o.prof&&typeof o.prof==='object'?o.prof:{};o.prof={ic:pf.ic&&CAT[pf.ic.c]&&CAT[pf.ic.c][pf.ic.k]?{c:pf.ic.c,k:pf.ic.k}:null,msg:num(pf.msg,0,PROF_MSGS.length-1,0),bg:num(pf.bg,0,PROF_BGS.length-1,0)};
@@ -1353,8 +1395,8 @@ function initAudio(){
     const c=AU.ctx=new AC();
     const comp=c.createDynamicsCompressor();comp.threshold.value=-12;comp.ratio.value=4;comp.connect(c.destination);
     AU.master=c.createGain();AU.master.gain.value=.9;AU.master.connect(comp);
-    AU.bgmG=c.createGain();AU.seG=c.createGain();
-    [AU.bgmG,AU.seG].forEach(g=>g.connect(AU.master));
+    AU.bgmG=c.createGain();AU.seG=c.createGain();AU.voG=c.createGain();   // BGM・効果音・ボイスで音量を分ける
+    [AU.bgmG,AU.seG,AU.voG].forEach(g=>g.connect(AU.master));
     const n=c.sampleRate*2;
     AU.noise=c.createBuffer(1,n,c.sampleRate);
     const wd=AU.noise.getChannelData(0);for(let i=0;i<n;i++)wd[i]=Math.random()*2-1;
@@ -1370,8 +1412,10 @@ function initAudio(){
 }
 function applyVol(){
   if(!AU.ctx)return;
+  AU.master.gain.value=SV.mute?0:.9*SV.vol.all;   // 全体・ミュート
   AU.bgmG.gain.value=SV.vol.bgm*.5*(BG.lobby?.7:1);
   AU.seG.gain.value=SV.vol.se;
+  AU.voG.gain.value=SV.vol.voice;
 }
 async function loadSoundFiles(){
   try{
@@ -1473,11 +1517,11 @@ function loadVoice(k){
   if(AU['vp_'+k])return AU['vp_'+k];
   return AU['vp_'+k]=fetch(VOICES[k]).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>AU.ctx.decodeAudioData(ab,res,rej))).then(buf=>{AU.files['se_'+k]=buf;return buf;}).catch(()=>null);
 }
-function playVoice(k,vol){initAudio();if(!AU.ctx)return;if(AU.files['se_'+k]){playFile('se_'+k,vol==null?1:vol);return;}loadVoice(k).then(b=>{if(b)playFile('se_'+k,vol==null?1:vol);});}
+function playVoice(k,vol){initAudio();if(!AU.ctx||SV.mute||!SV.vol.voice)return;if(AU.files['se_'+k]){playFile('se_'+k,vol==null?1:vol,AU.voG);return;}loadVoice(k).then(b=>{if(b)playFile('se_'+k,vol==null?1:vol,AU.voG);});}
 function playSE(id){
   const s=SES[id];if(!s||id==='none')return;initAudio();if(!AU.ctx)return;
   if(s.voice){playVoice(s.voice,1.1);return;}
-  if(s.say&&'speechSynthesis' in window){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s.say);u.lang='ja-JP';u.pitch=s.pi;u.rate=1.1;speechSynthesis.speak(u);}catch(e){}return;}
+  if(s.say&&'speechSynthesis' in window){try{speechSynthesis.cancel();if(SV.mute||!SV.vol.voice)return;const u=new SpeechSynthesisUtterance(s.say);u.volume=Math.min(1,SV.vol.voice*SV.vol.all);u.lang='ja-JP';u.pitch=s.pi;u.rate=1.1;speechSynthesis.speak(u);}catch(e){}return;}
   if(s.sy&&SFX[s.sy])SFX[s.sy]();
 }
 
@@ -2622,7 +2666,7 @@ let lastClaimable=0;
 function questChanged(){const n=claimable();if(n>lastClaimable&&n>0)toast('🎉 クエスト達成！クエスト画面で報酬を受け取ろう',2600);lastClaimable=n;updateTop();if(page==='quest'&&$('lobby').style.display!=='none')renderQuests();}
 let lvupT=null;
 function addXP(n){
-  n=Math.floor(n);if(n<=0)return;SV.xp+=n;if(inGame&&MLOG)MLOG.xp+=n;
+  n=Math.floor(n*(typeof evXp==='function'?evXp():1));   // イベント中はXPに倍率if(n<=0)return;SV.xp+=n;if(inGame&&MLOG)MLOG.xp+=n;
   if(typeof pops!=='undefined'&&inGame)pops.push({t:'+'+n+' XP',x:W/2,y:H*.62,l:1.4,ml:1.4,c:'#8fd0ff',s:20});
   while(SV.lv<99&&SV.xp>=xpNeed(SV.lv)){
     SV.xp-=xpNeed(SV.lv);SV.lv++;const bonus=30+SV.lv*5;SV.coins+=bonus;if(inGame&&MLOG)MLOG.lvBonus+=bonus;
@@ -3425,10 +3469,15 @@ function handleInvite(){
 
 /* ===== 設定メニュー ===== */
 $('menu-btn').onclick=()=>{$('side-menu').classList.remove('hide');$('sm-id').textContent=SV.id;$('sm-name').textContent=SV.name+(SV.nameReg?'':'（未登録）');$('sm-lv').textContent='Lv'+SV.lv;$('admin-audio-section').classList.toggle('hide',SV.id!=='NM-430859'&&!IS_ADMIN);
-  ['bgm','se'].forEach(k=>$('vol-'+k).value=SV.vol[k]);$('sens').value=SV.sens;};
+  volUI();$('sens').value=SV.sens;};
 $('close-menu-btn').onclick=()=>$('side-menu').classList.add('hide');
 $('side-menu').addEventListener('click',e=>{if(e.target.id==='side-menu')$('side-menu').classList.add('hide');});
-['bgm','se'].forEach(k=>{$('vol-'+k).oninput=()=>{SV.vol[k]=+$('vol-'+k).value;save();initAudio();applyVol();};});
+// 音量（全体・BGM・効果音・ボイス）とミュート
+const VOLK=['all','bgm','se','voice'];
+function volUI(){VOLK.forEach(k=>{$('vol-'+k).value=SV.vol[k];$('vv-'+k).textContent=Math.round(SV.vol[k]*100);});const m=$('mute-btn');m.classList.toggle('on',SV.mute);m.textContent=SV.mute?'🔈 ミュート中':'🔇 ミュート';}
+VOLK.forEach(k=>{$('vol-'+k).oninput=()=>{SV.vol[k]=+$('vol-'+k).value;if(SV.mute&&SV.vol[k]>0)SV.mute=false;save();initAudio();applyVol();volUI();};});
+$('mute-btn').onclick=()=>{SV.mute=!SV.mute;save();initAudio();applyVol();volUI();if(!SV.mute&&AU.ctx)SFX.click();};
+$('vo-test').onclick=()=>{initAudio();applyVol();playVoice('nande',1);};
 $('sens').oninput=()=>{SV.sens=+$('sens').value;save();};
 async function goFull(){
   try{
@@ -5008,7 +5057,7 @@ socket.on('rank_wait',d=>{
 });
 socket.on('reward',d=>{
   if(!d||!d.gain)return;const g=Math.round(d.gain*(1+coinBoost(SV.lv)));SV.coins+=g;save();updateTop();if(inGame&&MLOG)MLOG.coins+=g;
-  if(inGame)pops.push({t:'+'+g+' NC',x:W-150,y:mode==='endless'?84:100,l:1.6,ml:1.6,c:'#ffe56b',s:20});
+  if(inGame)pops.push({t:'+'+g+' NC'+(d.ev?'（×'+d.ev+'）':''),x:W-150,y:mode==='endless'?84:100,l:1.6,ml:1.6,c:'#ffe56b',s:20});
   // 追い抜きでポイントを取ったときは「なにが目的なん？」ボイスは鳴らさない（v18）
   if(mode==='versus'&&!(d.ov&&SES[SV.eq.se]&&SES[SV.eq.se].voice))playSE(SV.eq.se);else if(AU.ctx)SFX.coin();
 });
@@ -5353,7 +5402,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v18',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v19',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -5611,6 +5660,7 @@ function admOverview(quiet){
     card(cb,'🟢 オンライン',r.online+'人','ok','users');card(cb,'👥 ユーザー',r.users+'人','','users');card(cb,'👀 試合中',(r.live||0)+'ルーム','','live');
     card(cb,'🚨 要対応',todo+'人',todo?'bad':'ok','todo');card(cb,'💡 未対応フィードバック',r.fbNew+'件',r.fbNew?'warn':'ok','fb');card(cb,'⛔ 停止中',r.banned.length+'人','','todo');
     card(cb,'📢 お知らせ',r.notices.length+'件','','news');card(cb,'🛠 メンテナンス',r.maint&&r.maint.on?'実施中':'通常',r.maint&&r.maint.on?'warn':'ok','maint');
+    if(typeof admExtra==='function')admExtra(r);
     $('adm-stat').innerHTML='<b>💾 保存先：</b>'+(r.kv?'<span style="color:#8cf08c">Upstash（再起動しても消えません）</span>':'<span style="color:#ff8a80">サーバーのファイル（Renderの再起動で、停止・フィードバック・NCの記録などが消えます。Upstashの設定をおすすめします）</span>')
       +'<br><b>📢 お知らせ：</b>消えてもプレイヤーの端末の控えから自動で戻ります<br><b>💰 NC：</b>各プレイヤーの端末から1分ごと（増えたときはすぐ）に報告されます<br><b>🔄 この画面：</b>20秒ごとに自動で更新します';
     // 🚨 要対応
@@ -5655,8 +5705,9 @@ $('al-ref').onclick=admLive;
 function admWatch(pk){initAudio();socket.emit('spectate',{pk,hidden:1},r=>{if(!r||!r.ok)toast((r&&r.err)||'観戦できません');else{$('au-modal').classList.add('hide');}});}
 $('an-send').onclick=()=>{const title=$('an-title').value.trim();if(!title){toast('タイトルを入れてください');return;}
   const gift=Math.max(0,Math.round(+$('an-gift').value||0)),btn=$('an-send');
-  if(!confirmTwice(btn,'本当に全員に送る？'+(gift?'（🎁'+gift+'NC付き）':'')))return;
-  socket.emit('adm_notice',{kind:$('an-kind').value,title,body:$('an-body').value,pin:$('an-pin').checked,gift},r=>{if(r&&r.ok){toast('📢 全ユーザーに送信しました');$('an-title').value='';$('an-body').value='';$('an-gift').value='0';$('an-pin').checked=false;admOverview();}else toast((r&&r.err)||'送信できませんでした');});};
+  if(!confirmTwice(btn,($('an-at').value?'この時刻に予約する？':'本当に全員に送る？')+(gift?'（🎁'+gift+'NC付き）':'')))return;
+  const at=$('an-at').value?new Date($('an-at').value).getTime():0;if(at&&at<Date.now()-60e3){toast('その時刻はもう過ぎています');return;}
+  socket.emit('adm_notice',{kind:$('an-kind').value,title,body:$('an-body').value,pin:$('an-pin').checked,gift,at},r=>{if(r&&r.ok){toast(r.sched?'📅 '+fmtD(r.sched.at)+' に送るよう予約しました':'📢 全ユーザーに送信しました');$('an-at').value='';$('an-title').value='';$('an-body').value='';$('an-gift').value='0';$('an-pin').checked=false;admOverview();}else toast((r&&r.err)||'送信できませんでした');});};
 // メンテナンス
 function maintUntil(){const v=$('am-time').value;if(!v)return 0;const [h,m]=v.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(d.getTime()<=Date.now())d.setDate(d.getDate()+1);return d.getTime();}
 $('am-start').onclick=()=>{const until=maintUntil();if(!confirmTwice($('am-start'),until?fmtHM(until)+'再開で開始？':'再開時刻なしで開始？'))return;
@@ -6024,6 +6075,78 @@ setInterval(()=>{
   if(lbToday()){openLB();return;}
   if(SV.tut===0&&!introShown){introShown=true;$('tut-intro').classList.remove('hide');}
 },1200);
+
+/* =====================================================================
+   v19：期間限定イベント・お知らせの予約・データ（Upstash／バックアップ）
+   ===================================================================== */
+let EVENT={on:false};
+const evNow=()=>EVENT&&EVENT.on&&Date.now()>=(EVENT.from||0)&&Date.now()<EVENT.until;
+const evXp=()=>evNow()?EVENT.xp||1:1;
+const leftTxt=ms=>{const m=Math.max(0,Math.ceil(ms/60000));return m>=1440?Math.floor(m/1440)+'日'+(Math.floor(m%1440/60)?Math.floor(m%1440/60)+'時間':''):m>=60?Math.floor(m/60)+'時間'+(m%60?m%60+'分':''):m+'分';};
+function evRibbon(){const r=$('ev-ribbon');if(!EVENT.on||Date.now()>=EVENT.until){r.classList.add('hide');return;}
+  r.textContent=evNow()?'🎉 '+EVENT.name+'イベント開催中！ のこり '+leftTxt(EVENT.until-Date.now()):'🎉 '+EVENT.name+'イベント まもなく開始（'+fmtD(EVENT.from)+'〜）';r.classList.remove('hide');}
+socket.on('event',e=>{const was=evNow();EVENT=e&&e.on?e:{on:false};evRibbon();if(page==='admin')aeState();
+  if(!was&&evNow()&&!inGame)toast('🎉 '+EVENT.name+'イベントが始まりました！',3500);});
+setInterval(evRibbon,30000);
+
+/* ----- 管理者：イベント ----- */
+const EVK={nc2:'💰 NC2倍',xp15:'⭐ XP1.5倍',xp2:'⭐ XP2倍',both:'🎉 NC2倍＆XP1.5倍',nc3:'💰 NC3倍'};let AE_K='nc2';
+const toLocalInput=t=>{const d=new Date(t);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
+function aeKinds(){const b=$('ae-kinds');b.innerHTML='';for(const k in EVK){const x=document.createElement('button');x.textContent=EVK[k];x.className=k===AE_K?'on':'';x.onclick=()=>{AE_K=k;aeKinds();};b.appendChild(x);}}
+function aeState(){const e=EVENT,s=$('ae-state');
+  s.innerHTML=e.on?(evNow()?'<b style="color:#ffd23f">● 開催中：</b>':'<b style="color:#8fd0ff">● 予定：</b>')+'<b></b>（'+(e.from?fmtD(e.from)+' 〜 ':'')+fmtD(e.until)+' まで）':'<b style="color:#8cf08c">● いまはイベントなし</b>';
+  if(e.on)s.querySelectorAll('b')[1].textContent=e.name;
+  $('ae-stop').disabled=!e.on;$('ae-start').textContent=e.on?'🎉 内容を変えて始めなおす':'🎉 イベントを始める';const tb=$('at-event');tb.classList.toggle('hide',!evNow());}
+document.querySelectorAll('.ae-quick button').forEach(b=>b.onclick=()=>{const h=b.dataset.h,from=$('ae-from').value?new Date($('ae-from').value).getTime():Date.now();
+  let until;if(h==='wk'){const d=new Date();const add=(7-d.getDay())%7;d.setDate(d.getDate()+add);d.setHours(23,59,0,0);until=d.getTime();if(!$('ae-from').value){const s=new Date(d);s.setDate(s.getDate()-1);s.setHours(0,0,0,0);if(s.getTime()>Date.now())$('ae-from').value=toLocalInput(s.getTime());}}
+  else until=from+(+h)*3600e3;$('ae-until').value=toLocalInput(until);});
+$('ae-start').onclick=()=>{const until=$('ae-until').value?new Date($('ae-until').value).getTime():0,from=$('ae-from').value?new Date($('ae-from').value).getTime():0;
+  if(!until){toast('終わりの時刻を選んでください');return;}if(!confirmTwice($('ae-start'),EVK[AE_K].replace(/^\S+\s/,'')+'で始める？'))return;
+  socket.emit('adm_event',{on:true,kind:AE_K,from,until,notice:$('ae-notice').checked,msg:$('ae-msg').value},r=>{if(r&&r.ok){EVENT=r.ev;aeState();evRibbon();toast('🎉 イベントを設定しました'+($('ae-notice').checked?'（お知らせも送ります）':''));$('ae-msg').value='';admOverview(true);}else toast((r&&r.err)||'できませんでした');});};
+$('ae-stop').onclick=()=>{if(!confirmTwice($('ae-stop'),'本当に終了する？'))return;socket.emit('adm_event',{on:false},r=>{if(r&&r.ok){EVENT=r.ev;aeState();evRibbon();toast('イベントを終了しました');}});};
+aeKinds();
+
+/* ----- 管理者：予約中のお知らせ・ダッシュボード・データ ----- */
+$('an-at-clear').onclick=()=>{$('an-at').value='';};
+function admExtra(r){
+  if(r.ev){EVENT=r.ev.on?r.ev:{on:false};aeState();evRibbon();}
+  const sb=$('adm-sched');sb.innerHTML='';
+  (r.sched||[]).forEach(x=>{const d=document.createElement('div');d.className='au-row';d.style.borderLeft='4px solid #8fd0ff';const g=document.createElement('div');g.className='grow';
+    g.innerHTML='<span class="tagb tagd">📅 予約 '+fmtD(x.at)+'</span> <span class="nk '+x.kind+'">'+(KINDN[x.kind]||'')+'</span> ';const b=document.createElement('b');b.textContent=x.title+(x.gift?'（🎁'+x.gift+'NC）':'');g.appendChild(b);
+    const c=document.createElement('button');c.className='btn sm dark';c.textContent='取り消す';c.onclick=e=>{e.stopPropagation();if(!confirmTwice(c,'取り消す？'))return;socket.emit('adm_sched_del',{sid:x.sid},()=>admOverview(true));};d.append(g,c);sb.appendChild(d);});
+  // 💾 保存先・使用量
+  const k=r.kvs||{},e=$('ad-kv');
+  if(k.kv){const used=k.month&&k.month.n||0,days=Math.max(1/24,(Date.now()-new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime())/864e5),dim=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate(),pace=Math.round(used/days*dim),pct=Math.min(100,used/5000);
+    e.innerHTML='<div style="color:#8cf08c">✅ Upstashに保存しています（再起動・コード更新でもデータは消えません）</div>今月の使用回数：<b>'+used.toLocaleString()+'</b> / 500,000 回（無料枠）<div class="kv-bar"><i style="width:'+pct+'%"></i></div>このペースだと月末に約 <b>'+pace.toLocaleString()+'</b> 回'+(pace>450000?' <b style="color:#ff8a80">⚠ 無料枠をこえそうです</b>':'')+(k.err?'<br><span style="color:#ffb300">⚠ 保存エラー '+k.err+'回（最後：'+fmtD(k.lastErrT)+'）</span>':'');}
+  else e.innerHTML='<div style="color:#ff8a80">⚠ Upstashが設定されていません。今はサーバーのファイルに保存しているので、Renderの再起動やコードの更新のたびに、名簿・ランキング・停止・フィードバック・NCの記録などが消えます。</div><div class="muted">設定方法は Render の「Environment」に UPSTASH_REDIS_REST_URL と UPSTASH_REDIS_REST_TOKEN を入れるだけです。</div>';
+  $('at-data').classList.toggle('hide',!!k.kv);
+  const cb=$('adm-cards');
+  if(cb&&!cb.querySelector('[data-x]')){const add=(lb,v,cl,tab)=>{const c=document.createElement('button');c.className='acard'+(cl?' '+cl:'');c.dataset.x=1;const s=document.createElement('small');s.textContent=lb;const b=document.createElement('b');b.textContent=v;c.append(s,b);c.onclick=()=>admTab(tab);cb.appendChild(c);};
+    add('🎉 イベント',evNow()?EVENT.name:EVENT.on?'予定あり':'なし',evNow()?'warn':'','event');add('📅 予約中のお知らせ',(r.sched||[]).length+'件','','news');add('💾 保存先',k.kv?'Upstash':'未設定',k.kv?'ok':'bad','data');}
+}
+$('ad-test').onclick=()=>{$('ad-test-r').textContent='テスト中…';socket.emit('adm_kvtest',r=>{if(!r||!r.ok){$('ad-test-r').textContent='失敗しました';return;}
+  $('ad-test-r').innerHTML=!r.kv?'<span style="color:#ff8a80">Upstashが設定されていません</span>':r.pass?'<span style="color:#8cf08c">✅ 成功（'+r.ms+'ミリ秒）</span>':'<span style="color:#ff8a80">❌ 失敗：'+(r.err||'読み書きできませんでした')+'（URLとTOKENを確認してください）</span>';});};
+// バックアップの保存（ファイルとしてダウンロード）
+$('ad-save').onclick=async()=>{try{const r=await fetch('/api/adm/backup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid})});
+  if(!r.ok){toast('保存できませんでした');return;}const j=await r.json(),txt=JSON.stringify(j),d=new Date();
+  const name='nanigamokutekinan-backup-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.json';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+  try{LS.set('nm_bk_last',String(Date.now()));}catch(e){}adLast();toast('⬇ バックアップを保存しました（'+Math.round(txt.length/1024)+'KB）');}catch(e){toast('保存できませんでした');}};
+function adLast(){const t=+LS.get('nm_bk_last','0');$('ad-last').textContent=t?'前回の保存：'+fmtD(t):'まだ保存していません';}
+adLast();
+// バックアップから戻す
+const AD_PARTS={names:'名簿（ユーザー名）',ranking:'エンドレスのランキング',rp:'チャリランク',friends:'フレンド申請',mod:'通報・停止・お知らせ・フィードバックなど',season:'シーズン',eco:'NCの記録',prof:'プロフィール'};
+let AD_BK=null;
+$('ad-file').onchange=async()=>{const f=$('ad-file').files[0];AD_BK=null;$('ad-load').disabled=true;$('ad-parts').innerHTML='';$('ad-load-r').textContent='';if(!f)return;
+  try{const j=JSON.parse(await f.text());if(j.app!=='nanigamokutekinan'||!j.data)throw 0;AD_BK=j;
+    const box=$('ad-parts');for(const k in AD_PARTS){if(j.data[k]==null)continue;const l=document.createElement('label');const c=document.createElement('input');c.type='checkbox';c.checked=true;c.value=k;l.append(c,document.createTextNode(AD_PARTS[k]));box.appendChild(l);}
+    $('ad-load-r').textContent='📄 '+fmtD(j.t)+' に保存したバックアップです';$('ad-load').disabled=false;}
+  catch(e){$('ad-load-r').textContent='❌ バックアップファイルではありません';}};
+$('ad-load').onclick=async()=>{if(!AD_BK)return;const parts=[...document.querySelectorAll('#ad-parts input:checked')].map(c=>c.value);if(!parts.length){toast('戻す項目を選んでください');return;}
+  if(!confirmTwice($('ad-load'),'今のデータを上書きする？'))return;$('ad-load-r').textContent='読み込み中…';
+  try{const r=await fetch('/api/adm/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid,backup:AD_BK,parts})});const j=await r.json();
+    $('ad-load-r').textContent=j.ok?'✅ 戻しました：'+Object.entries(j.done).map(([k,v])=>(AD_PARTS[k]||k).replace(/（.*）/,'')+' '+v).join('・'):'❌ '+(j.err||'失敗しました');if(j.ok){toast('✅ バックアップから戻しました');admOverview();}}
+  catch(e){$('ad-load-r').textContent='❌ 送れませんでした（ファイルが大きすぎるかもしれません）';}};
 </script>
 </body>
 </html>
