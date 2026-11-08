@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v23 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v24 — Express + Socket.io（サーバー権威型）
+// v24：📅 デイリーチャレンジ（全員同じ車の並び・1日3回・上位にNC）・👻 ゴースト（1位や自分のベストの走りと一緒に走る）・🎄 クリスマス（12/1〜12/25の限定アイテム・雪）
 // v23：通信を軽く（試合の状態を短い形で・変わったところだけ・1秒20回に。ページは圧縮して送る）。チート対策（NC検算の抜け道・RPの上限）とセキュリティ（署名の鍵・CSPなどのヘッダー・送りすぎの制限）を強化
 // v22：管理画面を左メニュー＋いつも見える上のバー（オンライン・ユーザー・メンテナンス・お知らせ）に。ダッシュボードを「すぐ対応／いまの状態／今日の数字／これからの予定」に整理
 // v21：一斉配布・操作の記録・利用状況のグラフ・人気アイテム・ランキング管理・ガチャ設定を画面で変更・手動セール・メンテナンスの予約
@@ -678,6 +679,81 @@ function snapV(R, slot) {
 }
 
 /* =====================================================================
+   v24：📅 デイリーチャレンジ・👻 ゴースト・🎄 クリスマス
+   ・デイリー：毎日（日本時間0時に切りかえ）全員が同じコース・同じ車の並びで走る。1日3回まで。
+     その日のランキング1〜3位には、次の日にプレゼントでNC（300／200／100）
+     車の並びは「何番目の車の波か」ごとに決まる乱数で作るので、同じタイミングで同じ車が出てくる
+   ・ゴースト：エンドレスの走り（位置）を1秒6回記録。デイリーの1位、エンドレスのランキング1位の走りを保存して、
+     ほかの人が半透明の自転車として一緒に走れるようにする（車には当たらない・見えるだけ）
+   ・クリスマス：12/1〜12/25（日本時間）。管理者画面で「今すぐ」「止める」もできる
+   ===================================================================== */
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const DAILY_FILE = process.env.DAILY_FILE || path.join(__dirname, 'daily.json');
+const GHOST_FILE = process.env.GHOST_FILE || path.join(__dirname, 'ghost.json');
+const DAILY_TRIES = 3, DAILY_REWARD = [300, 200, 100];
+let DAILY = { id: '', course: 0, seed: 0, top: [], tries: {}, gh: {}, prev: null };
+let GHOST = { list: {} };   // エンドレスのランキング上位10人のゴースト（h → 走り）
+const saveDaily = saver('daily', DAILY_FILE, () => DAILY, 120000);
+const saveGhost = saver('ghost', GHOST_FILE, () => GHOST, 120000);
+function loadDaily(j) { if (j && typeof j === 'object' && typeof j.id === 'string') DAILY = Object.assign({ top: [], tries: {}, gh: {}, prev: null }, j); }
+function loadGhost(j) { if (j && typeof j === 'object') GHOST = { list: j.list && typeof j.list === 'object' ? j.list : {} }; }
+const SNOW_COURSE = 6;
+function xmasInfo() {   // 🎄 クリスマス期間か（mode：auto＝12/1〜12/25、on＝今すぐ、off＝止める）
+  const mode = MOD.xmas || 'auto', j = new Date(Date.now() + 9 * 3600e3), y = j.getUTCFullYear();
+  const until = Date.UTC(y, 11, 26) - 9 * 3600e3, auto = j.getUTCMonth() === 11 && j.getUTCDate() <= 25;
+  return { on: mode === 'on' || (mode === 'auto' && auto), until: mode === 'on' ? 0 : until, mode };
+}
+function dailyCourse(id) {   // その日のコース（前の日と同じにならないように。クリスマスイブと当日は雪のコース）
+  const md = id.slice(5);
+  if ((md === '12-24' || md === '12-25') && xmasInfo().mode !== 'off') return SNOW_COURSE;
+  const prev = dayJ(Date.parse(id + 'T00:00:00+09:00') - 864e5);
+  const pick = d => strHash('course:' + d) % PATHS.length;
+  let c = pick(id); if (c === pick(prev)) c = (c + 1) % PATHS.length;
+  return c;
+}
+function dailyRoll() {   // 日付が変わったら、きのうの1〜3位にプレゼントを送って、新しい日にする
+  const id = dayJ(Date.now()); if (DAILY.id === id) return;
+  if (DAILY.id && DAILY.top.length) {
+    DAILY.top.slice(0, 3).forEach((e, i) => { if (e.pk) giveGift(e.pk, DAILY_REWARD[i], '📅 デイリーチャレンジ ' + (i + 1) + '位', DAILY.id.slice(5).replace('-', '/') + ' のデイリーチャレンジで ' + (i + 1) + '位になりました！（' + e.score.toLocaleString() + '点）'); });
+    DAILY.prev = { id: DAILY.id, course: DAILY.course, top: DAILY.top.slice(0, 3).map(e => ({ name: e.name, lv: e.lv, score: e.score })) };
+  }
+  DAILY.id = id; DAILY.course = dailyCourse(id); DAILY.seed = strHash('daily:' + id + ':' + RANK_SECRET.slice(0, 8)); DAILY.top = []; DAILY.tries = {}; DAILY.gh = {};
+  saveDaily();
+}
+setInterval(dailyRoll, 30e3);
+const dailyMine = (pk, h) => { const i = DAILY.top.findIndex(e => e.h === h); return { tries: DAILY.tries[pk] || 0, left: Math.max(0, DAILY_TRIES - (DAILY.tries[pk] || 0)), rank: i + 1, best: i >= 0 ? DAILY.top[i].score : 0 }; };
+function dailyInfo(socket) {
+  dailyRoll();
+  const h = hidOf(socket.nmId), top1 = DAILY.top[0];
+  return { id: DAILY.id, course: DAILY.course, max: DAILY_TRIES, reward: DAILY_REWARD, me: dailyMine(socket.nmPk, h),
+    top: DAILY.top.slice(0, 10).map(e => ({ name: e.name, lv: e.lv, score: e.score, me: e.h === h })), n: DAILY.top.length,
+    ghost: DAILY.top.slice(0, 3).some(e => DAILY.gh[e.h]) ? (top1 ? top1.name : '') : '', prev: DAILY.prev, xmas: xmasInfo() };
+}
+// ゴーストの記録（1秒6回の位置。zは前との差で小さくして保存）
+function ghostPack(R) {
+  const g = R.gh || [], x = [], z = []; let pz = 0;
+  for (let i = 0; i < g.length; i += 2) { x.push(g[i]); z.push(g[i + 1] - pz); pz = g[i + 1]; }
+  const P = R.P[0];
+  return { name: R.names[0], lv: R.lvs[0], score: R.score, ts: Date.now(), look: { bike: P.bike, skin: P.skin, hair: P.hair, fit: P.fit, acc: P.acc, trail: P.trail }, x, z };
+}
+function dailySubmit(R, sk) {   // デイリーの記録（1人1件・いちばん良い点）
+  dailyRoll();
+  if (R.daily !== DAILY.id || !sk) return { rank: 0, best: R.score, improved: false };
+  const h = hidOf(R.hostId), name = R.names[0], lv = R.lvs[0], i = DAILY.top.findIndex(e => e.h === h);
+  let improved = false;
+  if (i < 0) { DAILY.top.push({ h, pk: sk.nmPk || '', name, lv, score: R.score, ts: Date.now() }); improved = true; }
+  else if (R.score > DAILY.top[i].score) { Object.assign(DAILY.top[i], { name, lv, score: R.score, ts: Date.now() }); improved = true; }
+  DAILY.top.sort((a, b) => b.score - a.score); DAILY.top = DAILY.top.slice(0, 100);
+  const rank = DAILY.top.findIndex(e => e.h === h) + 1;
+  if (improved && rank >= 1 && rank <= 3 && R.gh && R.gh.length > 10) DAILY.gh[h] = ghostPack(R);
+  const keep = new Set(DAILY.top.slice(0, 3).map(e => e.h)); for (const k of Object.keys(DAILY.gh)) if (!keep.has(k)) delete DAILY.gh[k];
+  saveDaily();
+  return { rank, best: DAILY.top[rank - 1] ? DAILY.top[rank - 1].score : R.score, improved, left: dailyMine(sk.nmPk, h).left, n: DAILY.top.length };
+}
+const xmasEmit = () => io.emit('xmas', xmasInfo());
+
+/* =====================================================================
    エンドレスラン（1人・どこまで行けるか）
    ===================================================================== */
 const EN = { BASE: 130, MAX: 330, ACC: 2.4, STEER: 260 };
@@ -687,22 +763,25 @@ function resetEndless(R) {
   R.inp = [{ s: 0 }, { s: 0 }]; R.act = [false, false]; R.actK = [null, null];
   R.state = 'count'; R.timer = 3; R.el = 0;
   R.score = 0; R.bonus = 0; R.combo = 0; R.comboT = 0; R.nearN = 0; R.ev = [];
-  R.nextCar = 1.2; R.nextCop = rnd(9, 13); R.sentOver = false; R.msg = ''; R.sub = '';
+  R.wave = 0; R.rngS = R.daily ? mulberry32(R.seed) : null; R.gh = []; R.gt = 0;   // v24：デイリーは決まった乱数・ゴーストの記録
+  R.nextCar = 1.2; R.nextCop = R.rngS ? 9 + R.rngS() * 4 : rnd(9, 13); R.sentOver = false; R.msg = ''; R.sub = '';
 }
 function spawnWave(R, p) {
+  // v24：デイリーは「何番目の波か」で決まる乱数を使う（同じタイミングなら、だれでも同じ車が出る）
+  const g = R.daily ? mulberry32((R.seed ^ Math.imul(++R.wave, 2654435761)) >>> 0) : Math.random, rnd = (a, b) => a + g() * (b - a);
   const lvl = Math.min(1, R.el / 150), z = p.z + rnd(580, 660);
   // 近くの障害物の車線を調べ、必ず1車線は通れるようにする
   const used = new Set(R.obs.filter(o => o.k !== 'cop' && Math.abs(o.z - z) < 200).map(o => laneIdx(o.x)));
   const free = [0, 1, 2, 3].filter(i => !used.has(i));
   if (free.length < 2) return;
-  const keep = free[Math.floor(Math.random() * free.length)];
-  const cand = free.filter(i => i !== keep).sort(() => Math.random() - 0.5);
-  if (Math.random() < 0.045 * MUD_RATE) addMud(R, LANES[Math.floor(Math.random() * 4)] + rnd(-10, 10), z - rnd(120, 220));   // ごくまれに泥
-  const r = Math.random();
+  const keep = free[Math.floor(g() * free.length)];
+  const cand = free.filter(i => i !== keep).sort(() => g() - 0.5);
+  if (g() < 0.045 * MUD_RATE) addMud(R, LANES[Math.floor(g() * 4)] + rnd(-10, 10), z - rnd(120, 220));   // ごくまれに泥
+  const r = g();
   if (r < 0.12 + lvl * 0.06) { const li = cand[0]; for (let i = 0; i < 3; i++) addObs(R, 'cone', LANES[li] + rnd(-5, 5), z + i * 26, 0, 1); return; }
   const sameC = cand.filter(i => i < 2);
   if (r < 0.24 && sameC.length) { addObs(R, 'bus', LANES[sameC[0]] * 0.98, z, rnd(35, 50), 1); return; }
-  const n = Math.min(cand.length, Math.random() < 0.35 + lvl * 0.4 ? (Math.random() < lvl * 0.5 ? 3 : 2) : 1);
+  const n = Math.min(cand.length, g() < 0.35 + lvl * 0.4 ? (g() < lvl * 0.5 ? 3 : 2) : 1);
   for (let k = 0; k < n; k++) {
     const li = cand[k], onc = li >= 2;
     addObs(R, 'car', LANES[li] + rnd(-6, 6), z + rnd(-30, 30), onc ? rnd(60, 110) : rnd(40, 70), onc ? -1 : 1, Math.floor(rnd(0, 6)));
@@ -713,11 +792,21 @@ function overEndless(R, kind, reason) {
   try { usageDay().e++; } catch (e) { }
   R.state = 'over'; R.fx = { who: [0], kind }; R.msg = 'GAME OVER'; R.sub = reason;
   R.score = Math.floor(p.z / 10) + R.bonus;
-  const res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0], R.course || 0);
-  const coins = Math.floor(R.score / 40), sid = R.ids[0];
+  const sid = R.ids[0];
+  let res, daily = null;
+  if (R.daily) { daily = dailySubmit(R, sockOf(sid)); res = { best: daily.best, rank: daily.rank, improved: daily.improved }; }   // デイリーはデイリーのランキングだけ
+  else {
+    res = submitScore(R.hostId, R.names[0], R.score, R.lvs[0], R.course || 0);
+    if (res.rank >= 1 && res.rank <= 10 && res.improved && R.gh && R.gh.length > 10) {   // 👻 上位10人に入ったら、その走りをゴーストとして保存
+      GHOST.list[hidOf(R.hostId)] = Object.assign(ghostPack(R), { c: R.course || 0 });
+      const keep = new Set(ranking.slice(0, 10).map(e => e.h)); for (const k of Object.keys(GHOST.list)) if (!keep.has(k)) delete GHOST.list[k];
+      saveGhost();
+    }
+  }
+  const coins = Math.floor(R.score / 40);
   if (coins > 0) { const g = coins * ncMult(); io.to(sid).emit('reward', { gain: g, ev: ncMult() > 1 ? ncMult() : 0 }); ecoAddSid(sid, g); }
   prog(R, 0, 'run', { score: R.score, dist: Math.floor(p.z / 10) });
-  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: topN(10, R.hostId), tok: myEntry('run', R.hostId) });
+  io.to(sid).emit('endless_over', { score: R.score, dist: Math.floor(p.z / 10), bonus: R.bonus, reason, kind, coins, best: res.best, rank: res.rank, improved: res.improved, top: R.daily ? [] : topN(10, R.hostId), tok: R.daily ? null : myEntry('run', R.hostId), daily });
 }
 function stepEndless(R, dt) {
   if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
@@ -737,14 +826,16 @@ function stepEndless(R, dt) {
   p.cd = Math.max(0, p.cd - dt); p.bcd = Math.max(0, p.bcd - dt);
   mudCheck(R, 0, p, dt); p.mm = moveMul(R, p);
   p.z += p.v * p.mm * dt;
+  if (++R.gt % 5 === 0 && R.gh.length < 14400) R.gh.push(Math.round(p.x), Math.round(p.z));   // 👻 ゴースト用に1秒6回記録
   R.comboT -= dt; if (R.comboT <= 0) R.combo = 0;
 
   const lvl = Math.min(1, R.el / 150);
   R.nextCar -= dt;
-  if (R.nextCar <= 0) { R.nextCar = rnd(1.3, 2.1) - lvl * 0.85; spawnWave(R, p); }
+  const rs = R.rngS ? (a, b) => a + R.rngS() * (b - a) : rnd;
+  if (R.nextCar <= 0) { R.nextCar = rs(1.3, 2.1) - lvl * 0.85; spawnWave(R, p); }
   R.nextCop -= dt;
   if (R.nextCop <= 0) {
-    R.nextCop = rnd(11, 17) - lvl * 5;
+    R.nextCop = rs(11, 17) - lvl * 5;
     const x = nearestLane(p.x, SAME);   // 自分に近い車線を後ろから走ってくる（サイレンで予告）
     if (clearAt(R, x, p.z - 330, 19, 27)) addObs(R, 'cop', x, p.z - 330, p.v + 90, 1);
   }
@@ -1292,6 +1383,7 @@ function loadMod(j) {
   for (const k of ['bclaims', 'rkdel', 'rkreset']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
   for (const k of ['audit', 'bgifts', 'dists']) if (Array.isArray(j[k])) MOD[k] = j[k];
   for (const k of ['sale', 'gcfg', 'msched']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
+  if (['auto', 'on', 'off'].includes(j.xmas)) MOD.xmas = j.xmas;
   if (j.event && typeof j.event === 'object') MOD.event = j.event;
   if (Array.isArray(j.sched)) MOD.sched = j.sched.slice(0, 50);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
@@ -1481,7 +1573,7 @@ function deliverMod(socket) {
   saveMod();
   socket.isAdmin = isAdminUid(socket.nmUid);
   socket.emit('admin', socket.isAdmin);
-  socket.emit('sale', saleInfo()); if (MOD.gcfg) socket.emit('gcfg', MOD.gcfg);
+  socket.emit('sale', saleInfo()); if (MOD.gcfg) socket.emit('gcfg', MOD.gcfg); socket.emit('xmas', xmasInfo());
   const bg = bgiftsFor(pk, socket); if (bg.length) socket.emit('gifts', bg);
   socket.emit('nmeta', { born: MOD.born });
   socket.emit('notices', MOD.notices);
@@ -1852,19 +1944,23 @@ io.on('connection', socket => {
   socket.on('adm_items_reset', adm((d, cb) => { ISTAT = { since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} }; saveIstat(); audit(socket, 'items_reset'); cb({ ok: true, st: ISTAT }); }));
   // 🏆 ランキングの管理
   const rkOut = (b, e, i) => Object.assign({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0 }, b === 'run' ? { score: e.score, c: e.c } : { rp: e.rp, ttl: e.ttl || '' });
-  socket.on('adm_rank_list', adm((d, cb) => cb({ ok: true, run: ranking.map((e, i) => rkOut('run', e, i)), rp: rpBoard.map((e, i) => rkOut('rp', e, i)), season: SEASON.id, reset: MOD.rkreset || {} })));
+  socket.on('adm_rank_list', adm((d, cb) => { dailyRoll(); cb({ ok: true, run: ranking.map((e, i) => rkOut('run', e, i)), rp: rpBoard.map((e, i) => rkOut('rp', e, i)), daily: DAILY.top.map((e, i) => ({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0, score: e.score })), dailyId: DAILY.id, season: SEASON.id, reset: MOD.rkreset || {} }); }));
   socket.on('adm_rank_del', adm((d, cb) => {
+    if (d.board === 'daily') {   // 今日のデイリーの記録を消す（ゴーストも消える）
+      const i = DAILY.top.findIndex(x => x.h === String(d.h || '')); if (i < 0) return cb({ ok: false, err: 'もうありません' });
+      const e = DAILY.top.splice(i, 1)[0]; delete DAILY.gh[e.h]; saveDaily(); audit(socket, 'rank_del', { d: 'デイリー：' + e.name + '（' + e.score + '）' }); return cb({ ok: true });
+    }
     const b = d.board === 'rp' ? 'rp' : 'run', h = String(d.h || ''), arr = b === 'run' ? ranking : rpBoard, i = arr.findIndex(x => x.h === h);
     if (i < 0) return cb({ ok: false, err: 'もうありません' });
     const e = arr.splice(i, 1)[0]; const L = MOD.rkdel[b] = MOD.rkdel[b] || {}; L[h] = Date.now();
     const ks = Object.keys(L); if (ks.length > 500) for (const k of ks.sort((x, y) => L[x] - L[y]).slice(0, ks.length - 500)) delete L[k];
-    if (b === 'run') saveRanking(); else saveRp(); saveMod();
+    if (b === 'run') { saveRanking(); if (GHOST.list[h]) { delete GHOST.list[h]; saveGhost(); } } else saveRp(); saveMod();   // 消した記録のゴーストも消す
     audit(socket, 'rank_del', { d: (b === 'run' ? 'エンドレス' : 'チャリランク') + '：' + e.name + '（' + (b === 'run' ? e.score + 'm' : e.rp + 'RP') + '）' });
     cb({ ok: true });
   }));
   socket.on('adm_rank_reset', adm((d, cb) => {
     const b = d.board === 'rp' ? 'rp' : 'run', n = (b === 'run' ? ranking : rpBoard).length;
-    if (b === 'run') { ranking = []; saveRanking(); } else { rpBoard = []; saveRp(); }
+    if (b === 'run') { ranking = []; saveRanking(); GHOST.list = {}; saveGhost(); } else { rpBoard = []; saveRp(); }
     MOD.rkreset[b] = Date.now(); MOD.rkdel[b] = {}; saveMod();
     audit(socket, 'rank_reset', { d: (b === 'run' ? 'エンドレス' : 'チャリランク') + '（' + n + '件を消去）' }); cb({ ok: true });
   }));
@@ -1877,6 +1973,12 @@ io.on('connection', socket => {
     cb({ ok: true, gcfg: MOD.gcfg });
   }));
   socket.on('adm_gcfg_get', adm((d, cb) => cb({ ok: true, gcfg: MOD.gcfg })));
+  // 🎄 クリスマス（自動＝12/1〜12/25／今すぐ／止める）
+  socket.on('adm_xmas', adm((d, cb) => {
+    if (!['auto', 'on', 'off'].includes(d.mode)) return cb({ ok: false, err: '不明な設定' });
+    MOD.xmas = d.mode; saveMod(); xmasEmit(); audit(socket, 'xmas', { d: { auto: '自動（12/1〜12/25）', on: '今すぐ開始', off: '止める' }[d.mode] });
+    cb({ ok: true, xmas: xmasInfo() });
+  }));
   // 🏷 セール
   socket.on('adm_sale', adm((d, cb) => {
     if (!d.on) { const was = saleInfo().on; MOD.sale = null; saveMod(); io.emit('sale', saleInfo()); if (was) audit(socket, 'sale_end'); return cb({ ok: true, sale: saleInfo() }); }
@@ -2025,6 +2127,29 @@ io.on('connection', socket => {
     resetMatch(R);
     socket.emit('start', { slot: 0, course: R.course, mode: 'versus', room: false, opp: oppInfo(R, 1) });
   });
+  // 📅 デイリーチャレンジ
+  socket.on('daily_info', (d, cb) => { if (typeof d === 'function') cb = d; if (!socket.nmPk) return rp(cb)({ ok: false }); rp(cb)(Object.assign({ ok: true }, dailyInfo(socket))); });
+  socket.on('daily', (d, cb) => {
+    if (typeof d === 'function') { cb = d; d = {}; }
+    dailyRoll(); const pk = socket.nmPk; if (!pk || !socket.nmId) return rp(cb)({ ok: false, err: 'もう一度ためしてください' });
+    if ((DAILY.tries[pk] || 0) >= DAILY_TRIES) return rp(cb)({ ok: false, err: '今日の' + DAILY_TRIES + '回は終わりました。明日またチャレンジ！' });
+    DAILY.tries[pk] = (DAILY.tries[pk] || 0) + 1; saveDaily();
+    leaveRoom(socket); qRemove(socket.id);
+    const code = 'RUN_' + socket.id, R = newRoom(code, socket, d, { mode: 'endless', daily: DAILY.id, seed: DAILY.seed, course: DAILY.course });
+    rooms.set(code, R); socket.data = { code, slot: 0 };
+    resetEndless(R);
+    socket.emit('start', { slot: 0, course: R.course, mode: 'endless', room: false, daily: { id: DAILY.id, left: DAILY_TRIES - DAILY.tries[pk] } });
+    rp(cb)({ ok: true });
+  });
+  // 👻 ゴーストを受け取る（kind：daily＝今日のデイリー1位、top＝エンドレスのランキング1位）
+  socket.on('ghost_get', (d, cb) => {
+    if (typeof d === 'function') { cb = d; d = {}; }
+    dailyRoll();
+    // いちばん順位が高くて、走りが残っている人のゴーストを返す（v24より前の記録には走りがないため）
+    const me = hidOf(socket.nmId), L = d && d.kind === 'daily' ? DAILY.top.slice(0, 3) : ranking.slice(0, 10), G = d && d.kind === 'daily' ? DAILY.gh : GHOST.list;
+    for (let i = 0; i < L.length; i++) { const g = G[L[i].h]; if (g) return rp(cb)({ ok: true, g: Object.assign({}, g, { rank: i + 1, me: L[i].h === me }) }); }
+    rp(cb)({ ok: false });
+  });
   socket.on('endless', d => {
     leaveRoom(socket); qRemove(socket.id);
     const code = 'RUN_' + socket.id, R = newRoom(code, socket, d, { mode: 'endless' });
@@ -2140,7 +2265,17 @@ io.on('connection', socket => {
   });
   socket.on('again', () => {
     const R = myRoom(); if (!R) return;
-    if (R.mode === 'endless') { if (R.state === 'over') resetEndless(R); }
+    if (R.mode === 'endless') {
+      if (R.state !== 'over') return;
+      if (R.daily) {   // デイリーは回数を数える（日付が変わっていたら、今日のデイリーとしてやり直す）
+        dailyRoll(); const pk = socket.nmPk;
+        if (!pk || (DAILY.tries[pk] || 0) >= DAILY_TRIES) { socket.emit('daily_end', { err: '今日の' + DAILY_TRIES + '回は終わりました。明日またチャレンジ！' }); return; }
+        DAILY.tries[pk] = (DAILY.tries[pk] || 0) + 1; saveDaily();
+        if (R.daily !== DAILY.id) Object.assign(R, { daily: DAILY.id, seed: DAILY.seed, course: DAILY.course });
+        socket.emit('daily_left', { left: DAILY_TRIES - DAILY.tries[pk], id: DAILY.id });
+      }
+      resetEndless(R);
+    }
     else if (R.state === 'match' && !R.ranked) resetMatch(R);   // ランクマッチは毎回マッチングし直す
   });
   socket.on('leave', () => { qRemove(socket.id); leaveRoom(socket); });
@@ -2181,7 +2316,7 @@ function backupData() {
   const prof = {}; for (const [pk, p] of PROF) if (p && !p._miss) prof[pk] = p;
   return { app: 'nanigamokutekinan', v: 21, t: Date.now(), kv: useKV, data: {
     names: [...nameReg.values()], ranking, rp: rpBoard, friends: { req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] },
-    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT } };
+    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT, daily: DAILY, ghost: GHOST } };
 }
 // v23：管理者用の入口は、まちがった鍵で10回失敗したら、その回線から10分間使えなくする
 const AFAIL = new Map();
@@ -2198,19 +2333,21 @@ app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
   if (!isAdminUid(b.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
   const bk = b.backup, D = bk && bk.data;
   if (!bk || bk.app !== 'nanigamokutekinan' || !D || typeof D !== 'object') return res.status(400).json({ ok: false, err: 'バックアップファイルではありません' });
-  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items']), done = {};
+  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items', 'daily', 'ghost']), done = {};
   try {
     if (want.has('names') && Array.isArray(D.names)) { nameReg.clear(); pkKey.clear(); loadNames(D.names); saveNames(); done.names = nameReg.size; }
     if (want.has('ranking') && Array.isArray(D.ranking)) { loadRanking(D.ranking); saveRanking(); done.ranking = ranking.length; }
     if (want.has('rp') && Array.isArray(D.rp)) { loadRp(D.rp); saveRp(); done.rp = rpBoard.length; }
     if (want.has('friends') && D.friends) { freq.clear(); fnote.clear(); loadFriends(D.friends); saveFriends(); done.friends = freq.size; }
-    if (want.has('mod') && D.mod && typeof D.mod === 'object') { loadMod(D.mod); saveMod(); done.mod = MOD.notices.length; io.emit('notices', MOD.notices); io.emit('maint', maintInfo()); io.emit('event', evInfo()); io.emit('sale', saleInfo()); io.emit('gcfg', MOD.gcfg || { reset: 1 }); }
+    if (want.has('mod') && D.mod && typeof D.mod === 'object') { loadMod(D.mod); saveMod(); done.mod = MOD.notices.length; io.emit('notices', MOD.notices); io.emit('maint', maintInfo()); io.emit('event', evInfo()); io.emit('sale', saleInfo()); io.emit('gcfg', MOD.gcfg || { reset: 1 }); xmasEmit(); }
     if (want.has('season') && D.season) { loadSeason(D.season); saveSeason(); done.season = SEASON.id; }
     if (want.has('eco') && D.eco && typeof D.eco === 'object') { loadEco(D.eco); saveEco(); done.eco = Object.keys(ECO).length; }
     if (want.has('push') && D.push && typeof D.push === 'object') { loadPush(D.push); savePush(); done.push = Object.keys(PUSH).length; }
     if (want.has('stats') && D.stats && typeof D.stats === 'object') { loadStats(D.stats); saveStats(); done.stats = 1; }
     if (want.has('usage') && D.usage && D.usage.days && typeof D.usage.days === 'object') { USAGE.days = Object.assign({}, D.usage.days, USAGE.days); saveUsage(); done.usage = Object.keys(USAGE.days).length; }
     if (want.has('items') && D.items && typeof D.items === 'object') { loadIstat(D.items); saveIstat(); done.items = 1; }
+    if (want.has('daily') && D.daily && typeof D.daily === 'object') { loadDaily(D.daily); saveDaily(); done.daily = 1; }
+    if (want.has('ghost') && D.ghost && typeof D.ghost === 'object') { loadGhost(D.ghost); saveGhost(); done.ghost = 1; }
     if (want.has('prof') && D.prof && typeof D.prof === 'object') { let n = 0; for (const [pk, p] of Object.entries(D.prof).slice(0, 5000)) if (cleanPk(pk) && p && typeof p === 'object') { putProf(pk, p); n++; } done.prof = n; }
   } catch (e) { return res.status(500).json({ ok: false, err: '読み込みに失敗しました：' + e.message }); }
   console.log('バックアップから復元しました', JSON.stringify(done));
@@ -2229,7 +2366,7 @@ const PORT = process.env.PORT || 3000;
       SIGN_KEY = k.k; SIGN_T = k.t || 0;
     } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
   }
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason();
