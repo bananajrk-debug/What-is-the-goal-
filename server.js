@@ -1,4 +1,6 @@
-// なにが目的なん？ ONLINE v26 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v26.1.0 — Express + Socket.io（サーバー権威型）
+// v26.1.0：管理画面のパスワード・操作の記録を消せる・クリスマスのエモートが表示されないのを修正
+//   （バージョンの決め方：大きい変更＝1つめの数字、修正など＝2つめ、それ以外＝3つめ）
 // v26：検索エンジン対策（タイトル・説明文・紹介ページ /about・robots.txt・sitemap.xml・OGP・構造化データ）
 // v25：⏱ タイムアタック（週替わりのコース・全員同じ車の並び・ゴースト）・🎯 ミッション（15ステージ・⭐）・🚓 ドロボウを追え！・🤝 協力モード（2人で逃げる・10秒で復活）。ホームのモード選択を「ひとりで」「だれかと」＋STARTに
 // v24：📅 デイリーチャレンジ（全員同じ車の並び・1日3回・上位にNC）・👻 ゴースト（1位や自分のベストの走りと一緒に走る）・🎄 クリスマス（12/1〜12/25の限定アイテム・雪）
@@ -140,7 +142,7 @@ const SAME = [-84, -28], ONC = [28, 84], LANES = [-84, -28, 28, 84];
 const STEER_ACC = 1500;  // 横移動の加速度（指の動きになめらかに追従）
 const DRIFT = 0.28;      // カーブで外側へ流される強さ
 const EMOTES = ['wave', 'thumbs', 'laugh', 'wheelie', 'dance', 'clap', 'bow', 'angry', 'cry', 'heart', 'sleep', 'gg',
-  'think', 'shock', 'cool', 'peace', 'flex', 'fire', 'party', 'crowne', 'rocket', 'hofe', 'ramen', 'yoyu'];
+  'think', 'shock', 'cool', 'peace', 'flex', 'fire', 'party', 'crowne', 'rocket', 'hofe', 'ramen', 'yoyu', 'xm_merry', 'xm_gift'];   // v26.1：クリスマスのエモートを追加（入っていなくて表示されなかった）
 const BOT_AFTER = 18;    // ランクマッチ：この秒数だけ相手が見つからなければランクCPUと対戦
 const BOT_NAMES = ['チャリ太郎', 'ペダル姫', '坂道キング', 'ママチャリ番長', '立ちこぎ仮面', '風のミナト', 'ギア3速', 'サドル侍', '向かい風', 'ベル鳴らし'];
 const CPU_LINES = ['よろしく！', '負けないよ', 'ナイス！', 'GG！', '手加減しないよ', 'まだまだ！', 'いいね！'];
@@ -1706,6 +1708,7 @@ function loadMod(j) {
   for (const k of ['audit', 'bgifts', 'dists']) if (Array.isArray(j[k])) MOD[k] = j[k];
   for (const k of ['sale', 'gcfg', 'msched']) if (j[k] && typeof j[k] === 'object') MOD[k] = j[k];
   if (['auto', 'on', 'off'].includes(j.xmas)) MOD.xmas = j.xmas;
+  if (j.apw && typeof j.apw === 'object' && typeof j.apw.h === 'string' && typeof j.apw.s === 'string') MOD.apw = { s: j.apw.s, h: j.apw.h, t: Number(j.apw.t) || 0 };   // v26.1
   if (j.event && typeof j.event === 'object') MOD.event = j.event;
   if (Array.isArray(j.sched)) MOD.sched = j.sched.slice(0, 50);
   if (j.maint && typeof j.maint === 'object') MOD.maint = j.maint;
@@ -1768,6 +1771,25 @@ function audit(by, act, o) {
   MOD.audit.unshift(Object.assign({ t: Date.now(), by: by ? (by.nmRegName || by.nmName || '運営') : '自動', act }, o || {}));
   MOD.audit = MOD.audit.slice(0, 500); saveMod();
 }
+/* ----- v26.1：管理画面のパスワード -----
+   ・はじめて管理画面を開いたときに、管理者が自分でパスワードを決める（ハッシュにして保存。元のパスワードはサーバーにも残らない）
+   ・Renderの環境変数 ADMIN_PASSWORD を入れると、そちらが優先される（画面からは変えられない）
+   ・パスワードを忘れたら、環境変数 ADMIN_PW_RESET=1 を入れて再起動 → 新しく決めなおせる（終わったら消す）
+   ・5回まちがえると15分使えない。正しく入れると12時間は入れなおさなくてよい（サーバーが再起動したら入れなおし） */
+const APW_ENV = String(process.env.ADMIN_PASSWORD || '');
+const apwHash = (pw, salt) => crypto.scryptSync(String(pw), salt, 32).toString('hex');
+const apwSet = () => !!APW_ENV || !!(MOD.apw && MOD.apw.h);
+function apwOk(pw) {
+  if (typeof pw !== 'string' || !pw || pw.length > 128) return false;
+  if (APW_ENV) { const a = crypto.createHash('sha256').update(pw).digest(), b = crypto.createHash('sha256').update(APW_ENV).digest(); return crypto.timingSafeEqual(a, b); }
+  const A = MOD.apw; if (!A || !A.h || !A.s) return false;
+  return crypto.timingSafeEqual(Buffer.from(apwHash(pw, A.s), 'hex'), Buffer.from(A.h, 'hex'));
+}
+const ATOK = new Map(), APWF = new Map(), ATOK_MS = 12 * 3600e3;
+function atokNew(uid) { const t = crypto.randomBytes(24).toString('base64url'); ATOK.set(t, { exp: Date.now() + ATOK_MS, uh: adminHash(uid) }); if (ATOK.size > 200) ATOK.delete(ATOK.keys().next().value); return t; }
+function atokOk(t, uid) { const e = typeof t === 'string' && ATOK.get(t); if (!e) return false; if (e.exp < Date.now()) { ATOK.delete(t); return false; } return e.uh === adminHash(uid); }
+const apwLocked = k => { const f = APWF.get(k); return !!f && f.n >= 5 && Date.now() - f.t < 900e3; };
+const apwFail = k => { const f = APWF.get(k); if (!f || Date.now() - f.t >= 900e3) APWF.set(k, { n: 1, t: Date.now() }); else { f.n++; f.t = Date.now(); } if (APWF.size > 5000) APWF.clear(); };
 const tgOf = pk => ({ tg: nameOfPk(pk) || (MOD.seen[pk] || {}).n || 'プレイヤー', tpk: pk });
 
 /* =====================================================================
@@ -1894,6 +1916,7 @@ function deliverMod(socket) {
   }
   saveMod();
   socket.isAdmin = isAdminUid(socket.nmUid);
+  if (!socket.isAdmin) socket.admOk = false;
   socket.emit('admin', socket.isAdmin);
   socket.emit('sale', saleInfo()); if (MOD.gcfg) socket.emit('gcfg', MOD.gcfg); socket.emit('xmas', xmasInfo());
   const bg = bgiftsFor(pk, socket); if (bg.length) socket.emit('gifts', bg);
@@ -2088,7 +2111,7 @@ io.on('connection', socket => {
     if (repCount(pk) >= REPORT_ALERT) { for (const s of adminSockets()) s.emit('adm_alert', { name: nameOfPk(pk), n: repCount(pk) }); pushAdmins({ title: '🚩 通報が5人をこえました', body: nameOfPk(pk) + ' が ' + repCount(pk) + '人から通報されています', tag: 'adm-rep' }); }
   });
   // ----- ここから管理者だけ -----
-  const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
+  const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); if (!socket.admOk) return rp(cb)({ ok: false, err: 'パスワードを入れてください', lock: 1 }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
   socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c, why: ECO[pk].flag.why || [] })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
     banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length,
     today: usageToday(), days: Object.keys(USAGE.days).sort().slice(-13).map(d => ({ d, dau: USAGE.days[d].dau || 0, nu: USAGE.days[d].nu || 0 })), audit: (MOD.audit || []).slice(0, 5),
@@ -2226,6 +2249,49 @@ io.on('connection', socket => {
   /* ===================== v21：管理者の新しい機能 ===================== */
   // 📜 操作の記録
   socket.on('adm_audit', adm((d, cb) => cb({ ok: true, list: MOD.audit || [] })));
+  // v26.1：操作の記録を消す（1件ずつ・全部）。全部消したときは「全部消した」ことだけ記録に残す
+  socket.on('adm_audit_del', adm((d, cb) => {
+    const i = (MOD.audit || []).findIndex(x => x.t === Number(d.t) && x.act === String(d.act || ''));
+    if (i < 0) return cb({ ok: false, err: 'もうありません' });
+    MOD.audit.splice(i, 1); saveMod(); cb({ ok: true, list: MOD.audit });
+  }));
+  socket.on('adm_audit_clear', adm((d, cb) => { const n = (MOD.audit || []).length; MOD.audit = []; audit(socket, 'audit_clear', { d: n + '件' }); cb({ ok: true, list: MOD.audit }); }));
+  // v26.1：管理画面のパスワード
+  const apwKey = () => 'u:' + (socket.nmPk || socket.id), apwIp = () => 'ip:' + (socket.nmIp || '');
+  socket.on('adm_pw_state', (d, cb) => { if (typeof d === 'function') cb = d; if (!socket.isAdmin) return rp(cb)({ ok: false }); rp(cb)({ ok: true, set: apwSet(), env: !!APW_ENV, in: !!socket.admOk }); });
+  socket.on('adm_pw_new', (d, cb) => {   // はじめてのとき：パスワードを決める
+    if (typeof d === 'function') { cb = d; d = {}; } cb = rp(cb);
+    if (!socket.isAdmin) return cb({ ok: false, err: '管理者ではありません' });
+    if (apwSet()) return cb({ ok: false, err: 'パスワードはもう決まっています' });
+    const pw = d && typeof d.pw === 'string' ? d.pw : '';
+    if (pw.length < 6 || pw.length > 64) return cb({ ok: false, err: 'パスワードは6〜64文字にしてください' });
+    const salt = crypto.randomBytes(16).toString('hex'); MOD.apw = { s: salt, h: apwHash(pw, salt), t: Date.now() }; saveMod();
+    socket.admOk = true; audit(socket, 'apw_set'); cb({ ok: true, tok: atokNew(socket.nmUid) });
+  });
+  socket.on('adm_login', (d, cb) => {
+    if (typeof d === 'function') { cb = d; d = {}; } cb = rp(cb);
+    if (!socket.isAdmin) return cb({ ok: false, err: '管理者ではありません' });
+    if (!apwSet()) return cb({ ok: false, err: 'まだパスワードが決まっていません', need: 1 });
+    if (apwLocked(apwKey()) || apwLocked(apwIp())) return cb({ ok: false, err: '5回まちがえたので、15分たってからためしてください' });
+    if (!apwOk(d && d.pw)) { apwFail(apwKey()); apwFail(apwIp()); const f = APWF.get(apwKey()); if (f && f.n === 5) audit(socket, 'apw_lock'); return cb({ ok: false, err: 'パスワードがちがいます（のこり ' + Math.max(0, 5 - (f ? f.n : 0)) + ' 回）' }); }
+    APWF.delete(apwKey()); socket.admOk = true; cb({ ok: true, tok: atokNew(socket.nmUid) });
+  });
+  socket.on('adm_tok', (d, cb) => {   // 12時間以内に入れていれば、つなぎなおしてもそのまま
+    if (typeof d === 'function') { cb = d; d = {}; } cb = rp(cb);
+    if (!socket.isAdmin || !atokOk(d && d.tok, socket.nmUid)) return cb({ ok: false });
+    socket.admOk = true; cb({ ok: true });
+  });
+  socket.on('adm_pw_change', adm((d, cb) => {
+    if (APW_ENV) return cb({ ok: false, err: '環境変数 ADMIN_PASSWORD で決めているので、Renderの設定で変えてください' });
+    if (apwLocked(apwKey())) return cb({ ok: false, err: '5回まちがえたので、15分たってからためしてください' });
+    if (!apwOk(d.old)) { apwFail(apwKey()); return cb({ ok: false, err: '今のパスワードがちがいます' }); }
+    const pw = typeof d.pw === 'string' ? d.pw : '';
+    if (pw.length < 6 || pw.length > 64) return cb({ ok: false, err: 'パスワードは6〜64文字にしてください' });
+    const salt = crypto.randomBytes(16).toString('hex'); MOD.apw = { s: salt, h: apwHash(pw, salt), t: Date.now() }; saveMod();
+    ATOK.clear(); for (const sk of adminSockets()) if (sk !== socket) { sk.admOk = false; sk.emit('adm_locked'); }   // ほかの端末はもう一度入れなおし
+    audit(socket, 'apw_change'); cb({ ok: true, tok: atokNew(socket.nmUid) });
+  }));
+  socket.on('adm_lock', (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (d && d.tok) ATOK.delete(String(d.tok)); socket.admOk = false; rp(cb)({ ok: true }); });
   // 🎁 一斉配布
   const distCond = d => ({ to: d.to === 'recent' ? 'recent' : 'all', days: clamp(parseInt(d.days, 10) || 7, 1, 365), lvMin: clamp(parseInt(d.lvMin, 10) || 0, 0, 99), regOnly: !!d.regOnly, oldOnly: !!d.oldOnly });
   const condTxt = c => [c.to === 'recent' ? 'この' + c.days + '日に来た人' : '全員', c.lvMin > 1 ? 'Lv' + c.lvMin + '以上' : '', c.regOnly ? '名前登録済み' : '', c.to === 'all' && c.oldOnly ? '今いるプレイヤーだけ' : ''].filter(Boolean).join('・');
@@ -2680,13 +2746,13 @@ const admBlocked = req => { const f = AFAIL.get(ipOfReq(req.headers, req.socket.
 const admFail = req => { const ip = ipOfReq(req.headers, req.socket.remoteAddress), f = AFAIL.get(ip); if (!f || Date.now() - f.t >= 600e3) AFAIL.set(ip, { n: 1, t: Date.now() }); else { f.n++; f.t = Date.now(); } if (AFAIL.size > 5000) AFAIL.clear(); };
 app.use('/api/adm', (req, res, next) => { if (admBlocked(req)) return res.status(429).json({ ok: false, err: 'しばらく待ってからためしてください' }); next(); });
 app.post('/api/adm/backup', express.json({ limit: '2kb' }), (req, res) => {
-  if (!isAdminUid(req.body && req.body.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
+  if (!isAdminUid(req.body && req.body.uid) || !atokOk(req.body.at, req.body.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます（パスワードを入れなおしてください）' }); }
   audit({ nmRegName: nameOfPk(pkOf(req.body.uid)) || '運営' }, 'backup');
   res.json(backupData());
 });
 app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
   const b = req.body || {};
-  if (!isAdminUid(b.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
+  if (!isAdminUid(b.uid) || !atokOk(b.at, b.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます（パスワードを入れなおしてください）' }); }
   const bk = b.backup, D = bk && bk.data;
   if (!bk || bk.app !== 'nanigamokutekinan' || !D || typeof D !== 'object') return res.status(400).json({ ok: false, err: 'バックアップファイルではありません' });
   const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items', 'daily', 'ghost', 'ta', 'miss']), done = {};
@@ -2728,6 +2794,7 @@ const PORT = process.env.PORT || 3000;
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason(); taRoll();
+  if (process.env.ADMIN_PW_RESET === '1' && MOD.apw) { delete MOD.apw; saveMod(); console.log('管理画面のパスワードを消しました（ADMIN_PW_RESET）。新しく決めたら、環境変数 ADMIN_PW_RESET は消してください'); }
   await initVapid();
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
   try { zEntry(path.join(PUB, 'index.html')); zEntry(ZALIAS['/sio.min.js']); } catch (e) { }   // 圧縮は起動時にすませておく
