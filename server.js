@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v25 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v26 — Express + Socket.io（サーバー権威型）
+// v26：検索エンジン対策（タイトル・説明文・紹介ページ /about・robots.txt・sitemap.xml・OGP・構造化データ）
 // v25：⏱ タイムアタック（週替わりのコース・全員同じ車の並び・ゴースト）・🎯 ミッション（15ステージ・⭐）・🚓 ドロボウを追え！・🤝 協力モード（2人で逃げる・10秒で復活）。ホームのモード選択を「ひとりで」「だれかと」＋STARTに
 // v24：📅 デイリーチャレンジ（全員同じ車の並び・1日3回・上位にNC）・👻 ゴースト（1位や自分のベストの走りと一緒に走る）・🎄 クリスマス（12/1〜12/25の限定アイテム・雪）
 // v23：通信を軽く（試合の状態を短い形で・変わったところだけ・1秒20回に。ページは圧縮して送る）。チート対策（NC検算の抜け道・RPの上限）とセキュリティ（署名の鍵・CSPなどのヘッダー・送りすぎの制限）を強化
@@ -29,7 +30,7 @@ app.disable('x-powered-by');
         ・セキュリティのヘッダー（CSPでページに入っていない命令を動かさない など）
    ===================================================================== */
 const PUB = path.join(__dirname, 'public');
-const ZTYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
+const ZTYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.xml': 'application/xml; charset=utf-8' };
 const ZALIAS = { '/sio.min.js': path.join(path.dirname(require.resolve('socket.io/package.json')), 'client-dist', 'socket.io.min.js') };   // 通信用のプログラムも圧縮して送る
 const ZC = new Map();
 // CSP：ページの中のプログラムだけを動かす（あとから紛れこんだ命令は動かない）。外への通信は自分のサーバーだけ
@@ -56,6 +57,24 @@ function zEntry(file) {
   if (raw.length > 30000) zlib.brotliCompress(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }, (err, out) => { if (!err && out && out.length < e.br.length && ZC.get(file) === e) e.br = out; });
   return e;
 }
+// v26：検索エンジン用に、ページの中の「%%SITE%%」をこのサイトのURL（https://〜）に置きかえて送る（SITE_URL で固定もできる）
+const SITE_URL = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+function siteOf(req) {
+  if (/^https?:\/\/[\w.-]+(:\d+)?$/.test(SITE_URL)) return SITE_URL;
+  const host = String(req.headers.host || ''); if (!/^[\w.-]+(:\d+)?$/.test(host)) return '';
+  return (req.headers['x-forwarded-proto'] === 'https' || /onrender\.com$/.test(host) ? 'https' : 'http') + '://' + host;
+}
+function zSite(e, file, site) {
+  if (!e.raw.includes('%%SITE%%') || !site) return e;
+  e.sub = e.sub || new Map(); let d = e.sub.get(site); if (d) return d;
+  if (e.sub.size >= 6) return e.sub.values().next().value;   // いたずらでいろいろなHostを送られても増えすぎない
+  const raw = Buffer.from(e.raw.toString('utf8').split('%%SITE%%').join(site));
+  d = { raw, type: e.type, etag: '"' + crypto.createHash('sha1').update(raw).digest('base64').replace(/[^\w]/g, '').slice(0, 22) + '"', gz: zlib.gzipSync(raw, { level: 9 }), br: zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }) };
+  if (path.extname(file) === '.html') d.csp = cspFor(raw.toString('utf8'));
+  e.sub.set(site, d);
+  if (raw.length > 30000) zlib.brotliCompress(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } }, (err, out) => { if (!err && out && out.length < d.br.length) d.br = out; });
+  return d;
+}
 function secHeaders(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -69,9 +88,11 @@ app.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   let p; try { p = decodeURIComponent(req.path); } catch (e) { return res.status(400).end(); }
   if (p.endsWith('/')) p += 'index.html';
+  if (p === '/about') p = '/about.html';   // v26：ゲームの紹介ページ
   let file = ZALIAS[p];
   if (!file) { if (!ZTYPES[path.extname(p)] || p.includes('\0')) return next(); file = path.join(PUB, p); if (!file.startsWith(PUB + path.sep)) return next(); }
-  const e = zEntry(file); if (!e) return next();
+  const e0 = zEntry(file); if (!e0) return next();
+  const e = zSite(e0, file, siteOf(req));
   res.setHeader('Content-Type', e.type); res.setHeader('ETag', e.etag); res.setHeader('Vary', 'Accept-Encoding');
   res.setHeader('Cache-Control', p.endsWith('.html') || p.endsWith('sw.js') ? 'no-cache' : 'public, max-age=86400');
   if (e.csp) res.setHeader('Content-Security-Policy', e.csp(req));
