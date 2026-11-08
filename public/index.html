@@ -310,6 +310,30 @@ body:not(.touch) #pad,body:not(.touch) #acts{display:none}
 .adm-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:.6em}@media (max-width:760px){.adm-grid{grid-template-columns:1fr}}
 .adm-grid .panel{display:flex;flex-direction:column;gap:.4em}
 .adm-grid>*,.adm-acts>div{min-width:0}.adm-grid .row,.adm-acts .row{flex-wrap:wrap}#au-q{min-width:8em}
+/* ===== v24：📅 デイリー・👻 ゴースト・🎄 クリスマス ===== */
+.dailyb{background:linear-gradient(180deg,#7e57c2,#5e35b1);color:#fff;display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:.38em .7em}.dailyb small{font-size:.66em;opacity:.95;font-weight:800}
+.ghostb{display:flex;flex-direction:column;align-items:center;line-height:1.05;padding:.3em .7em;min-width:4.2em}.ghostb small{font-size:.62em;font-weight:900}
+.dybox{max-height:94vh;overflow:auto;max-width:min(52em,96vw)}
+.dy-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.8em;margin-top:.4em}@media (max-width:640px){.dy-grid{grid-template-columns:minmax(0,1fr)}}
+.dy-left,.dy-right{display:flex;flex-direction:column;gap:.5em;min-width:0}
+.dy-course{display:flex;gap:.6em;align-items:center;background:rgba(255,255,255,.06);border-radius:14px;padding:.4em}.dy-course canvas{width:8.5em;height:auto;border-radius:10px;border:2px solid var(--ln);flex:none}
+.dy-course div{display:flex;flex-direction:column;min-width:0}.dy-course b{font-size:1.15em}
+.dy-me{display:flex;gap:.3em;flex-wrap:wrap}.dy-me span{background:rgba(0,0,0,.28);border:2px solid var(--ln);border-radius:10px;padding:.12em .5em;font-weight:900;font-size:.8em}
+.dy-head{position:sticky;top:-.9em;z-index:2;background:#2a3577;margin:-.9em -1.2em 0;padding:.9em 1.2em .3em}.dy-head #dy-go{font-size:.95em;white-space:nowrap}.dy-gh .chip{font-size:.78em;padding:.2em .6em}.dy-prev:empty{display:none}
+.dy-rw{background:linear-gradient(90deg,rgba(255,210,63,.18),rgba(255,210,63,.05));border:2px solid rgba(255,210,63,.5);border-radius:12px;padding:.35em .6em;font-weight:800;font-size:.9em}.dy-rw small{display:block;opacity:.85;font-size:.82em}
+.dy-gh{display:flex;align-items:center;gap:.5em;flex-wrap:wrap;font-weight:900}
+.dy-top{display:flex;flex-direction:column;gap:.2em;min-height:4em}.dy-row{display:flex;align-items:center;gap:.5em;background:rgba(255,255,255,.06);border-radius:10px;padding:.25em .55em;font-weight:800}
+.dy-row .r{width:1.8em;text-align:center;color:#ffd23f;font-weight:900}.dy-row .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dy-row .s{font-weight:900}.dy-row.me{background:rgba(79,195,247,.22);border:2px solid #4fc3f7}
+.dy-prev{font-size:.82em;color:#c9cff5;background:rgba(0,0,0,.2);border-radius:10px;padding:.35em .55em}
+.shop-xm{background:linear-gradient(180deg,rgba(198,40,40,.28),rgba(46,125,50,.22));border:3px solid #c62828;border-radius:16px;padding:.5em;position:relative}
+.shop-xm .shop-head b{color:#fff}
+#xm-snow{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:.9;
+  background-image:radial-gradient(circle at 20px 30px,#fff 0 2.5px,transparent 3.5px),radial-gradient(circle at 80px 120px,#fff 0 3.5px,transparent 4.5px),radial-gradient(circle at 150px 60px,rgba(255,255,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 210px 170px,#fff 0 3px,transparent 4px),radial-gradient(circle at 260px 90px,rgba(255,255,255,.85) 0 2px,transparent 3px),
+   radial-gradient(circle at 40px 200px,#fff 0 3px,transparent 4px),radial-gradient(circle at 120px 230px,rgba(255,255,255,.9) 0 2.5px,transparent 3.5px),radial-gradient(circle at 180px 10px,#fff 0 3.5px,transparent 4.5px);
+  background-size:280px 260px;filter:drop-shadow(0 0 2px rgba(120,160,220,.6));animation:xmsnow 9s linear infinite}
+body:has(#pg-admin.on) #xm-snow{display:none}   /* 管理画面では雪をふらせない */
+@keyframes xmsnow{from{background-position:0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0}to{background-position:30px 260px,-20px 260px,25px 260px,-15px 260px,20px 260px,-25px 260px,15px 260px,-30px 260px}}
+@media (prefers-reduced-motion:reduce){#xm-snow{animation:none}}
 /* ===== v21：一斉配布・ショップ/ガチャ設定・ランキング管理・分析・操作の記録 ===== */
 .adm-lbl{font-weight:900;font-size:.82em;color:#cdbfff;margin-top:.2em}
 .ad-gifts{display:flex;gap:.5em;flex-wrap:wrap}.ad-gifts label{display:flex;flex-direction:column;gap:.15em;font-size:.82em;font-weight:900;flex:1;min-width:6.5em}.ad-gifts .tx{width:100%}
@@ -590,7 +614,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 
 <!-- ===== ロビー ===== -->
 <div id="lobby">
-  <div id="ev-ribbon" class="hide"></div><div id="ms-ribbon" class="hide"></div>
+  <div id="ev-ribbon" class="hide"></div><div id="ms-ribbon" class="hide"></div><div id="xm-snow" class="hide"></div>
   <header id="topbar">
     <div id="logo">なにが<br>目的なん？</div>
     <nav id="tabs">
@@ -611,6 +635,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
       <div class="side">
         <div class="rankwrap"><button id="rankbtn" class="rankbtn"><canvas id="rk-badge" width="120" height="120"></canvas><span class="rk-txt"><b><em>RANKED</em>ランクマッチ</b><small id="rk-sub">ブロンズ III ・ 0 RP</small><span class="rkbar"><i id="rk-fill"></i></span></span></button><button id="rk-info" class="rk-info" aria-label="ランク表">?</button></div>
         <div class="row"><button id="endless" class="btn big green grow">🏃 エンドレス<small id="home-best">ベスト 0</small></button><button id="solo" class="btn big grow">⚔ CPU戦<small>XPかせぎ</small></button><button id="tut-btn" class="btn big purple tutb">🔰<small>練習</small></button></div>
+        <div class="row"><button id="daily-btn" class="btn dailyb grow">📅 デイリーチャレンジ<small id="daily-sub">全員同じ車の並び・1日3回</small></button><button id="ghost-btn" class="btn dark ghostb" title="エンドレスで一緒に走るゴースト">👻<small id="ghost-sub">1位</small></button></div>
         <div class="row"><button id="create" class="btn blue grow">🏠 ルームを作る</button><input id="code" class="tx" style="width:6.4em" maxlength="6" placeholder="6桁コード" inputmode="numeric"><button id="join" class="btn blue">参加</button></div>
         <button id="course-btn" class="coursebtn"><canvas id="course-th" width="192" height="108"></canvas><span class="cb-t"><small>🗺️ コース（タップで変更）</small><b id="cname"></b><small id="cdesc"></small></span><span class="cb-go">変更 ▶</span></button>
         <button id="wk-banner"></button>
@@ -629,6 +654,7 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
     <section id="pg-shop" class="pg">
       <div class="scroll ssc" style="display:flex;flex-direction:column;gap:.6em">
       <div id="shop-sale" class="shop-sale hide"></div>
+      <div id="shop-xm" class="shop-xm hide"><div class="shop-head"><b>🎄 クリスマス限定</b><span class="muted" id="xm-left"></span></div><div class="grid" id="shop-xm-list"></div></div>
       <div class="shop-head"><b id="shop-feat-h">🛒 今日のおすすめ（20%OFF）</b><span class="muted" id="shop-timer"></span></div>
       <div id="shop-feat"></div>
       <div class="shop-head"><b>🏪 ショップ限定アイテム</b><span class="muted">ガチャには出ません。ここでしか買えない！</span></div>
@@ -780,6 +806,8 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
           <label class="muted"><input type="checkbox" id="ae-notice" checked> 📢 お知らせも自動で送る（始まる時刻に合わせて）</label>
           <input id="ae-msg" class="tx" maxlength="300" placeholder="お知らせにひとこと足す（なくてもOK）">
           <div class="row"><button id="ae-start" class="btn green grow">🎉 イベントを始める</button><button id="ae-stop" class="btn red grow">終了する</button></div>
+          <div class="panel adm-panel" style="margin-top:.4em"><b>🎄 クリスマス</b><div id="ax-state"></div><div class="chips" id="ax-mode"></div>
+            <div class="muted">期間中は、ショップに「🎄 クリスマス限定」が出て、ガチャに「トナカイの角」が入り、ロビーに雪がふります。12/24・25のデイリーは雪のコースになります。「今すぐ開始」で、今から全員に出せます（確認用にも使えます）。</div></div>
           <div class="muted">NCの倍率は試合（対戦・エンドレス）でもらえるNCに、XPの倍率はすべてのXPにかかります。終わりの時刻になると自動で終わります。</div>
         </div></div></div>
         <!-- 🎁 一斉配布 -->
@@ -1000,6 +1028,19 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
   <div class="row"><button id="fb-cancel" class="btn dark grow">やめる</button><button id="fb-send" class="btn green grow">送信する</button></div></div></div>
 <div id="gift-modal" class="modal hide"><div class="box giftbox"><div class="gift-ic">🎁</div><b id="gift-title"></b><div id="gift-text"></div>
   <div class="gift-amt" id="gift-amt-row"><span class="coin">NC</span><b id="gift-amt"></b></div><div id="gift-items" class="gift-items"></div><button id="gift-ok" class="btn big green">受け取る</button></div></div>
+<!-- v24：📅 デイリーチャレンジ -->
+<div id="daily-modal" class="modal hide"><div class="box wide dybox">
+  <div class="row dy-head" style="align-items:center"><b class="grow" id="dy-title">📅 デイリーチャレンジ</b><button id="dy-go" class="btn green">▶ スタート</button><button class="iconbtn" id="dy-close">✕</button></div>
+  <div class="dy-grid">
+    <div class="dy-left">
+      <div class="dy-course"><canvas id="dy-th" width="192" height="108"></canvas><div><small class="muted">今日のコース</small><b id="dy-cname"></b><small class="muted">全員が同じ車の並びで走ります</small></div></div>
+      <div id="dy-me" class="dy-me"></div>
+      <div class="dy-rw">🏆 1位 <b>300NC</b> ・ 2位 <b>200NC</b> ・ 3位 <b>100NC</b><small>次の日にプレゼントで届きます（1日3回まで挑戦できます）</small></div>
+      <div class="dy-gh"><span>👻 ゴースト</span><div class="chips" id="dy-gh"></div></div>
+    </div>
+    <div class="dy-right"><b>🏅 今日のランキング <small class="muted" id="dy-n"></small></b><div id="dy-top" class="dy-top"></div><div id="dy-prev" class="dy-prev"></div></div>
+  </div>
+</div></div>
 <div id="maint-ov" class="hide"><div class="mtbox">
   <div class="mt-h"><span class="mt-ic">🛠</span><div><b id="mt-title">ただいまメンテナンス中です</b><div id="mt-until"></div><div id="mt-msg" class="muted"></div></div><button id="mt-news" class="btn sm blue">📢 お知らせ</button></div>
   <div class="run-wrap"><canvas id="run-cv" width="1200" height="300"></canvas><div id="run-hint">タップ / スペースで ジャンプ（長押しで高く）</div></div>
@@ -1185,6 +1226,9 @@ const SKINS={
  ev_halloween:{n:'ハロウィンチャリ',c:'#ff6f00',a:'#212121',str:1,rim:'#7b1fa2',deco:'🎃',ev:10,r:4,pf:'🦇'},
  ev_momiji:{n:'紅葉チャリ',c:'#bf360c',a:'#ffca28',rim:'#ffca28',deco:'🍁',ev:11,r:4,pf:'🍂'},
  ev_xmas:{n:'クリスマスチャリ',c:'#c62828',a:'#ffffff',str:1,rim:'#2e7d32',deco:'🎄',ev:12,r:4,pf:'❄️'},
+ // ▼ v24：🎄 クリスマス限定（xm=12/1〜12/25だけショップで買える。持っていればずっと使える）
+ xm_candy:{n:'キャンディケインチャリ',c:'#e53935',a:'#ffffff',str:1,rim:'#ffffff',deco:'🍬',p:400,r:3,so:1,xm:1},
+ xm_snowman:{n:'雪だるまチャリ',c:'#f4f8ff',a:'#1e88e5',rim:'#ff7043',deco:'⛄',p:400,r:3,so:1,xm:1},
  // ▼ シーズン報酬（シーズン終了時のランクで解放。sea=必要なランク）
  sea_gold:{n:'シーズン・ゴールド',c:'#ffca28',a:'#5d4037',str:1,rim:'#ffe082',sea:2,r:3,d:'シーズン終了時にゴールド以上でもらえる'},
  sea_dia:{n:'シーズン・ダイヤ',c:'#4fc3f7',a:'#e1f5fe',chrome:1,rim:'#b3e5fc',sea:4,r:4,d:'シーズン終了時にダイヤモンド以上でもらえる'},
@@ -1265,6 +1309,7 @@ const OUTFITS={
  king:{n:'王様マント(限定)',st:'cape',c:'#b71c1c',a:'#ffd54f',pants:'#4a148c',g:1,r:4},
  samurai:{n:'鎧武者(限定)',st:'armor',c:'#8e2424',a:'#d4af37',pants:'#3e2723',g:1,r:4},
  hero:{n:'ヒーロー(限定)',st:'hero',c:'#1565c0',a:'#ffd600',pants:'#c62828',g:1,r:4},
+ xm_santa:{n:'サンタ服',st:'hoodie',c:'#d32f2f',a:'#ffffff',pants:'#b71c1c',p:500,r:3,so:1,xm:1},xm_knit:{n:'クリスマスニット',st:'jersey',c:'#2e7d32',a:'#e53935',pants:'#3e2723',p:350,r:2,so:1,xm:1},
  tank_k:{n:'タンクトップ(黒)',st:'tank',c:'#212121',a:'#ffd23f',pants:'#455a64',p:40,r:1},hoodie_k:{n:'パーカー(黒)',st:'hoodie',c:'#2b2b33',a:'#ff4081',pants:'#1c1c22',p:70,r:1},
  jersey_g:{n:'ジャージ(緑)',st:'jersey',c:'#2e7d32',a:'#ffffff',pants:'#2e7d32',p:80,r:2},aloha_r:{n:'アロハ(赤)',st:'aloha',c:'#e53935',a:'#ffffff',pants:'#e9dcc0',p:100,r:2},
  happi_r:{n:'法被(赤)',st:'happi',c:'#c62828',a:'#ffffff',pants:'#263238',p:110,r:2},racer_r:{n:'レーサー(赤)',st:'racer',c:'#e53935',a:'#ffffff',pants:'#1a1a1a',p:120,r:3},
@@ -1277,7 +1322,8 @@ const ACCS={
  beanie:{n:'ニット帽',c:'#ff7043',p:60,r:1},bandana:{n:'ハチマキ',c:'#c62828',p:70,r:2},flower:{n:'花かざり',c:'#ff80ab',p:70,r:2},
  headphone:{n:'ヘッドホン',c:'#212121',p:90,r:2},catears:{n:'ネコ耳',c:'#3e2723',p:90,r:2},goggles:{n:'ゴーグル',c:'#4fc3f7',p:100,r:3},
  crown:{n:'王冠(限定)',c:'#ffd23f',g:1,r:4},halo:{n:'天使の輪(限定)',c:'#fff59d',g:1,r:4},horns:{n:'悪魔の角(限定)',c:'#d50000',g:1,r:4},
- ribbon:{n:'リボン',c:'#ff4081',p:60,r:1},strawhat:{n:'麦わら帽子',c:'#f2d27a',p:130,r:3,so:1},cap_g:{n:'キャップ(金)',c:'#ffca28',like:'cap',p:120,r:2,so:1},mustache:{n:'ちょびヒゲ',c:'#3e2723',p:50,r:1},tophat:{n:'シルクハット',c:'#212121',p:110,r:3},santa:{n:'サンタ帽(限定)',c:'#d32f2f',g:1,r:3}};
+ ribbon:{n:'リボン',c:'#ff4081',p:60,r:1},strawhat:{n:'麦わら帽子',c:'#f2d27a',p:130,r:3,so:1},cap_g:{n:'キャップ(金)',c:'#ffca28',like:'cap',p:120,r:2,so:1},mustache:{n:'ちょびヒゲ',c:'#3e2723',p:50,r:1},tophat:{n:'シルクハット',c:'#212121',p:110,r:3},santa:{n:'サンタ帽(限定)',c:'#d32f2f',g:1,r:3},
+ xm_antler:{n:'トナカイの角(限定)',c:'#8d6e63',g:1,r:4,xm:1}};   // v24：クリスマス期間だけガチャに出る
 const TRAILS={
  none:{n:'風（標準）',p:0,r:1,c:['#ffffff']},
  bubble:{n:'バブル',p:80,r:2,c:['#b3e5fc','#e1f5fe']},leaf:{n:'葉っぱ',p:80,r:2,c:['#66bb6a','#aed581']},
@@ -1287,7 +1333,8 @@ const TRAILS={
  lightning:{n:'稲妻(限定)',g:1,r:4,c:['#e1f5fe','#80d8ff']},stars:{n:'流れ星(限定)',g:1,r:4,c:['#ffe57f','#ffffff']},
  music:{n:'音符',p:90,r:2,c:['#ffe56b','#8fd0ff','#ff9ecb']},
  firebl:{n:'青い炎',like:'fire',p:150,r:3,so:1,c:['#2979ff','#80d8ff','#e1f5fe']},bubblep:{n:'ピンクバブル',like:'bubble',p:120,r:2,so:1,c:['#ff80ab','#ffd1e3']},snow:{n:'雪',p:100,r:3,c:['#ffffff','#e3f2fd']},
- diamond:{n:'ダイヤの輝き（ランク報酬）',rk:4,r:4,c:['#b3f0ff','#7cc8ff','#ffffff']}};
+ diamond:{n:'ダイヤの輝き（ランク報酬）',rk:4,r:4,c:['#b3f0ff','#7cc8ff','#ffffff']},
+ xm_lights:{n:'イルミネーション',like:'spark',p:300,r:3,so:1,xm:1,c:['#ff1744','#00e676','#ffd600','#40c4ff']}};
 const EMOS={
  wave:{n:'手をふる',i:'👋',p:0,r:1},thumbs:{n:'いいね',i:'👍',p:0,r:1},laugh:{n:'わらう',i:'😆',p:0,r:1},wheelie:{n:'ウィリー',i:'🚲',p:0,r:1},
  clap:{n:'拍手',i:'👏',p:60,r:1},bow:{n:'おじぎ',i:'🙇',p:60,r:1},angry:{n:'おこ',i:'💢',p:70,r:2},cry:{n:'なく',i:'😭',p:70,r:2},
@@ -1295,7 +1342,8 @@ const EMOS={
  think:{n:'かんがえる',i:'🤔',p:60,r:1},ramen:{n:'ラーメンすする',i:'🍜',p:90,r:2,so:1},yoyu:{n:'よゆう',i:'😏',p:90,r:2,so:1},shock:{n:'ガーン',i:'😱',p:70,r:2},cool:{n:'キメ顔',i:'😎',p:80,r:2},
  peace:{n:'ピース（Lv5）',i:'✌️',lv:5,r:2},flex:{n:'ムキムキ（Lv10）',i:'💪',lv:10,r:2},fire:{n:'燃えてきた（Lv15）',i:'🔥',lv:15,r:3},
  party:{n:'パーティー（Lv20）',i:'🎉',lv:20,r:3},crowne:{n:'王者の風格（Lv30）',i:'👑',lv:30,r:4},rocket:{n:'ロケット（Lv40）',i:'🚀',lv:40,r:4},
- hofe:{n:'殿堂入り（ランク報酬）',i:'🏛️',rk:6,r:4}};
+ hofe:{n:'殿堂入り（ランク報酬）',i:'🏛️',rk:6,r:4},
+ xm_merry:{n:'メリークリスマス',i:'🎄',p:80,r:2,so:1,xm:1},xm_gift:{n:'プレゼント',i:'🎁',p:80,r:2,so:1,xm:1}};
 const SES={none:{n:'なし',p:0,r:1},
  bell:{n:'ベル「ちりんちりん」',sy:'bell',p:0,r:1},horn:{n:'クラクション',sy:'horn',p:40,r:1},
  nice:{n:'ボイス「ナイス！」',say:'ナイス！',pi:1.5,p:60,r:2},yatta:{n:'ボイス「やったぜ！」',say:'やったぜ！',pi:.7,p:60,r:2},
@@ -2124,6 +2172,7 @@ function accSide(c,hx,hy,r,key,t){
     case 'goggles':c.strokeStyle='#37474f';c.lineWidth=r*.16;c.beginPath();c.arc(hx,hy-r*.3,r*1.02,rad(190),rad(345));c.stroke();c.fillStyle=A.c;c.beginPath();c.ellipse(hx+r*.62,hy-r*.62,r*.3,r*.2,-.4,0,7);c.fill();c.stroke();c.fillStyle='rgba(255,255,255,.6)';c.fillRect(hx+r*.55,hy-r*.72,r*.12,r*.06);break;
     case 'crown':{c.fillStyle=A.c;const y=hy-r*1.0;c.beginPath();c.moveTo(hx-r*.6,y);c.lineTo(hx-r*.65,y-r*.6);c.lineTo(hx-r*.3,y-r*.3);c.lineTo(hx,y-r*.75);c.lineTo(hx+r*.3,y-r*.3);c.lineTo(hx+r*.65,y-r*.6);c.lineTo(hx+r*.6,y);c.closePath();c.fill();c.stroke();blob(c,hx,y-r*.18,r*.1,'#e53935');break;}
     case 'halo':c.save();c.shadowColor='#fff59d';c.shadowBlur=r*.6;c.strokeStyle=A.c;c.lineWidth=r*.16;c.beginPath();c.ellipse(hx,hy-r*1.5+Math.sin(t/300)*r*.06,r*.65,r*.2,0,0,7);c.stroke();c.restore();break;
+    case 'xm_antler':{c.save();c.lineCap='round';c.lineJoin='round';for(const pass of[0,1])for(const [ox,w] of [[-.35,.13],[.05,.16]]){const bx=hx+ox*r,by=hy-r*.85;c.strokeStyle=pass?A.c:'#3e2723';c.lineWidth=r*w*(pass?1:1.7);c.beginPath();c.moveTo(bx,by);c.quadraticCurveTo(bx-r*.15,by-r*.5,bx+r*.1,by-r*.95);c.moveTo(bx-r*.07,by-r*.35);c.lineTo(bx-r*.38,by-r*.55);c.moveTo(bx-r*.02,by-r*.62);c.lineTo(bx+r*.28,by-r*.8);c.stroke();}c.restore();break;}   // v24：トナカイの角
     case 'horns':for(const s of[-1,1]){const x=hx+s*r*.45;c.fillStyle=A.c;c.beginPath();c.moveTo(x-r*.2,hy-r*.85);c.quadraticCurveTo(x+s*r*.35,hy-r*1.2,x+s*r*.15,hy-r*1.55);c.quadraticCurveTo(x,hy-r*1.15,x+r*.18,hy-r*.88);c.closePath();c.fill();c.stroke();}break;
     case 'ribbon':{const x=hx-r*.62,y=hy-r*.78;c.fillStyle=A.c;for(const s of[-1,1]){c.beginPath();c.moveTo(x,y);c.lineTo(x+s*r*.5,y-r*.32);c.lineTo(x+s*r*.5,y+r*.3);c.closePath();c.fill();c.stroke();}blob(c,x,y,r*.14,shade(A.c,.8),ol*.7);break;}
     case 'mustache':{c.fillStyle=A.c;const x=hx+r*.8,y=hy+r*.3;for(const s of[-1,1]){c.beginPath();c.ellipse(x+s*r*.12,y,r*.16,r*.07,s*.35,0,7);c.fill();}break;}
@@ -2979,7 +3028,7 @@ function renderLocker(){
 }
 
 /* ===== ショップ ===== */
-const buyable=(c,k)=>CAT[c][k].p>0;
+const buyable=(c,k)=>CAT[c][k].p>0&&!CAT[c][k].xm;   // クリスマス限定は「今日のおすすめ」に出さない
 function dailyFeatured(){
   const r=mulberry(strHash('shop'+todayKey())),list=allItems().filter(([c,k])=>buyable(c,k));
   const pick=[];while(pick.length<6&&list.length)pick.push(list.splice(Math.floor(r()*list.length),1)[0]);
@@ -2991,7 +3040,7 @@ function renderShop(){
   const fb=$('shop-feat');fb.innerHTML='';
   dailyFeatured().forEach(([c,k])=>{const own=SV.inv[c].includes(k);fb.appendChild(itemCard(c,k,{owned:own,off:!own,sub:own?'所持済み':priceTag(c,k),onClick:()=>openItem(c,k)}));});
   // ショップ限定アイテム（ガチャには出ない）
-  const so=allItems().filter(([c,k])=>CAT[c][k].so),soc=['all',...new Set(so.map(([c])=>c))];
+  const so=allItems().filter(([c,k])=>CAT[c][k].so&&!CAT[c][k].xm),soc=['all',...new Set(so.map(([c])=>c))];
   const sc=$('shop-so-cats');sc.innerHTML='';soc.forEach(c=>{const b=document.createElement('button');b.className='chip'+(c===shopSoCat?' on':'');b.textContent=c==='all'?'すべて（'+so.length+'）':CATN[c];b.onclick=()=>{shopSoCat=c;renderShop();};sc.appendChild(b);});
   const sb=$('shop-so');sb.innerHTML='';
   so.filter(([c])=>shopSoCat==='all'||c===shopSoCat).sort((a,b)=>(SV.inv[a[0]].includes(a[1])?1:0)-(SV.inv[b[0]].includes(b[1])?1:0)||CAT[a[0]][a[1]].p-CAT[b[0]][b[1]].p)
@@ -3001,7 +3050,7 @@ function renderShop(){
   const ord=it=>(it.ev?4e4+it.ev:it.rk!=null?3e4+it.rk:it.lv!=null?2e4+it.lv:it.g?1e4:0)+(it.p||0);
   const keys=Object.keys(CAT[shopCat]).sort((a,b)=>ord(CAT[shopCat][a])-ord(CAT[shopCat][b]));
   keys.forEach(k=>{const it=CAT[shopCat][k],own=SV.inv[shopCat].includes(k);
-    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':isSpecial(it)?reqText(it):priceTag(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
+    box.appendChild(itemCard(shopCat,k,{owned:own,sub:own?'所持済み':it.g?'🎰 ガチャ限定':isSpecial(it)?reqText(it):it.xm&&!xmasNow()?'🎄 12月限定':priceTag(shopCat,k),onClick:()=>openItem(shopCat,k)}));});
   shopTimer();renderShopExtra();
 }
 function untilMidnight(){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const s=Math.max(0,(m-n)/1000|0);return Math.floor(s/3600)+'時間'+String(Math.floor(s%3600/60)).padStart(2,'0')+'分';}
@@ -3060,7 +3109,7 @@ function renderCourse(){
 /* ===== ガチャ（自転車タイヤのクランクを回す：なめらかな回転＋指でぐるっと回せる） ===== */
 const G={a:0,w:0,phase:'idle',t0:0,res:[],shown:0,lastTick:0,tickT:0,drag:null,big:null};
 // ショップ限定（so）はガチャに出ない
-function gpool(r){const o=[];for(const [c,k] of allItems()){const it=CAT[c][k];if(it.r===r&&(it.p>0||it.g)&&!it.so)o.push([c,k]);}return o;}
+function gpool(r){const o=[];for(const [c,k] of allItems()){const it=CAT[c][k];if(it.r===r&&(it.p>0||it.g)&&!it.so&&!(it.xm&&!xmasNow()))o.push([c,k]);}return o;}   // v24：クリスマス限定は期間中だけ
 function rollOne(minR){
   let r=1,x=Math.random()*100;for(let i=1;i<=4;i++){x-=RW[i];if(x<0){r=i;break;}}
   if(minR&&r<minR)r=minR;
@@ -4421,6 +4470,7 @@ function accBack(hx,hy,R,key,t){
     case 'goggles':ctx.strokeStyle='#37474f';ctx.lineWidth=R*.2;ctx.beginPath();ctx.arc(hx,hy,R*1.02,Math.PI*1.05,Math.PI*1.95);ctx.stroke();break;
     case 'crown':{ctx.fillStyle=A.c;const y=hy-R*.95;ctx.beginPath();ctx.moveTo(hx-R*.6,y);ctx.lineTo(hx-R*.65,y-R*.6);ctx.lineTo(hx-R*.3,y-R*.3);ctx.lineTo(hx,y-R*.75);ctx.lineTo(hx+R*.3,y-R*.3);ctx.lineTo(hx+R*.65,y-R*.6);ctx.lineTo(hx+R*.6,y);ctx.closePath();ctx.fill();ctx.stroke();break;}
     case 'halo':ctx.shadowColor='#fff59d';ctx.shadowBlur=R*.7;ctx.strokeStyle=A.c;ctx.lineWidth=R*.2;ctx.beginPath();ctx.ellipse(hx,hy-R*1.6+Math.sin(t/300)*R*.08,R*.7,R*.22,0,0,7);ctx.stroke();break;
+    case 'xm_antler':{ctx.save();ctx.lineCap='round';ctx.lineJoin='round';for(const pass of[0,1]){ctx.strokeStyle=pass?A.c:'#3e2723';ctx.lineWidth=R*(pass?.17:.29);for(const s of[-1,1]){const bx=hx+s*R*.45,by=hy-R*.75;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx+s*R*.2,by-R*.5,bx+s*R*.55,by-R*.95);ctx.moveTo(bx+s*R*.12,by-R*.35);ctx.lineTo(bx+s*R*.48,by-R*.45);ctx.moveTo(bx+s*R*.3,by-R*.66);ctx.lineTo(bx+s*R*.3,by-R*1.05);ctx.stroke();}}ctx.restore();break;}   // v24：トナカイの角（うしろから）
     case 'horns':for(const s of[-1,1]){const x=hx+s*R*.5;ctx.fillStyle=A.c;ctx.beginPath();ctx.moveTo(x-R*.2,hy-R*.8);ctx.quadraticCurveTo(x+s*R*.4,hy-R*1.2,x+s*R*.2,hy-R*1.6);ctx.quadraticCurveTo(x,hy-R*1.15,x+R*.2,hy-R*.82);ctx.closePath();ctx.fill();ctx.stroke();}break;
     case 'ribbon':{const x=hx,y=hy-R*.55;ctx.fillStyle=A.c;for(const s of[-1,1]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+s*R*.6,y-R*.35);ctx.lineTo(x+s*R*.6,y+R*.32);ctx.closePath();ctx.fill();ctx.stroke();}blob(ctx,x,y,R*.17,shade(A.c,.8),1);break;}
     case 'tophat':ctx.fillStyle=A.c;ctx.beginPath();ctx.ellipse(hx,hy-R*.82,R*1.25,R*.28,0,0,7);ctx.fill();ctx.stroke();ctx.fillRect(hx-R*.72,hy-R*2.0,R*1.44,R*1.15);ctx.strokeRect(hx-R*.72,hy-R*2.0,R*1.44,R*1.15);
@@ -4573,6 +4623,7 @@ function drawRider(p,team,t,name,alpha){
   hairBack(hc[0],hc[1],R,hr,t,lean);
   accBack(hc[0],hc[1],R,p.acc,t);
   ctx.globalAlpha=1;
+  if(p._gh){p._hx=hc[0];p._hy=hc[1];p._hr=R;}   // v24：ゴーストの名札の位置
   if(alpha==null){
     p._hx=hc[0];p._hy=hc[1];p._hr=R;
     if(p._fall&&Math.abs(p._fall)>.3){for(let i=0;i<3;i++){const a=t/180+i*2.1;ctx.fillStyle='#ffe14d';ctx.font='900 '+(R*.9|0)+'px sans-serif';ctx.textAlign='center';ctx.fillText('★',hc[0]+Math.cos(a)*R*1.6,hc[1]-R*1.4+Math.sin(a)*R*.5);}}
@@ -4642,6 +4693,7 @@ function renderWorld(ci,st,t,meIdx,names){
   for(const o of st.obs||[])if(o.z>zNear-90&&o.z<zFar+80)items.push({z:o.z,f:()=>drawCar(o,T,t)});
   (st.P||[]).forEach((p,i)=>{if(!p)return;const team=i===meIdx?0:1,nm=names?names[i]:null;
     items.push({z:p.z,f:()=>{if(p.boost){drawRider(Object.assign({},p,{z:p.z-9}),team,t,null,.25);drawRider(Object.assign({},p,{z:p.z-18}),team,t,null,.12);}drawRider(p,team,t,nm);}});});
+  if(typeof ghostItem==='function'){const gi=ghostItem(st,t,zNear,zFar);if(gi)items.push(gi);}   // v24：👻 ゴースト
   items.sort((a,b)=>b.z-a.z);
   for(const it of items){if(it.c&&offS(it.c))continue;it.f();}
   drawParts3();
@@ -5080,7 +5132,7 @@ function hudEndless(T,me,t){
   const km=Math.round((me.v||0)*.2);txt(Math.floor((me.z||0)/10).toLocaleString()+' m',x0+216,y0+22,13,'#fff','right',false,800);txt(km+' km/h',x0+216,y0+42,13,'#8fd0ff','right',false,800);
   txt('STAGE '+(Math.floor((D.el||0)/30)+1),x0+216,y0+61,12,'#ff9a8f','right',false,800);
   const bw=170,bx=W/2-bw/2;ctx.fillStyle='rgba(8,12,34,.7)';rr(ctx,bx,y0,bw,34,12);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();
-  txt('BEST '+Math.max(SV.best,D.score||0).toLocaleString(),bx+bw/2,y0+23,14,'#fff','center',false);
+  txt((DAILY_RUN?'今日のベスト ':'BEST ')+Math.max(DAILY_RUN?((DY&&DY.me&&DY.me.best)||0):SV.best,D.score||0).toLocaleString(),bx+bw/2,y0+23,14,'#fff','center',false);   // v24：デイリー中は今日のベスト
   ctx.fillStyle='rgba(8,12,34,.7)';rr(ctx,x0,y0+76,96,24,10);ctx.fill();txt('Lv'+SV.lv,x0+10,y0+94,13,'#8fd0ff','left',false,800);
   ctx.fillStyle='#2a3058';ctx.fillRect(x0+46,y0+85,42,6);ctx.fillStyle='#8fd0ff';ctx.fillRect(x0+46,y0+85,42*Math.min(1,SV.xp/xpNeed(SV.lv)),6);
   if(D.combo>1){const s=1+Math.sin(t/90)*.05;ctx.save();ctx.translate(x0+170,y0+92);ctx.scale(s,s);pill(-60,-14,120,28,'#1f8f3a');txt('COMBO ×'+D.combo,0,6,15,'#fff','center',false);ctx.restore();}
@@ -5147,7 +5199,7 @@ function gameOverPanel(t,age){
   const sc=END?END.score:(D.score||0);txt(sc.toLocaleString(),W/2,y+120,46,'#ffe56b');
   if(END){
     txt('距離 '+END.dist.toLocaleString()+'m ＋ ボーナス '+END.bonus.toLocaleString(),W/2,y+146,13,'#cfd6ff','center',false,800);
-    txt('ベスト '+END.best.toLocaleString()+(END.rank?'　ランキング '+END.rank+'位':'')+'　+'+END.coins+' NC',W/2,y+172,15,'#fff','center',false,800);
+    txt('ベスト '+END.best.toLocaleString()+(END.rank?(END.daily?'　今日のデイリー ':'　ランキング ')+END.rank+'位':'')+'　+'+END.coins+' NC',W/2,y+172,15,'#fff','center',false,800);
     txt('+'+runXP+' XP　（Lv'+SV.lv+'）',W/2,y+200,15,'#8fd0ff','center',false,800);
     if(END.improved){const s=1+Math.sin(t/120)*.06;ctx.save();ctx.translate(x+pw-50,y+26);ctx.rotate(.18);ctx.scale(s,s);pill(-58,-16,116,32,'#e53935');txt('NEW RECORD!',0,6,14,'#fff','center',false);ctx.restore();}
   }
@@ -5467,7 +5519,7 @@ function showResult(o){
   // 統計
   const st=[];
   if(v){st.push('追い抜き '+MLOG.ov,'急ブレーキ命中 '+MLOG.bh,'パトカー回避 '+MLOG.cop);}
-  else if(END){st.push('距離 '+END.dist.toLocaleString()+'m','ボーナス '+END.bonus.toLocaleString(),'ニアミス '+MLOG.near,'最高コンボ ×'+MLOG.maxCombo,'ベスト '+END.best.toLocaleString());if(END.rank)st.push('ランキング '+END.rank+'位');}
+  else if(END){st.push('距離 '+END.dist.toLocaleString()+'m','ボーナス '+END.bonus.toLocaleString(),'ニアミス '+MLOG.near,'最高コンボ ×'+MLOG.maxCombo,'ベスト '+END.best.toLocaleString());if(END.rank)st.push((END.daily?'今日のデイリー ':'ランキング ')+END.rank+'位');if(END.daily)st.push('のこり '+END.daily.left+'回');}
   if(MLOG.rk&&MLOG.rk.bonus)st.push('🏆 昇格ボーナス +'+MLOG.rk.bonus+' NC');
   if(MLOG.lvBonus)st.push('🎖️ レベルアップ +'+MLOG.lvBonus+' NC');
   if(coinBoost(SV.lv)>0)st.push('Lvボーナス コイン+'+Math.round(coinBoost(SV.lv)*100)+'%');
@@ -5635,7 +5687,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v23',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v24',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
@@ -6389,7 +6441,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v23',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v24',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -6844,15 +6896,16 @@ $('ag-reset').onclick=()=>{if(!confirmTwice($('ag-reset'),'最初の設定に戻
 /* ----- 🏆 ランキングの管理 ----- */
 let AR_B='run',AR_D=null;
 function admRank(){socket.emit('adm_rank_list',r=>{if(!r||!r.ok)return;AR_D=r;renderRank();});}
-function renderRank(){miniChips($('ar-board'),[['run','🏃 エンドレス（'+((AR_D&&AR_D.run.length)||0)+'）'],['rp','🏆 チャリランク（'+((AR_D&&AR_D.rp.length)||0)+'）']],AR_B,v=>{AR_B=v;renderRank();});
+function renderRank(){miniChips($('ar-board'),[['run','🏃 エンドレス（'+((AR_D&&AR_D.run.length)||0)+'）'],['rp','🏆 チャリランク（'+((AR_D&&AR_D.rp.length)||0)+'）'],['daily','📅 今日のデイリー（'+((AR_D&&AR_D.daily&&AR_D.daily.length)||0)+'）']],AR_B,v=>{AR_B=v;renderRank();});
   const L=(AR_D&&AR_D[AR_B])||[],box=$('ar-list'),st=box.scrollTop;box.innerHTML='';const rs=AR_D&&AR_D.reset&&AR_D.reset[AR_B];
   $('ar-note').textContent='おかしな記録は 🗑 で1件ずつ消せます。消した記録は、その人の端末に残っている控えからも元に戻りません（新しく出した記録はまた載ります）。'+(rs?'　最後のリセット：'+fmtD(rs):'');
+  $('ar-reset').classList.toggle('hide',AR_B==='daily');   // デイリーは毎日0時に自動でリセット
   if(!L.length){box.innerHTML='<div class="adm-note">記録はありません</div>';return;}
   L.forEach(e=>{const d=document.createElement('div');d.className='ar-row';const rk=document.createElement('span');rk.className='rk';rk.textContent=e.i<=3?['🥇','🥈','🥉'][e.i-1]:e.i;
     const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent='Lv'+e.lv+'　'+e.name;b.className='pf-link';b.title='ユーザー一覧で探す';
     b.onclick=()=>{admTab('users');$('au-q').value=e.name;admUsers();};
-    const sm=document.createElement('small');sm.textContent=(AR_B==='run'?(e.c!=null&&COURSES[e.c]?COURSES[e.c].n:'コース不明'):(TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':''))+'　'+(e.ts?fmtD(e.ts):'');g.append(b,sm);
-    const sc=document.createElement('span');sc.className='sc';sc.textContent=AR_B==='run'?Number(e.score).toLocaleString():rankInfo(e.rp).name+' '+e.rp+' RP';
+    const sm=document.createElement('small');sm.textContent=(AR_B==='run'?(e.c!=null&&COURSES[e.c]?COURSES[e.c].n:'コース不明'):AR_B==='daily'?'デイリー '+((AR_D&&AR_D.dailyId)||''):(TITLES[e.ttl]?'「'+TITLES[e.ttl].n+'」':''))+'　'+(e.ts?fmtD(e.ts):'');g.append(b,sm);
+    const sc=document.createElement('span');sc.className='sc';sc.textContent=AR_B!=='rp'?Number(e.score).toLocaleString():rankInfo(e.rp).name+' '+e.rp+' RP';
     const x=document.createElement('button');x.className='btn sm dark';x.textContent='🗑';x.title='この記録を消す';
     x.onclick=()=>{if(!confirmTwice(x,'消す？'))return;socket.emit('adm_rank_del',{board:AR_B,h:e.h},r=>{if(r&&r.ok){toast('🗑 '+e.name+' の記録を消しました');admRank();}else toast((r&&r.err)||'消せませんでした');});};
     d.append(rk,g,sc,x);box.appendChild(d);});box.scrollTop=st;}
@@ -7064,6 +7117,142 @@ setInterval(()=>{if(page==='admin'&&ADM_TAB==='dash'&&ADM_R&&!document.hidden)da
    ===================================================================== */
 document.addEventListener('securitypolicyviolation',e=>{try{reportErr('CSPで止めました：'+(e.violatedDirective||e.effectiveDirective||'')+' '+String(e.blockedURI||'').slice(0,80),e.sourceFile,e.lineNumber,e.columnNumber,'','csp');}catch(er){}});
 $('title-pp').addEventListener('click',e=>e.stopPropagation());   // タイトル画面の「プライバシーポリシー」を押してもゲームが始まらないように
+
+/* =====================================================================
+   v24：📅 デイリーチャレンジ・👻 ゴースト・🎄 クリスマス
+   ===================================================================== */
+var XMAS={on:false},DY=null,DAILY_RUN=null,GH=null,GREC=null,GHT=0;
+function xmasNow(){return !!(XMAS&&XMAS.on);}
+
+/* ----- 👻 ゴースト -----
+   ・自分の走りを1秒6回記録して、ベストを端末に保存（デイリーは今日の分だけ）
+   ・「1位」は、エンドレスのランキング1位／今日のデイリー1位の走りをサーバーから受け取る
+   ・ゴーストは見えるだけ（車には当たらない）。エンドレスの車は毎回ちがうので「ペースの目安」、デイリーは全員同じ車なので「同じ条件の勝負」 */
+const GH_HZ=6,GH_KEY='nm_ghost_me';
+const GH_OPTS=[['top','上位'],['me','自分のベスト'],['off','なし']];   // 上位：ランキングでいちばん上の人の走り（走りが残っている人）
+function ghostKind(){const k=SV&&SV.ghost;return k==='me'||k==='off'?k:'top';}
+function ghostStore(){try{return JSON.parse(LS.get(GH_KEY,'{}'))||{};}catch(e){return {};}}
+function myGhost(daily){const st=ghostStore();if(daily){const g=st.daily;return g&&DY&&g.id===DY.id?g:null;}return st.run||null;}
+function ghostUnpack(g,kind){
+  const n=Math.min(g.x.length,g.z.length),X=new Float32Array(n),Z=new Float32Array(n);let z=0;
+  for(let i=0;i<n;i++){z+=g.z[i];X[i]=g.x[i];Z[i]=z;}
+  return {name:g.name||'',lv:g.lv||1,score:g.score||0,look:g.look||{},X,Z,n,kind};
+}
+function ghostLoad(daily){
+  GH=null;const k=ghostKind();if(k==='off')return;
+  if(k==='me'){const g=myGhost(daily);if(g)GH=ghostUnpack(g,'me');return;}
+  socket.emit('ghost_get',{kind:daily?'daily':'top'},r=>{
+    if(!inGame||mode!=='endless')return;
+    if(!(r&&r.ok&&r.g)){const g=myGhost(daily);if(g){GH=ghostUnpack(g,'me');toast('👻 上位の走りがまだないので、自分のベストと走ります',2600);}return;}   // 上位のゴーストがないときは自分のベストで
+    GH=ghostUnpack(r.g,r.g.me?'mytop':'top');GH.rank=r.g.rank||1;
+  });
+}
+function ghostLabel(){if(!GH)return '';const rk=(GH.rank||1)+'位';return GH.kind==='me'?'自分のベスト':GH.kind==='mytop'?'自分（'+rk+'）':(DAILY_RUN?'今日の'+rk+' ':rk+' ')+GH.name;}
+function ghostPos(el){
+  if(!GH||GH.n<2)return null;const f=Math.max(0,el)*GH_HZ,i=Math.floor(f),u=f-i;
+  if(i>=GH.n-1)return {x:GH.X[GH.n-1],z:GH.Z[GH.n-1],v:0,end:true};
+  return {x:GH.X[i]+(GH.X[i+1]-GH.X[i])*u,z:GH.Z[i]+(GH.Z[i+1]-GH.Z[i])*u,v:(GH.Z[i+1]-GH.Z[i])*GH_HZ,end:false};
+}
+// 走っている時間（サーバーの時間に合わせつつ、画面のなめらかさのために毎フレーム進める）
+{const dg=drawGame;drawGame=function(dt,t){
+  if(D&&mode==='endless'){if(D.s==='play'){GHT+=dt;if(Math.abs(GHT-(D.el||0))>.25)GHT=D.el||0;}else if(D.s==='count')GHT=0;}
+  dg(dt,t);};}
+// 世界の中に半透明のゴーストを描く（f_render2 の renderWorld から呼ばれる）
+function ghostItem(st,t,zNear,zFar){
+  if(!GH||!inGame||st!==D||REPLAYING||SPEC||mode!=='endless'||!D||(D.s!=='play'&&D.s!=='over'))return null;
+  const g=ghostPos(GHT);if(!g||g.z<zNear+6||g.z>zFar)return null;
+  const p=Object.assign({},GH.look,{x:g.x,z:g.z,v:g.v||110,_lean:0,_ph:GHT*((g.v||110)/16),_fall:g.end?1.25:0,_gh:1,mud:0,brk:0,boost:0,cd:1,bcd:1});
+  return {z:g.z,f:()=>{drawRider(p,1,t,null,g.end?.22:.42);
+    if(p._hx!=null){const R=p._hr,y=p._hy-R*1.9,nm='👻 '+ghostLabel();ctx.save();ctx.globalAlpha=g.end?.5:.85;ctx.font='900 '+Math.max(10,R*.9|0)+'px '+FONT;const tw=ctx.measureText(nm).width+12;
+      ctx.fillStyle='rgba(120,90,200,.85)';rr(ctx,p._hx-tw/2,y-R*.85,tw,R*1.2,R*.5);ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText(nm,p._hx,y);ctx.restore();}}};
+}
+// 画面の上に「ゴーストとの差」を出す
+{const he=hudEndless;hudEndless=function(T,me,t){he(T,me,t);
+  if(!GH||!D||D.s!=='play'||REPLAYING||SPEC)return;const g=ghostPos(GHT);if(!g)return;
+  const d=Math.round((g.z-(me.z||0))/10),ahead=d>0,s='👻 '+ghostLabel()+'　'+(g.end?'（ここでゲームオーバー）':ahead?'+'+d.toLocaleString()+'m 先':d<0?Math.abs(d).toLocaleString()+'m うしろ':'ならんでいる');
+  ctx.save();ctx.font='800 13px '+FONT;const w=ctx.measureText(s).width+22,x=W/2-w/2,y=48;
+  ctx.fillStyle='rgba(30,20,70,.78)';rr(ctx,x,y,w,24,10);ctx.fill();ctx.restore();
+  txt(s,W/2,y+17,13,g.end?'#c9cff5':ahead?'#ffb3a7':'#8cf08c','center',false,800);};}
+// 自分の走りを記録する（サーバーから届いた自分の位置を1秒6回）
+{const os=onSnap;onSnap=function(s){os(s);
+  try{if(mode!=='endless'||SPEC||REPLAYING||!s)return;
+    if(s.s==='count'){GREC=null;return;}
+    const p=s.P&&s.P[slot];if(s.s!=='play'||!p)return;
+    if(!GREC)GREC={x:[],z:[],pz:0};const need=Math.min(14400,Math.floor((s.el||0)*GH_HZ)+1);
+    while(GREC.x.length<need){GREC.x.push(Math.round(p.x));const zz=Math.round(p.z);GREC.z.push(zz-GREC.pz);GREC.pz=zz;}
+  }catch(e){}};}
+socket.on('endless_over',d=>{
+  try{
+    if(DAILY_RUN&&d.daily){DAILY_RUN.left=d.daily.left;if(DY&&DY.me){DY.me.best=Math.max(DY.me.best||0,d.daily.best||0);DY.me.rank=d.daily.rank;DY.me.left=d.daily.left;}}
+    if(!GREC||GREC.x.length<12||SPEC)return;
+    const st=ghostStore(),daily=!!d.daily,old=daily?(st.daily&&DY&&st.daily.id===DY.id?st.daily:null):st.run;
+    if(old&&old.score>=d.score)return;
+    const g={name:SV.name,lv:SV.lv,score:d.score,look:myLook(),x:GREC.x,z:GREC.z,t:Date.now()};if(daily)g.id=DY?DY.id:'';
+    if(daily)st.daily=g;else st.run=g;LS.set(GH_KEY,JSON.stringify(st));
+    if(ghostKind()==='me')GH=ghostUnpack(g,'me');   // 次の挑戦から新しいベストと走る
+  }catch(e){}
+});
+socket.on('start',d=>{DAILY_RUN=d&&d.daily?Object.assign({},d.daily):null;GREC=null;GHT=0;if(d&&d.mode==='endless'&&!SPEC)ghostLoad(!!DAILY_RUN);else GH=null;});
+function ghostBtnUI(){const b=$('ghost-sub');if(b)b.textContent=GH_OPTS.find(o=>o[0]===ghostKind())[1].replace('自分のベスト','自分');}
+$('ghost-btn').onclick=()=>{initAudio();if(AU.ctx)SFX.click();const i=GH_OPTS.findIndex(o=>o[0]===ghostKind()),k=GH_OPTS[(i+1)%GH_OPTS.length][0];SV.ghost=k;save();ghostBtnUI();
+  toast('👻 ゴースト：'+GH_OPTS.find(o=>o[0]===k)[1]+(k==='top'?'（ランキング上位の人の走りと一緒に走る）':k==='me'?'（自分のベストの走りと一緒に走る）':''),2600);};
+
+/* ----- 📅 デイリーチャレンジ ----- */
+const fmtDay=id=>id?(+id.slice(5,7))+'/'+(+id.slice(8,10)):'';
+let dyT=0;
+function dailyFetch(cb){if(!socket.connected||!SV)return;socket.emit('daily_info',r=>{if(!r||!r.ok)return;DY=r;dyT=Date.now();dailyBtnUI();if(cb)cb(r);});}
+function dailyBtnUI(){const s=$('daily-sub');if(!s)return;if(!DY){s.textContent='全員同じ車の並び・1日3回';return;}
+  const c=COURSES[DY.course]||COURSES[0];s.textContent=fmtDay(DY.id)+' '+c.n+'・'+(DY.me.left>0?'のこり'+DY.me.left+'回':'今日はおしまい')+(DY.me.rank?'・'+DY.me.rank+'位':'');}
+function openDaily(){initAudio();if(AU.ctx)SFX.click();$('daily-modal').classList.remove('hide');renderDaily();dailyFetch(renderDaily);}
+function renderDaily(){
+  const r=DY;if(!r){$('dy-top').innerHTML='<div class="muted">読みこみ中…</div>';return;}
+  const c=COURSES[r.course]||COURSES[0];$('dy-title').textContent='📅 デイリーチャレンジ（'+fmtDay(r.id)+'）';$('dy-cname').textContent=c.n;
+  try{renderCourseThumb($('dy-th'),r.course);}catch(e){}
+  const me=$('dy-me');me.innerHTML='';const add=t=>{const s=document.createElement('span');s.textContent=t;me.appendChild(s);};
+  add('のこり '+r.me.left+' / '+r.max+' 回');add('今日のベスト '+(r.me.best?r.me.best.toLocaleString():'—'));add(r.me.rank?'今日 '+r.me.rank+'位':'まだ記録なし');
+  miniChips($('dy-gh'),GH_OPTS.map(([k,n])=>[k,k==='top'?(r.ghost?'今日の上位':'今日の上位（まだなし）'):n]),ghostKind(),k=>{SV.ghost=k;save();ghostBtnUI();renderDaily();});
+  const go=$('dy-go');go.disabled=r.me.left<=0;go.textContent=r.me.left>0?'▶ スタート（のこり'+r.me.left+'回）':'今日はおしまい';
+  const tb=$('dy-top');tb.innerHTML='';$('dy-n').textContent=r.n?'（'+r.n+'人が参加）':'';
+  if(!r.top.length)tb.innerHTML='<div class="muted">まだだれも走っていません。一番乗りのチャンス！</div>';
+  r.top.forEach((e,i)=>{const d=document.createElement('div');d.className='dy-row'+(e.me?' me':'');d.innerHTML='<span class="r">'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="n"></span><span class="s"></span>';
+    d.querySelector('.n').textContent='Lv'+e.lv+'　'+e.name;d.querySelector('.s').textContent=e.score.toLocaleString();tb.appendChild(d);});
+  const pv=$('dy-prev');pv.textContent='';if(r.prev&&r.prev.top&&r.prev.top.length){pv.textContent='きのう（'+fmtDay(r.prev.id)+'）の上位：'+r.prev.top.map((e,i)=>['🥇','🥈','🥉'][i]+e.name+' '+e.score.toLocaleString()).join('　');}
+}
+$('daily-btn').onclick=openDaily;
+$('dy-close').onclick=()=>$('daily-modal').classList.add('hide');
+$('daily-modal').addEventListener('pointerdown',e=>{if(e.target.id==='daily-modal')$('daily-modal').classList.add('hide');});
+$('dy-go').onclick=()=>{initAudio();if(!DY||DY.me.left<=0)return;$('dy-go').disabled=true;
+  socket.emit('daily',payload(),r=>{$('dy-go').disabled=false;if(!r||!r.ok){toast((r&&r.err)||'始められませんでした');dailyFetch(renderDaily);return;}$('daily-modal').classList.add('hide');});};
+socket.on('daily_left',d=>{if(DAILY_RUN)DAILY_RUN.left=d.left;if(DY&&DY.me)DY.me.left=d.left;});
+socket.on('daily_end',d=>{toast((d&&d.err)||'今日のデイリーは終わりました',3500);if(END&&inGame)showResult({kind:'endless'});});
+// デイリーの「もう一回」は、のこり回数があるときだけ
+{const ag=again;again=function(){if(DAILY_RUN&&END&&END.daily&&END.daily.left<=0){toast('今日の3回は終わりました。明日またチャレンジ！',3000);return;}ag();};}
+{const sr=showResult;showResult=function(o){sr(o);try{const b=$('res-again');if(o&&o.kind==='endless'&&DAILY_RUN&&END&&END.daily)b.textContent=END.daily.left>0?'もう一回（のこり'+END.daily.left+'回）':'今日はおしまい';else b.textContent='もう一回';}catch(e){}};}
+// ホームを開いたとき・試合から戻ったときに、デイリーの情報を新しくする（30秒に1回まで）
+{const sp=showPage;showPage=function(p){sp(p);if(p==='home'&&Date.now()-dyT>30000)dailyFetch();if(p==='home'){ghostBtnUI();xmasUI();}};}
+socket.on('connect',()=>setTimeout(()=>{dailyFetch();ghostBtnUI();},1500));
+
+/* ----- 🎄 クリスマス ----- */
+socket.on('xmas',x=>{const was=xmasNow();XMAS=x||{on:false};xmasUI();if(was!==xmasNow()&&SV&&page==='shop')renderShop();if(page==='admin'&&ADM_TAB==='event')axState();
+  if(!was&&xmasNow()&&SV&&!inGame){const k='nm_xm_toast',d=todayKey();if(LS.get(k,'')!==d){LS.set(k,d);setTimeout(()=>toast('🎄 クリスマスイベント開催中！ ショップとガチャに限定アイテムが登場'+(XMAS.until?'（〜'+fmtDay(new Date(XMAS.until-864e5+9*3600e3).toISOString().slice(0,10))+'）':''),4200),1200);}}});
+function xmasUI(){const on=xmasNow();document.body.classList.toggle('xmas',on);const sn=$('xm-snow');if(sn)sn.classList.toggle('hide',!on);}
+function xmShop(){const box=$('shop-xm');if(!box)return;const on=xmasNow();box.classList.toggle('hide',!on);if(!on)return;
+  $('xm-left').textContent=XMAS.until?'〜'+fmtDay(new Date(XMAS.until-864e5+9*3600e3).toISOString().slice(0,10))+'まで（のこり '+leftTxt(XMAS.until-Date.now())+'）':'期間限定';
+  const g=$('shop-xm-list');g.innerHTML='';
+  allItems().filter(([c,k])=>CAT[c][k].xm&&CAT[c][k].p>0).sort((a,b)=>(SV.inv[a[0]].includes(a[1])?1:0)-(SV.inv[b[0]].includes(b[1])?1:0)||CAT[a[0]][a[1]].p-CAT[b[0]][b[1]].p)
+    .forEach(([c,k])=>{const own=SV.inv[c].includes(k);g.appendChild(itemCard(c,k,{owned:own,sub:own?'所持済み':priceTag(c,k),onClick:()=>openItem(c,k)}));});}
+{const rs=renderShop;renderShop=function(){rs();xmShop();};}
+// 期間外のクリスマス限定アイテムは買えない
+{const oi=openItem;openItem=function(c,k){oi(c,k);const it=CAT[c]&&CAT[c][k];if(it&&it.xm&&!xmasNow()&&!SV.inv[c].includes(k)){$('im-price').textContent='🎄 クリスマス期間（12/1〜12/25）だけ手に入ります';$('im-buy').disabled=true;}};}
+{const ib=$('im-buy').onclick;$('im-buy').onclick=()=>{const it=IM&&CAT[IM.c]&&CAT[IM.c][IM.k];if(it&&it.xm&&!xmasNow()){toast('🎄 クリスマス期間（12/1〜12/25）だけ買えます');return;}ib();};}
+// 管理者：クリスマスの設定
+function axState(){const x=XMAS||{},e=$('ax-state');if(!e)return;
+  e.innerHTML=x.on?'<b style="color:#8cf08c">● 開催中</b>':'<b style="color:#c9cff5">● 開催していません</b>';
+  e.appendChild(document.createTextNode('　設定：'+({auto:'自動（12/1〜12/25）',on:'今すぐ開始（止めるまで続く）',off:'止める'}[x.mode||'auto'])));
+  miniChips($('ax-mode'),[['auto','自動（12/1〜12/25）'],['on','今すぐ開始'],['off','止める']],x.mode||'auto',m=>{if((x.mode||'auto')===m)return;
+    socket.emit('adm_xmas',{mode:m},r=>{if(r&&r.ok){XMAS=r.xmas;xmasUI();axState();toast('🎄 クリスマスの設定を変えました');}else toast((r&&r.err)||'変えられませんでした');});});}
+document.querySelectorAll('#adm-tabs button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.a==='event')axState();}));
+AUDN.xmas='🎄 クリスマスの設定を変更';
 </script>
 </body>
 </html>
