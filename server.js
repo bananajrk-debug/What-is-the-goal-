@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v24 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v25 — Express + Socket.io（サーバー権威型）
+// v25：⏱ タイムアタック（週替わりのコース・全員同じ車の並び・ゴースト）・🎯 ミッション（15ステージ・⭐）・🚓 ドロボウを追え！・🤝 協力モード（2人で逃げる・10秒で復活）。ホームのモード選択を「ひとりで」「だれかと」＋STARTに
 // v24：📅 デイリーチャレンジ（全員同じ車の並び・1日3回・上位にNC）・👻 ゴースト（1位や自分のベストの走りと一緒に走る）・🎄 クリスマス（12/1〜12/25の限定アイテム・雪）
 // v23：通信を軽く（試合の状態を短い形で・変わったところだけ・1秒20回に。ページは圧縮して送る）。チート対策（NC検算の抜け道・RPの上限）とセキュリティ（署名の鍵・CSPなどのヘッダー・送りすぎの制限）を強化
 // v22：管理画面を左メニュー＋いつも見える上のバー（オンライン・ユーザー・メンテナンス・お知らせ）に。ダッシュボードを「すぐ対応／いまの状態／今日の数字／これからの予定」に整理
@@ -768,7 +769,7 @@ function resetEndless(R) {
 }
 function spawnWave(R, p) {
   // v24：デイリーは「何番目の波か」で決まる乱数を使う（同じタイミングなら、だれでも同じ車が出る）
-  const g = R.daily ? mulberry32((R.seed ^ Math.imul(++R.wave, 2654435761)) >>> 0) : Math.random, rnd = (a, b) => a + g() * (b - a);
+  const g = (R.daily || R.vm === 'ta') ? mulberry32((R.seed ^ Math.imul(++R.wave, 2654435761)) >>> 0) : Math.random, rnd = (a, b) => a + g() * (b - a);
   const lvl = Math.min(1, R.el / 150), z = p.z + rnd(580, 660);
   // 近くの障害物の車線を調べ、必ず1車線は通れるようにする
   const used = new Set(R.obs.filter(o => o.k !== 'cop' && Math.abs(o.z - z) < 200).map(o => laneIdx(o.x)));
@@ -863,11 +864,309 @@ function snapE(R) {
   const s = {
     mode: 'endless', s: R.state, t: r1(R.timer), el: r1(R.el), course: R.course, names: R.names, lvs: R.lvs, fx: R.fx,
     score: R.score, combo: R.combo, rd: 0, att: 0, sc: [0, 0], hist: [], msg: R.msg, sub: R.sub,
-    P: [riderSnap(R.P[0])], obs: obsSnap(R), mud: mudSnap(R), ev: R.ev
+    P: R.vm ? R.P.map(p => p ? riderSnap(p) : null) : [riderSnap(R.P[0])], obs: obsSnap(R), mud: mudSnap(R), ev: R.ev
   };
+  if (R.vm) { s.vx = vmSnap(R); s.ok = R.ok ? 1 : 0; }   // v25：モードの情報
   R.ev = [];
   return s;
 }
+
+/* =====================================================================
+   v25：新しいモード
+   ・⏱ タイムアタック（ta）：2kmを何秒で走れるか。毎週（月曜0時）コースと車の並びが変わる。全員同じ並び。
+     ぶつかったらリタイア。何回でも挑戦できる。週のランキング1〜3位に次の週プレゼント。上位10人の走りはゴーストになる
+   ・🎯 ミッション（ms）：お題をクリアして⭐を集める。⭐は「クリア」「条件A」「条件B」の3つで、別々の挑戦で取ってもOK。
+     前のステージをクリアすると次が遊べる。はじめて取った⭐にはNC
+   ・🚓 ドロボウを追え！（th）：前を逃げるドロボウ（自転車）に追いついてつかまえる。60秒以内。むずかしさは3段階
+   ・🤝 協力モード（coop）：2人で同じ道を走る。片方がぶつかっても、もう1人が10秒生き残れば復活。2人ともアウトで終わり
+   ※どれもエンドレスの仕組み（車・パトカー・泥）の上に作っている。記録・ごほうびはサーバーで決める
+   ===================================================================== */
+const TA_FILE = process.env.TA_FILE || path.join(__dirname, 'ta.json');
+const MISS_FILE = process.env.MISS_FILE || path.join(__dirname, 'miss.json');
+const TA_GOAL = 2000, TA_REWARD = [500, 300, 200];
+let TA = { id: '', course: 0, seed: 0, top: [], gh: {}, prev: null };
+let MISS = {};   // フレンド用キー → { m: [ステージごとの⭐（ビット）], t: [ドロボウのベスト（ミリ秒）×3], tb: [ドロボウの⭐（ビット）×3] }
+const saveTA = saver('ta', TA_FILE, () => TA, 120000);
+const saveMiss = saver('miss', MISS_FILE, () => MISS, 60000);
+function loadTA(j) { if (j && typeof j === 'object' && typeof j.id === 'string') TA = Object.assign({ top: [], gh: {}, prev: null }, j); }
+function loadMiss(j) { if (j && typeof j === 'object' && !Array.isArray(j)) MISS = j; }
+const weekJ = t => { const j = new Date(t + 9 * 3600e3), dow = (j.getUTCDay() + 6) % 7; return new Date(j.getTime() - dow * 864e5).toISOString().slice(0, 10); };   // その週の月曜日（日本時間）
+const weekEnd = id => Date.parse(id + 'T00:00:00+09:00') + 7 * 864e5;
+function taRoll() {   // 週が変わったら、先週の1〜3位にプレゼントを送って、新しい週にする
+  const id = weekJ(Date.now()); if (TA.id === id) return;
+  if (TA.id && TA.top.length) {
+    TA.top.slice(0, 3).forEach((e, i) => { if (e.pk) giveGift(e.pk, TA_REWARD[i], '⏱ タイムアタック ' + (i + 1) + '位', TA.id.slice(5).replace('-', '/') + ' の週のタイムアタックで ' + (i + 1) + '位になりました！（' + (e.ms / 1000).toFixed(2) + '秒）'); });
+    TA.prev = { id: TA.id, course: TA.course, top: TA.top.slice(0, 3).map(e => ({ name: e.name, lv: e.lv, ms: e.ms })) };
+  }
+  const prevC = TA.course; let c = strHash('ta:' + id) % PATHS.length; if (TA.id && c === prevC) c = (c + 1) % PATHS.length;
+  TA.id = id; TA.course = c; TA.seed = strHash('ta:' + id + ':' + RANK_SECRET.slice(0, 8)); TA.top = []; TA.gh = {};
+  saveTA();
+}
+setInterval(taRoll, 60e3);
+function taInfo(socket) {
+  taRoll();
+  const h = hidOf(socket.nmId), i = TA.top.findIndex(e => e.h === h);
+  return { id: TA.id, course: TA.course, goal: TA_GOAL, until: weekEnd(TA.id), reward: TA_REWARD, n: TA.top.length,
+    top: TA.top.slice(0, 10).map(e => ({ name: e.name, lv: e.lv, ms: e.ms, me: e.h === h })), me: { rank: i + 1, best: i >= 0 ? TA.top[i].ms : 0 }, prev: TA.prev };
+}
+function taSubmit(R, sk, ms) {
+  taRoll();
+  if (R.taId !== TA.id || !sk) return { rank: 0, best: ms, improved: false };
+  const h = hidOf(R.hostId), name = R.names[0], lv = R.lvs[0], i = TA.top.findIndex(e => e.h === h);
+  let improved = false;
+  if (i < 0) { TA.top.push({ h, pk: sk.nmPk || '', name, lv, ms, ts: Date.now() }); improved = true; }
+  else if (ms < TA.top[i].ms) { Object.assign(TA.top[i], { name, lv, ms, ts: Date.now() }); improved = true; }
+  TA.top.sort((a, b) => a.ms - b.ms); TA.top = TA.top.slice(0, 100);
+  const rank = TA.top.findIndex(e => e.h === h) + 1;
+  if (improved && rank >= 1 && rank <= 10 && R.gh && R.gh.length > 10) TA.gh[h] = Object.assign(ghostPack(R), { ms });
+  const keep = new Set(TA.top.slice(0, 10).map(e => e.h)); for (const k of Object.keys(TA.gh)) if (!keep.has(k)) delete TA.gh[k];
+  saveTA();
+  return { rank, best: TA.top[rank - 1] ? TA.top[rank - 1].ms : ms, improved, n: TA.top.length };
+}
+// 🎯 ミッション（g：クリアの条件、s：⭐の条件2つ、r：ルール）
+//  条件の種類：dist＝m走る surv＝秒生き残る near＝ニアミス回数 combo＝コンボ cop＝パトカーに抜かれる回数 time＝秒以内
+//            nobrake＝ブレーキなし noboost＝ブーストなし nomud＝泥を踏まない bonus＝ボーナス点
+//  ルール：car＝車の出る間隔（小さいほど多い） cop＝パトカーの出る間隔（0で出ない） mud＝泥の出やすさ spd＝スピード上乗せ lim＝制限時間（秒）
+//         noboost／nobrake＝そのボタンが使えない
+const MS = [
+  { n: 'はじめの一歩', c: 0, g: ['dist', 400], s: [['near', 1], ['time', 34]], r: { cop: 0 } },
+  { n: 'パトカーに注意', c: 1, g: ['dist', 600], s: [['nobrake', 0], ['near', 3]], r: { cop: 0.55 } },
+  { n: 'ニアミス入門', c: 3, g: ['near', 5], s: [['combo', 3], ['time', 40]], r: { lim: 70 } },
+  { n: 'ブーストなしで', c: 0, g: ['dist', 700], s: [['near', 3], ['nomud', 0]], r: { noboost: 1, mud: 0.25 } },
+  { n: '渋滞の街', c: 2, g: ['dist', 800], s: [['time', 58], ['near', 6]], r: { car: 0.7 } },
+  { n: '泥だらけの道', c: 5, g: ['dist', 800], s: [['nomud', 0], ['time', 60]], r: { mud: 0.6 } },
+  { n: '生き残れ！', c: 1, g: ['surv', 60], s: [['near', 5], ['combo', 4]], r: { car: 0.65 } },
+  { n: 'ブレーキ禁止', c: 3, g: ['dist', 1000], s: [['near', 5], ['time', 68]], r: { nobrake: 1 } },
+  { n: 'パトカー祭り', c: 0, g: ['cop', 4], s: [['nobrake', 0], ['time', 55]], r: { cop: 0.35, lim: 90 } },
+  { n: '夜の峠', c: 7, g: ['dist', 1200], s: [['nomud', 0], ['near', 8]], r: { mud: 0.2 } },
+  { n: 'コンボ職人', c: 2, g: ['combo', 5], s: [['combo', 7], ['time', 50]], r: { car: 0.8, lim: 90 } },
+  { n: 'スピードスター', c: 4, g: ['dist', 1200], s: [['time', 58], ['near', 8]], r: { spd: 40 } },
+  { n: '雪の峠道', c: 6, g: ['dist', 1200], s: [['nomud', 0], ['bonus', 600]], r: { mud: 0.3 } },
+  { n: 'ロングライド', c: 5, g: ['dist', 2000], s: [['time', 92], ['near', 12]], r: {} },
+  { n: '最終試験', c: 2, g: ['dist', 2000], s: [['nobrake', 0], ['time', 96]], r: { car: 0.72, cop: 0.6, mud: 0.3 } }
+];
+const MS_NC = [30, 20, 20];   // はじめて取った⭐のNC（クリア／条件A／条件B）
+// 🚓 ドロボウ（かんたん／ふつう／むずかしい）：sp＝はじめの速さ（ふつうのスピードとの差）、ti＝1秒ごとに疲れて遅くなる分、bo＝ブーストの間隔、⭐：秒以内
+//   はじめは逃げ足が速く、だんだん疲れて遅くなる。ブーストをうまく使って、車をよけながら追いつく
+const TH = [{ n: 'かんたん', sp: 32, ti: 1.5, bo: 7, s: [35, 20] }, { n: 'ふつう', sp: 44, ti: 1.4, bo: 5.5, s: [40, 26] }, { n: 'むずかしい', sp: 52, ti: 1.3, bo: 4.5, s: [50, 38] }];
+const TH_LIM = 60, TH_NC = 20;
+const missOf = pk => { let m = MISS[pk]; if (!m) m = MISS[pk] = { m: [], t: [0, 0, 0], tb: [0, 0, 0] }; if (!m.tb) m.tb = [0, 0, 0]; if (!m.t) m.t = [0, 0, 0]; return m; };
+const msUnlocked = (pk, i) => i === 0 || !!(((MISS[pk] && MISS[pk].m[i - 1]) || 0) & 1);
+const nBits = b => (b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1);
+function vmInfo(socket) {
+  const pk = socket.nmPk, m = (pk && MISS[pk]) || { m: [], t: [0, 0, 0], tb: [0, 0, 0] };
+  return { ta: taInfo(socket), ms: { list: MS.map(d => ({ n: d.n, c: d.c, g: d.g, s: d.s, r: d.r })), bits: MS.map((_, i) => m.m[i] || 0), nc: MS_NC },
+    th: { lv: TH.map(d => ({ n: d.n, s: d.s })), best: m.t || [0, 0, 0], bits: m.tb || [0, 0, 0], lim: TH_LIM } };
+}
+const THIEF_LOOK = { name: 'ドロボウ', bike: 'bmx', skin: 'default', hair: 'spiky', fit: 'hoodie', acc: 'none', trail: 'none', lv: 1, pid: '', pk: '', ttl: 'rookie', pl: 'normal', rp: 0 };
+const vmRider = (R, i, x, z) => ({ x, z, v: EN.BASE, vx: 0, brk: 0, bcd: 0, boost: 0, cd: 0, brakes: 0, bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i] });
+function resetVM(R) {
+  resetEndless(R);
+  R.rule = R.vm === 'ms' ? (MS[R.st].r || {}) : {};
+  R.mx = { brk: 0, bst: 0, mud: 0, maxc: 0, cop: 0 };
+  R.res = null;
+  if (R.vm === 'ta') { R.rngS = mulberry32(R.seed); R.nextCop = 9 + R.rngS() * 4; }
+  if (R.vm === 'ms') { const cm = R.rule.cop == null ? 1 : R.rule.cop; R.nextCop = cm ? rnd(9, 13) * cm : 1e9; }
+  if (R.vm === 'th') { R.P[1] = vmRider(R, 1, LANES[1 + Math.floor(Math.random() * 2)], 360); R.P[1].tb = rnd(2, 4); R.P[1].st = 0; R.nextCop = 1e9; }
+  if (R.vm === 'coop') { R.P = [vmRider(R, 0, -40, 0), vmRider(R, 1, 40, 0)]; R.P.forEach(p => { p.dn = 0; p.rt = 0; p.inv = 0; }); R.revN = 0; }
+}
+const alive = p => p && !p.dn;
+const vmPl = R => R.vm === 'coop' ? [0, 1] : [0];   // 人が動かす自転車
+function vmLead(R) { let b = null; for (const i of vmPl(R)) { const p = R.P[i]; if (alive(p) && (!b || p.z > b.z)) b = p; } if (R.vm === 'th' && R.P[1] && R.P[1].z > b.z) b = R.P[1]; return b || R.P[0]; }
+function vmVal(R, k) {
+  const p = R.P[0], m = R.mx;
+  return k === 'dist' ? Math.floor(p.z / 10) : k === 'surv' ? R.el : k === 'near' ? R.nearN : k === 'combo' ? m.maxc : k === 'cop' ? m.cop : k === 'bonus' ? R.bonus : 0;
+}
+function msCond(R, c) {   // ⭐の条件を満たしているか（クリアしたときに調べる）
+  const [k, v] = c, m = R.mx;
+  if (k === 'time') return R.el <= v;
+  if (k === 'nobrake') return m.brk === 0;
+  if (k === 'noboost') return m.bst === 0;
+  if (k === 'nomud') return m.mud === 0;
+  return vmVal(R, k) >= v;
+}
+function stepThief(R, dt, target) {
+  const q = R.P[1], p = R.P[0]; if (!q) return;
+  const L = TH[R.lv] || TH[1];
+  // よける：前の車・コーン・泥のない車線へ。後ろから自転車が近づいたら、ゆさぶる
+  let tx = q.tx2 != null ? q.tx2 : q.x;
+  const danger = x => R.obs.some(o => o.k !== 'cop' && Math.abs(o.x - x) < o.w + 16 && o.z - q.z > -o.l - 12 && o.z - q.z < 150 + (o.d < 0 ? 130 : 0)) || (R.mud || []).some(m => Math.abs(m.x - x) < 26 && m.z - q.z > -10 && m.z - q.z < 110);
+  if (danger(q.x) || (q.tx2 != null && danger(q.tx2))) {
+    const c = LANES.filter(x => !danger(x)).sort((a, b) => Math.abs(a - q.x) - Math.abs(b - q.x));
+    if (c.length) tx = c[0];
+  } else if (p.z < q.z && q.z - p.z < 70 && Math.abs(p.x - q.x) < 30 && (q.jk = (q.jk || 0) - dt) <= 0) {
+    q.jk = rnd(0.7, 1.3); const c = LANES.filter(x => x !== nearestLane(q.x, LANES) && !danger(x)).sort((a, b) => Math.abs(a - q.x) - Math.abs(b - q.x));
+    if (c.length) tx = c[0];
+  }
+  q.tx2 = tx;
+  R.inp[1] = { s: clamp((tx - q.x) / 34, -1, 1) };
+  steerRider(R, q, R.inp[1], EN.STEER * 0.85, dt);
+  q.tb -= dt; if (q.tb <= 0 && q.cd <= 0) { q.boost = 1.1; q.cd = 3; q.tb = L.bo + rnd(-1, 1); }
+  q.cd = Math.max(0, q.cd - dt);
+  let tv = target + L.sp - L.ti * R.el;
+  const gap = q.z - p.z;
+  if (gap > 560) tv -= 80; else if (gap > 430) tv -= 35;   // 見えなくなるほどは離れない
+  if (gap < 0) tv += 60;                                    // 抜かれたら必死に逃げる
+  if (q.st > 0) { q.st -= dt; tv *= 0.45; }
+  if (q.boost > 0) { q.boost -= dt; tv += 140; }
+  const df = tv - q.v; q.v += Math.sign(df) * Math.min(Math.abs(df), 200 * dt);
+  const m0 = q.mud || 0; mudCheck(R, 1, q, dt); q.mm = moveMul(R, q);
+  q.z += q.v * q.mm * dt;
+  for (const o of R.obs) if (o.k !== 'cop' && hitObs(o, q) && !(q.st > 0)) { q.st = 0.9; q.v *= 0.5; R.ev.push({ t: 'th_hit' }); break; }
+}
+function vmOver(R, ok, reason, kind) {
+  if (R.state === 'over') return;
+  try { usageDay().e++; } catch (e) { }
+  const lead = vmLead(R);
+  R.state = 'over'; R.ok = !!ok; R.msg = ok ? 'CLEAR!' : 'GAME OVER'; R.sub = reason;
+  if (kind) R.fx = { who: kind.who || [0], kind: kind.k }; else R.fx = null;
+  const sz = R.vm === 'coop' ? lead.z : R.P[0].z;
+  R.score = Math.floor(sz / 10) + R.bonus;
+  const ms = Math.round(R.el * 1000), base = { vm: R.vm, ok: !!ok, reason, ms, score: R.score, dist: Math.floor(sz / 10), bonus: R.bonus, near: R.nearN, maxc: R.mx.maxc, kind: kind ? kind.k : '' };
+  const give = (i, n) => { const sid = R.ids[i]; if (!sid || n <= 0) return 0; const g = n * ncMult(); io.to(sid).emit('reward', { gain: g, ev: ncMult() > 1 ? ncMult() : 0 }); ecoAddSid(sid, g); return g; };
+  const sk = sockOf(R.ids[0]), pk = sk && sk.nmPk;
+  if (R.vm === 'ta') {
+    const r = ok ? taSubmit(R, sk, ms) : { rank: 0, best: 0, improved: false };
+    const t = taInfo(sk || { nmId: R.hostId });
+    Object.assign(base, { rank: r.rank, best: r.best || t.me.best, improved: r.improved, n: r.n || t.n, coins: give(0, ok ? 15 : 0), goal: TA_GOAL });
+    if (!r.best) base.best = t.me.best;
+  } else if (R.vm === 'ms') {
+    const d = MS[R.st], st = ok ? [1, msCond(R, d.s[0]) ? 1 : 0, msCond(R, d.s[1]) ? 1 : 0] : [0, 0, 0], bits = st[0] | (st[1] << 1) | (st[2] << 2);
+    let nc = ok ? 10 : 0, nb = 0, old = 0;
+    if (pk) { const m = missOf(pk); old = m.m[R.st] || 0; nb = bits & ~old; if (nb) { m.m[R.st] = old | bits; saveMiss(); } }
+    for (let k = 0; k < 3; k++) if (nb & (1 << k)) nc += MS_NC[k];
+    Object.assign(base, { st: R.st, stars: st, got: st.map((v, k) => v && !(old & (1 << k)) ? 1 : 0), total: nBits(old | bits), coins: give(0, nc), next: R.st + 1 < MS.length && !!(((old | bits) & 1)) });
+  } else if (R.vm === 'th') {
+    const L = TH[R.lv], sec = R.el, st = ok ? [1, sec <= L.s[0] ? 1 : 0, sec <= L.s[1] ? 1 : 0] : [0, 0, 0], bits = st[0] | (st[1] << 1) | (st[2] << 2);
+    let nc = ok ? 10 : 0, nb = 0, old = 0, best = 0, improved = false;
+    if (pk) { const m = missOf(pk); old = m.tb[R.lv] || 0; nb = bits & ~old; if (ok && (!m.t[R.lv] || ms < m.t[R.lv])) { m.t[R.lv] = ms; improved = true; } if (nb) m.tb[R.lv] = old | bits; if (nb || improved) saveMiss(); best = m.t[R.lv]; }
+    for (let k = 0; k < 3; k++) if (nb & (1 << k)) nc += TH_NC;
+    Object.assign(base, { lv: R.lv, stars: st, got: st.map((v, k) => v && !(old & (1 << k)) ? 1 : 0), best, improved, coins: give(0, nc), lim: TH_LIM });
+  } else if (R.vm === 'coop') {
+    const c = Math.floor(R.score / 40);
+    base.rev = R.revN; base.names = R.names.slice(0, 2);
+    for (const i of [0, 1]) if (R.ids[i]) { const g = give(i, c); prog(R, i, 'run', { score: R.score, dist: base.dist, vm: 'coop' }); io.to(R.ids[i]).emit('endless_over', Object.assign({}, base, { coins: g })); }
+    return;
+  }
+  prog(R, 0, 'run', { score: R.score, dist: base.dist, vm: R.vm });
+  if (R.ids[0]) io.to(R.ids[0]).emit('endless_over', base);
+}
+function stepVM(R, dt) {
+  if (R.state === 'count') { R.timer -= dt; if (R.timer <= 0) R.state = 'play'; return; }
+  if (R.state !== 'play') return;
+  R.el += dt;
+  const rule = R.rule || {}, spd = rule.spd || 0;
+  const target = Math.min(EN.MAX + spd, EN.BASE + spd + R.el * EN.ACC);
+  for (const i of vmPl(R)) {
+    const p = R.P[i]; if (!p) continue;
+    steerRider(R, p, R.inp[i], EN.STEER, dt);
+    if (R.act[i] && !p.dn) {
+      if (R.actK[i] === 'brake') { if (rule.nobrake) R.ev.push({ t: 'deny', k: 'brake', i }); else if (p.bcd <= 0) { p.brk = 0.7; p.bcd = 1.3; R.mx.brk++; prog(R, i, 'brake'); } }
+      else if (rule.noboost) R.ev.push({ t: 'deny', k: 'boost', i });
+      else if (p.cd <= 0 && p.boost <= 0) { p.boost = 1.3; p.cd = 4; R.mx.bst++; prog(R, i, 'boost'); }
+    }
+    let tg = target;
+    if (R.vm === 'coop' && !p.dn) { const q = R.P[1 - i]; if (alive(q) && q.z - p.z > 220) tg += Math.min(70, (q.z - p.z - 220) * 0.25); }   // 2人が離れすぎないように、後ろの人は少し速く
+    if (p.brk > 0) { p.brk -= dt; p.v = Math.max(tg * 0.35, p.v - 420 * dt); }
+    else if (p.boost > 0) { p.boost -= dt; p.v = Math.min(tg + 160, p.v + 520 * dt); }
+    else { const df = tg - p.v; p.v += Math.sign(df) * Math.min(Math.abs(df), 170 * dt); }
+    p.cd = Math.max(0, p.cd - dt); p.bcd = Math.max(0, p.bcd - dt); p.inv = Math.max(0, (p.inv || 0) - dt);
+    if (p.dn) {   // 倒れている間は、相棒の少し後ろを（見えない姿で）ついていく
+      const q = R.P[1 - i]; p.z = q.z - 70; p.v = q.v; p.mm = 1; p.mud = 0; p.boost = 0; p.brk = 0;
+      p.rt -= dt;
+      if (p.rt <= 0) {   // 💫 復活！
+        p.dn = 0; p.inv = 2.2; p.z = q.z - 40; R.revN++; R.bonus += 100;
+        const free = LANES.filter(x => clearAt(R, x, p.z, 10, 30)); p.x = free.length ? free.sort((a, b) => Math.abs(a - q.x) - Math.abs(b - q.x))[0] : q.x;
+        p.vx = 0; R.ev.push({ t: 'rev', i, b: 100 });
+      }
+      continue;
+    }
+    const m0 = p.mud || 0; mudCheck(R, i, p, dt); if (p.mud > m0 + 0.5) R.mx.mud++;
+    p.mm = moveMul(R, p); p.z += p.v * p.mm * dt;
+  }
+  R.act = [false, false];
+  const p0 = R.P[0];
+  if (R.vm === 'th') stepThief(R, dt, target);
+  if (R.vm === 'ta' && ++R.gt % 5 === 0 && R.gh.length < 14400) R.gh.push(Math.round(p0.x), Math.round(p0.z));
+  R.comboT -= dt; if (R.comboT <= 0) R.combo = 0;
+
+  const lead = vmLead(R), lvl = Math.min(1, R.el / 150), rs = R.rngS ? (a, b) => a + R.rngS() * (b - a) : rnd;
+  R.nextCar -= dt;
+  if (R.nextCar <= 0) {
+    R.nextCar = (rs(1.3, 2.1) - lvl * 0.85) * (rule.car || 1); spawnWave(R, lead);
+    if (rule.mud && Math.random() < rule.mud) addMud(R, LANES[Math.floor(Math.random() * 4)] + rnd(-10, 10), lead.z + rnd(420, 560));
+  }
+  R.nextCop -= dt;
+  if (R.nextCop <= 0) {
+    const cm = rule.cop == null ? 1 : rule.cop;
+    R.nextCop = cm ? (rs(11, 17) - lvl * 5) * cm : 1e9;
+    const al = vmPl(R).map(i => R.P[i]).filter(alive), p = al[Math.floor(Math.random() * al.length)] || p0;
+    const x = nearestLane(p.x, SAME);
+    if (clearAt(R, x, p.z - 330, 19, 27)) addObs(R, 'cop', x, p.z - 330, p.v + 90, 1);
+  }
+  const al = vmPl(R).map(i => R.P[i]).filter(alive), vmax = Math.max(...al.map(p => p.v), p0.v);
+  for (const o of R.obs) if (o.k === 'cop') o.v0 = Math.max(o.v0, vmax + 75);
+  traffic(R, dt, R.P.map(p => p && p.dn ? null : p));
+  let zmin = Math.min(...al.map(p => p.z), lead.z), zmax = lead.z;
+  if (R.vm === 'th') zmin = Math.min(zmin, R.P[1].z);
+  R.obs = R.obs.filter(o => o.z > zmin - 420 && o.z < zmax + 900);
+  R.mud = (R.mud || []).filter(m => m.z > zmin - 200);
+  copPasses(R);
+  for (const o of R.obs) if (o.k === 'cop' && o.cp[0] && !o.cnt) { o.cnt = 1; R.mx.cop++; }
+
+  for (const i of vmPl(R)) {
+    const p = R.P[i]; if (!alive(p) || p.inv > 0) continue;
+    for (const o of R.obs) {
+      let hit = null;
+      if (o.k === 'cop') { if (copRule(o, p, true)) hit = { k: 'cop', why: 'パトカーの進路妨害で逮捕！' }; }
+      else if (hitObs(o, p)) hit = { k: 'car', why: o.k === 'cone' ? '工事現場に突っ込んだ！' : o.k === 'bus' ? 'バスに激突！' : '車と衝突！' };
+      if (hit) {
+        if (R.vm === 'coop') {
+          p.dn = 1; p.rt = 10; R.combo = 0; R.ev.push({ t: 'down', i, k: hit.k });
+          if (!alive(R.P[1 - i])) return vmOver(R, false, '2人ともアウト！', { k: hit.k, who: [i] });
+          break;
+        }
+        return vmOver(R, false, R.vm === 'ta' ? 'リタイア：' + hit.why : hit.why, { k: hit.k, who: [0] });
+      }
+      const bit = 1 << i;
+      if (!((o.np || 0) & bit) && o.z + o.l < p.z - BIKE_L) {
+        o.np = (o.np || 0) | bit;
+        if (o.k !== 'cone' && Math.abs(o.x - p.x) < o.w + BIKE_W + 20) {   // ニアミスボーナス
+          R.combo++; R.comboT = 3.5; R.nearN++; if (R.combo > R.mx.maxc) R.mx.maxc = R.combo;
+          const b = 15 * Math.min(R.combo, 8);
+          R.bonus += b; R.ev.push({ t: 'near', n: R.combo, b, i });
+        }
+      }
+    }
+  }
+  R.score = Math.floor((R.vm === 'coop' ? lead.z : p0.z) / 10) + R.bonus;
+  // クリア・時間切れ
+  if (R.vm === 'ta' && p0.z >= TA_GOAL * 10) return vmOver(R, true, 'ゴール！ ' + R.el.toFixed(2) + '秒');
+  if (R.vm === 'th') {
+    const q = R.P[1];
+    if (Math.abs(q.z - p0.z) < 16 && Math.abs(q.x - p0.x) < 20) return vmOver(R, true, 'ドロボウをつかまえた！ ' + R.el.toFixed(1) + '秒');
+    if (R.el >= TH_LIM) return vmOver(R, false, '時間切れ…ドロボウに逃げられた');
+  }
+  if (R.vm === 'ms') {
+    const d = MS[R.st];
+    if (vmVal(R, d.g[0]) >= d.g[1]) return vmOver(R, true, 'ミッションクリア！');
+    if (d.r.lim && R.el >= d.r.lim) return vmOver(R, false, '時間切れ…');
+  }
+}
+function vmSnap(R) {   // 画面に出すモードの情報（毎回送る。短い配列）
+  const m = R.mx || {};
+  if (R.vm === 'ta') return ['ta', TA_GOAL];
+  if (R.vm === 'ms') return ['ms', R.st, Math.floor(vmVal(R, MS[R.st].g[0]) * 10) / 10, m.brk, m.bst, m.mud, m.maxc, m.cop, R.nearN];
+  if (R.vm === 'th') return ['th', R.lv, TH_LIM];
+  if (R.vm === 'coop') return ['coop', R.P.map(p => p ? [p.dn ? 1 : 0, r1(p.rt || 0), p.inv > 0 ? 1 : 0] : 0), R.revN];
+  return 0;
+}
+function startCoop(R) {
+  R.mode = 'endless'; R.vm = 'coop'; R.sentOver = false;
+  resetVM(R);
+  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'endless', room: true, vm: 'coop', opp: oppInfo(R, 1 - i) });
+}
+function coopToLobby(R) { R.mode = 'versus'; R.vm = null; R.state = 'lobby'; R.ready = [false, false]; R.P = []; R.obs = []; R.mud = []; }
 
 /* =====================================================================
    v23：軽い送り方（'z'）
@@ -890,7 +1189,7 @@ function zRoom(R, s) {   // 同じルームの全員で同じになる部分（1
 function zFast(s) {   // 毎回送る部分
   const P = (s.P || []).map(p => p ? [p.x, p.z, ri(p.v), p.mud || 0, ri(p.vx), (p.brk ? 1 : 0) | (p.boost ? 2 : 0), p.cd, p.bcd] : 0);
   const O = (s.obs || []).map(o => [o.id, OBK[o.k] != null ? OBK[o.k] : o.k, o.x, o.z, o.c == null ? -1 : o.c, ri(o.vz), o.d == null ? 0 : o.d]);
-  const x = s.mode === 'versus' ? [s.bgGap, s.bgBx, s.bgBoost ? 1 : 0] : [s.score, s.combo, s.ev && s.ev.length ? s.ev : 0];
+  const x = s.mode === 'versus' ? [s.bgGap, s.bgBx, s.bgBoost ? 1 : 0] : [s.score, s.combo, s.ev && s.ev.length ? s.ev : 0, s.vx || 0, s.ok ? 1 : 0];
   return [s.t, s.el, P, O, x];
 }
 function zSend(sk, R, s, Z, due) {   // sk：送り先、Z：zRoom の結果、due：今回が送る番か
@@ -913,11 +1212,12 @@ setInterval(() => {
     if (R.state === 'lobby') continue;
     if (R.mode === 'endless') {
       if (R.state === 'over' && R.sentOver) continue;
-      stepEndless(R, TICK);
+      if (R.vm) stepVM(R, TICK); else stepEndless(R, TICK);
       if (R.state === 'over') R.sentOver = true;
       const tk = R.tk = (R.tk || 0) + 1, hasEv = R.ev.length > 0;
       const se = snapE(R), Z = zRoom(R, se), dueP = hasEv || (se.s === 'play' ? tk % 3 !== 2 : tk % 3 === 0);   // ニアミスの知らせは、すぐ送る
       zSend(sockOf(R.ids[0]), R, se, Z, dueP);
+      if (R.ids[1]) zSend(sockOf(R.ids[1]), R, se, Z, dueP);   // v25：協力モードの相棒
       if (R.spec && R.spec.size) for (const sid of R.spec) zSend(sockOf(sid), R, se, Z, hasEv || tk % 2 === 0);
       continue;
     }
@@ -990,7 +1290,7 @@ function newRoom(code, socket, d, extra) {
 }
 function roomInfo(R, me) {
   return {
-    code: R.code, me, course: R.course, state: R.state,
+    code: R.code, me, course: R.course, state: R.state, coop: !!R.coop,
     players: [0, 1].map(i => R.ids[i] ? { name: R.names[i], pk: R.pks[i], bike: R.bikes[i], skin: R.skins[i], hair: R.hairs[i], fit: R.fits[i], acc: R.accs[i], trail: R.trails[i], lv: R.lvs[i], ttl: R.ttls[i], pl: R.pls[i], rp: R.rps[i], ready: !!R.ready[i] } : null)
   };
 }
@@ -1000,8 +1300,9 @@ function leaveRoom(socket) {
   const R = rooms.get(socket.data && socket.data.code);
   if (R) {
     const slot = socket.data.slot;
-    if (R.mode === 'versus' && !R.isCpu && !R.ranked && slot === 1 && R.ids[0]) {
+    if ((R.mode === 'versus' || R.coop) && !R.isCpu && !R.ranked && slot === 1 && R.ids[0]) {
       // ゲストが抜けた → ホストはルームロビーへ戻って次の相手を待つ
+      if (R.coop) coopToLobby(R);
       R.ids[1] = null; R.ready = [false, false]; R.state = 'lobby'; R.P = []; R.obs = []; R.names[1] = 'プレイヤー2';
       io.to(R.ids[0]).emit('room_note', { t: 'guest_left' });
       sendRoom(R);
@@ -1944,8 +2245,12 @@ io.on('connection', socket => {
   socket.on('adm_items_reset', adm((d, cb) => { ISTAT = { since: Date.now(), gacha: {}, dup: {}, shop: {}, ex: {}, prof: {} }; saveIstat(); audit(socket, 'items_reset'); cb({ ok: true, st: ISTAT }); }));
   // 🏆 ランキングの管理
   const rkOut = (b, e, i) => Object.assign({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0 }, b === 'run' ? { score: e.score, c: e.c } : { rp: e.rp, ttl: e.ttl || '' });
-  socket.on('adm_rank_list', adm((d, cb) => { dailyRoll(); cb({ ok: true, run: ranking.map((e, i) => rkOut('run', e, i)), rp: rpBoard.map((e, i) => rkOut('rp', e, i)), daily: DAILY.top.map((e, i) => ({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0, score: e.score })), dailyId: DAILY.id, season: SEASON.id, reset: MOD.rkreset || {} }); }));
+  socket.on('adm_rank_list', adm((d, cb) => { dailyRoll(); cb({ ok: true, run: ranking.map((e, i) => rkOut('run', e, i)), rp: rpBoard.map((e, i) => rkOut('rp', e, i)), daily: DAILY.top.map((e, i) => ({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0, score: e.score })), dailyId: DAILY.id, ta: (taRoll(), TA.top.map((e, i) => ({ i: i + 1, h: e.h, name: e.name, lv: e.lv || 1, ts: e.ts || 0, score: e.ms }))), taId: TA.id, season: SEASON.id, reset: MOD.rkreset || {} }); }));
   socket.on('adm_rank_del', adm((d, cb) => {
+    if (d.board === 'ta') {   // v25：今週のタイムアタックの記録を消す（ゴーストも消える）
+      const i = TA.top.findIndex(x => x.h === String(d.h || '')); if (i < 0) return cb({ ok: false, err: 'もうありません' });
+      const e = TA.top.splice(i, 1)[0]; delete TA.gh[e.h]; saveTA(); audit(socket, 'rank_del', { d: 'タイムアタック：' + e.name + '（' + (e.ms / 1000).toFixed(2) + '秒）' }); return cb({ ok: true });
+    }
     if (d.board === 'daily') {   // 今日のデイリーの記録を消す（ゴーストも消える）
       const i = DAILY.top.findIndex(x => x.h === String(d.h || '')); if (i < 0) return cb({ ok: false, err: 'もうありません' });
       const e = DAILY.top.splice(i, 1)[0]; delete DAILY.gh[e.h]; saveDaily(); audit(socket, 'rank_del', { d: 'デイリー：' + e.name + '（' + e.score + '）' }); return cb({ ok: true });
@@ -2146,9 +2451,34 @@ io.on('connection', socket => {
     if (typeof d === 'function') { cb = d; d = {}; }
     dailyRoll();
     // いちばん順位が高くて、走りが残っている人のゴーストを返す（v24より前の記録には走りがないため）
-    const me = hidOf(socket.nmId), L = d && d.kind === 'daily' ? DAILY.top.slice(0, 3) : ranking.slice(0, 10), G = d && d.kind === 'daily' ? DAILY.gh : GHOST.list;
+    if (d && d.kind === 'ta') taRoll();
+    const kd = d && d.kind, me = hidOf(socket.nmId), L = kd === 'daily' ? DAILY.top.slice(0, 3) : kd === 'ta' ? TA.top.slice(0, 10) : ranking.slice(0, 10), G = kd === 'daily' ? DAILY.gh : kd === 'ta' ? TA.gh : GHOST.list;
     for (let i = 0; i < L.length; i++) { const g = G[L[i].h]; if (g) return rp(cb)({ ok: true, g: Object.assign({}, g, { rank: i + 1, me: L[i].h === me }) }); }
     rp(cb)({ ok: false });
+  });
+  // v25：新しいモードの情報（タイムアタックの週・ミッションの⭐・ドロボウのベスト）
+  socket.on('vm_info', (d, cb) => { if (typeof d === 'function') cb = d; if (!socket.nmPk) return rp(cb)({ ok: false }); rp(cb)(Object.assign({ ok: true }, vmInfo(socket))); });
+  socket.on('vm', (d, cb) => {   // ひとりで遊ぶ新しいモードを始める（k：ta／ms／th）
+    if (typeof d === 'function') { cb = d; d = {}; }
+    const k = d && d.k, pk = socket.nmPk;
+    if (!pk || !socket.nmId) return rp(cb)({ ok: false, err: 'もう一度ためしてください' });
+    if (!['ta', 'ms', 'th'].includes(k)) return rp(cb)({ ok: false, err: 'モードが正しくありません' });
+    const ex = { mode: 'endless', vm: k };
+    if (k === 'ta') { taRoll(); Object.assign(ex, { taId: TA.id, seed: TA.seed, course: TA.course }); }
+    if (k === 'ms') {
+      const st = parseInt(d.st, 10);
+      if (!(st >= 0 && st < MS.length)) return rp(cb)({ ok: false, err: 'ステージが正しくありません' });
+      if (!msUnlocked(pk, st)) return rp(cb)({ ok: false, err: '前のステージをクリアすると遊べます' });
+      Object.assign(ex, { st, course: MS[st].c });
+    }
+    if (k === 'th') { const lv = parseInt(d.lv, 10); ex.lv = lv >= 0 && lv < TH.length ? lv : 0; }
+    leaveRoom(socket); qRemove(socket.id);
+    const code = 'RUN_' + socket.id, R = newRoom(code, socket, d, ex);
+    if (k === 'th') setLook(R, 1, THIEF_LOOK);
+    rooms.set(code, R); socket.data = { code, slot: 0 };
+    resetVM(R);
+    socket.emit('start', { slot: 0, course: R.course, mode: 'endless', room: false, vm: k, st: R.st, lv: R.lv });
+    rp(cb)({ ok: true });
   });
   socket.on('endless', d => {
     leaveRoom(socket); qRemove(socket.id);
@@ -2163,7 +2493,7 @@ io.on('connection', socket => {
     leaveRoom(socket); qRemove(socket.id);
     let code; do { code = String(Math.floor(100000 + Math.random() * 900000)); } while (rooms.has(code));
     const R = newRoom(code, socket, d);
-    R.state = 'lobby';
+    R.state = 'lobby'; if (d && d.coop) R.coop = true;   // v25：協力モードのルーム
     rooms.set(code, R);
     socket.data = { code, slot: 0 };
     rp(cb)({ code });
@@ -2229,17 +2559,18 @@ io.on('connection', socket => {
     if (!R || R.state !== 'lobby' || socket.data.slot !== 0) return;
     if (!R.ids[1]) return socket.emit('room_note', { t: 'need_guest' });
     if (!R.ready[1]) return socket.emit('room_note', { t: 'need_ready' });
-    startRoomMatch(R);
+    if (R.coop) startCoop(R); else startRoomMatch(R);
   });
   socket.on('toroom', () => {
     const R = myRoom();
+    if (R && R.coop && R.mode === 'endless' && R.state === 'over') { coopToLobby(R); sendRoom(R); return; }   // v25：協力モードからルームへ
     if (!R || R.isCpu || R.mode !== 'versus' || R.state !== 'match') return;
     R.state = 'lobby'; R.ready = [false, false]; R.P = []; R.obs = [];
     sendRoom(R);
   });
   // チャット・エモート（ルーム内の2人に配信）
   socket.on('chat', d => {
-    const R = myRoom(); if (!R || R.mode === 'endless') return;
+    const R = myRoom(); if (!R || (R.mode === 'endless' && !R.coop)) return;
     const nowT = Date.now(); if (nowT - (socket.lastChat || 0) < 600) return; socket.lastChat = nowT;
     const t = d && d.t; let v = d && d.v;
     if (t === 'e') { if (!EMOTES.includes(v)) return; }
@@ -2267,6 +2598,10 @@ io.on('connection', socket => {
     const R = myRoom(); if (!R) return;
     if (R.mode === 'endless') {
       if (R.state !== 'over') return;
+      if (R.vm) {   // v25：新しいモードはそのままやり直し（タイムアタックは週が変わっていたら新しい週で）
+        if (R.vm === 'ta') { taRoll(); if (R.taId !== TA.id) Object.assign(R, { taId: TA.id, seed: TA.seed, course: TA.course }); }
+        resetVM(R); return;
+      }
       if (R.daily) {   // デイリーは回数を数える（日付が変わっていたら、今日のデイリーとしてやり直す）
         dailyRoll(); const pk = socket.nmPk;
         if (!pk || (DAILY.tries[pk] || 0) >= DAILY_TRIES) { socket.emit('daily_end', { err: '今日の' + DAILY_TRIES + '回は終わりました。明日またチャレンジ！' }); return; }
@@ -2316,7 +2651,7 @@ function backupData() {
   const prof = {}; for (const [pk, p] of PROF) if (p && !p._miss) prof[pk] = p;
   return { app: 'nanigamokutekinan', v: 21, t: Date.now(), kv: useKV, data: {
     names: [...nameReg.values()], ranking, rp: rpBoard, friends: { req: [...freq].map(([k, m]) => [k, [...m]]), note: [...fnote] },
-    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT, daily: DAILY, ghost: GHOST } };
+    mod: MOD, season: SEASON, eco: ECO, prof, push: PUSH, stats: BSTATS, usage: JSON.parse(JSON.stringify({ days: USAGE.days })), items: ISTAT, daily: DAILY, ghost: GHOST, ta: TA, miss: MISS } };
 }
 // v23：管理者用の入口は、まちがった鍵で10回失敗したら、その回線から10分間使えなくする
 const AFAIL = new Map();
@@ -2333,7 +2668,7 @@ app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
   if (!isAdminUid(b.uid)) { admFail(req); return res.status(403).json({ ok: false, err: '管理者だけが使えます' }); }
   const bk = b.backup, D = bk && bk.data;
   if (!bk || bk.app !== 'nanigamokutekinan' || !D || typeof D !== 'object') return res.status(400).json({ ok: false, err: 'バックアップファイルではありません' });
-  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items', 'daily', 'ghost']), done = {};
+  const want = new Set(Array.isArray(b.parts) && b.parts.length ? b.parts : ['names', 'ranking', 'rp', 'friends', 'mod', 'season', 'eco', 'prof', 'push', 'stats', 'usage', 'items', 'daily', 'ghost', 'ta', 'miss']), done = {};
   try {
     if (want.has('names') && Array.isArray(D.names)) { nameReg.clear(); pkKey.clear(); loadNames(D.names); saveNames(); done.names = nameReg.size; }
     if (want.has('ranking') && Array.isArray(D.ranking)) { loadRanking(D.ranking); saveRanking(); done.ranking = ranking.length; }
@@ -2348,6 +2683,8 @@ app.post('/api/adm/restore', express.json({ limit: '30mb' }), (req, res) => {
     if (want.has('items') && D.items && typeof D.items === 'object') { loadIstat(D.items); saveIstat(); done.items = 1; }
     if (want.has('daily') && D.daily && typeof D.daily === 'object') { loadDaily(D.daily); saveDaily(); done.daily = 1; }
     if (want.has('ghost') && D.ghost && typeof D.ghost === 'object') { loadGhost(D.ghost); saveGhost(); done.ghost = 1; }
+    if (want.has('ta') && D.ta && typeof D.ta === 'object') { loadTA(D.ta); saveTA(); done.ta = 1; }
+    if (want.has('miss') && D.miss && typeof D.miss === 'object') { loadMiss(D.miss); saveMiss(); done.miss = Object.keys(MISS).length; }
     if (want.has('prof') && D.prof && typeof D.prof === 'object') { let n = 0; for (const [pk, p] of Object.entries(D.prof).slice(0, 5000)) if (cleanPk(pk) && p && typeof p === 'object') { putProf(pk, p); n++; } done.prof = n; }
   } catch (e) { return res.status(500).json({ ok: false, err: '読み込みに失敗しました：' + e.message }); }
   console.log('バックアップから復元しました', JSON.stringify(done));
@@ -2366,10 +2703,10 @@ const PORT = process.env.PORT || 3000;
       SIGN_KEY = k.k; SIGN_T = k.t || 0;
     } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
   }
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
-  checkSeason();
+  checkSeason(); taRoll();
   await initVapid();
   console.log('保存先: ' + (useKV ? 'Upstash Redis' : 'JSONファイル') + ' / 名簿 ' + nameReg.size + '人 / ランキング ' + ranking.length + '件 / RP ' + rpBoard.length + '件');
   try { zEntry(path.join(PUB, 'index.html')); zEntry(ZALIAS['/sio.min.js']); } catch (e) { }   // 圧縮は起動時にすませておく
