@@ -600,7 +600,16 @@ body.spec #pad,body.spec #acts,body.spec #b-chat,body.spec #b-se,body.spec #endb
 /* ===== v25：モード選択（ホームは「ひとりで」「だれかと」＋右下のSTART） ===== */
 .mdsel{display:flex;gap:.45em}.mdsel button{flex:1;display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:.55em .4em}
 .mdsel small{font-size:.62em;font-weight:800;opacity:.95}
-.gorow{display:flex;gap:.45em;align-items:stretch;margin-top:auto}
+.gorow{display:flex;gap:.45em;align-items:stretch;margin-top:.35em}
+/* v25：PC（マウス）は大きめ、スマホ・タブレット（タッチ）は今のまま */
+body:not(.touch) #lobby{font-size:clamp(13px,.75vw + .95vh,22px)}
+body:not(.touch) .modal{font-size:clamp(13px,.8vw + 1vh,22px)}
+body:not(.touch) .md-box{width:min(64em,92vw)!important}
+body:not(.touch) .mc{min-height:7em}body:not(.touch) .mc small{font-size:.74em}
+body:not(.touch) .stg{min-height:5em}
+body:not(.touch) .mc b{font-size:1.15em}body:not(.touch) .mc .ic{font-size:1.9em}body:not(.touch) .mc .st{font-size:.76em}
+body:not(.touch) .modecur .mt b{font-size:1.2em}body:not(.touch) .modecur .mt small{font-size:.78em}body:not(.touch) .modecur .mi{font-size:2em}
+body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7em}
 .modecur{flex:1;min-width:0;display:flex;align-items:center;gap:.5em;border:3px solid var(--ln);border-radius:16px;background:rgba(10,14,40,.72);color:#fff;padding:.3em .6em;font-family:inherit;text-align:left;cursor:pointer;box-shadow:0 3px 0 var(--ln)}
 .modecur .mi{font-size:1.7em;line-height:1;width:1.5em;height:1.5em;display:flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid var(--ln);flex:none}
 .modecur .mt{display:flex;flex-direction:column;min-width:0;line-height:1.2}.modecur .mt b{font-size:1.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.modecur .mt small{font-size:.66em;font-weight:800;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -7430,7 +7439,7 @@ function renderMsDetail(){
   const g=document.createElement('div');g.className='grow';const bits=msBits(i);
   const h=document.createElement('b');h.textContent='STAGE '+(i+1)+'「'+d.n+'」　コース：'+((COURSES[d.c]||{}).n||'');g.appendChild(h);
   const L=[['★ クリア：'+msTxt(d.g),bits&1],['★ '+msTxt(d.s[0]),bits&2],['★ '+msTxt(d.s[1]),bits&4]];
-  L.forEach(([t,ok])=>{const p=document.createElement('div');p.textContent=t+(ok?'　✔ 取った':'');p.style.color=ok?'#ffe56b':'#fff';p.style.fontWeight='800';g.appendChild(p);});
+  L.forEach(([t,ok])=>{const p=document.createElement('div');p.textContent=t+(ok?'　✔':'');p.style.color=ok?'#ffe56b':'#fff';p.style.fontWeight='800';g.appendChild(p);});
   const rt=msRuleTxt(d.r);if(rt){const p=document.createElement('div');p.className='muted';p.textContent='ルール：'+rt;g.appendChild(p);}
   const nc=document.createElement('div');nc.className='muted';nc.textContent='はじめて取った⭐でNCがもらえます（クリア '+VMD.ms.nc[0]+'・条件 '+VMD.ms.nc[1]+'）。⭐は別々の挑戦で取ってもOK';g.appendChild(nc);
   const go=document.createElement('button');go.className='btn big green md-go';go.textContent='このステージにする';go.onclick=()=>pick({k:'ms',st:i});
@@ -7573,8 +7582,20 @@ function vmTip(){const k=VM||vmK();
 function hudBox(x,y,w,h){ctx.fillStyle='rgba(8,12,34,.78)';rr(ctx,x,y,w,h,16);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();}
 function progBar(x,y,w,f,col,label){ctx.fillStyle='rgba(8,12,34,.75)';rr(ctx,x,y,w,16,8);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=OUT;ctx.stroke();
   ctx.fillStyle=col;rr(ctx,x+3,y+3,Math.max(0,(w-6)*clamp(f,0,1)),10,5);ctx.fill();if(label)txt(label,x+w/2,y+13,11,'#fff','center',true,800);}
-{const he=hudEndless;hudEndless=function(T,me,t){const k=vmK();if(!k)return he(T,me,t);
-  try{({ta:hudTA,ms:hudMS,th:hudTH,coop:hudCoop})[k](T,me,t);}catch(e){}};}
+{const he=hudEndless;hudEndless=function(T,me,t){const k=vmK();
+  if(!k)he(T,me,t);else try{({ta:hudTA,ms:hudMS,th:hudTH,coop:hudCoop})[k](T,me,t);}catch(e){}
+  if(k||document.body.classList.contains('touch'))hudBoost(me);};}
+// ブーストのたまり（どのモードでも、PCでもスマホでも出す）
+function hudBoost(me){
+  if(!D||D.s!=='play'||!me||me._dn||SPEC)return;
+  const d=D.vx&&D.vx[0]==='ms'&&msList()[D.vx[1]],no=d&&d.r&&d.r.noboost,touch=document.body.classList.contains('touch');
+  const bb=Math.min(260,W*.3),bx=W/2-bb/2,by=H-(touch?24:62),cd=me.cd||0,on=me.boost>0,f=no?0:on?Math.min(1,me.boost/1.3):cd<=0?1:1-cd/4;
+  ctx.fillStyle='rgba(0,0,0,.5)';rr(ctx,bx,by,bb,14,7);ctx.fill();
+  ctx.fillStyle=no?'#555b7a':on?'#7cc8ff':cd<=0?'#7dff7d':'#ffc21a';rr(ctx,bx+2,by+2,Math.max(0,(bb-4)*f),10,5);ctx.fill();
+  if(cd<=0&&!no&&!on){ctx.save();ctx.globalAlpha=.35+.35*Math.sin(performance.now()/160);ctx.strokeStyle='#d9ffd9';ctx.lineWidth=2;rr(ctx,bx,by,bb,14,7);ctx.stroke();ctx.restore();}
+  txt(no?'ブースト使えない':'ブースト',bx-6,by+12,12,'#fff','right',true,800);
+  if(!no)txt(on?'GO!':cd<=0?'OK!':cd.toFixed(1)+'秒',bx+bb+6,by+12,12,cd<=0||on?'#8cf08c':'#ffe56b','left',true,800);
+}
 function hudSpeed(me,x,y){const km=Math.round((me.v||0)*.2);txt(km+' km/h',x,y,13,'#8fd0ff','right',false,800);}
 function hudTA(T,me,t){
   const x0=12,y0=8,goal=D.vx[1],m=Math.floor((me.z||0)/10),el=D.s==='count'?0:D.s==='over'&&END&&END.ok?END.ms/1000:(D.s==='play'?(GHT||D.el||0):(D.el||0));
