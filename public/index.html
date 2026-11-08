@@ -10,9 +10,23 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-title" content="なにが目的なん">
-<meta name="description" content="2人対戦の自転車追い越しアクション。前を走る攻撃側と、後ろから抜く追越側を交代しながら4ポイント先取！">
+<meta name="description" content="なにが目的なん？は、インストール不要・無料で遊べるオンライン自転車ゲーム。ランクマッチやフレンド対戦、2人で協力してパトカーから逃げる協力モード、タイムアタック、ミッションも。スマホ・PC対応のブラウザゲームです。">
+<link rel="canonical" href="%%SITE%%/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="なにが目的なん？ ONLINE">
+<meta property="og:title" content="なにが目的なん？｜無料のオンライン自転車ゲーム">
+<meta property="og:description" content="インストール不要、ブラウザで遊べる無料の自転車ゲーム。オンライン対戦・協力モード・タイムアタック・ミッション。スマホ・PC対応。">
+<meta property="og:url" content="%%SITE%%/">
+<meta property="og:image" content="%%SITE%%/img/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="なにが目的なん？｜無料のオンライン自転車ゲーム">
+<meta name="twitter:description" content="インストール不要、ブラウザで遊べる無料の自転車ゲーム。オンライン対戦・協力モード・タイムアタック・ミッション。">
+<meta name="twitter:image" content="%%SITE%%/img/og.jpg">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"なにが目的なん？ ONLINE","alternateName":["なにが目的なん？","なにが目的なん"],"url":"%%SITE%%/","image":"%%SITE%%/img/og.jpg","description":"インストール不要、ブラウザで遊べる無料のオンライン自転車ゲーム。ランクマッチ、フレンド対戦、協力モード、タイムアタック、ミッションなど。","genre":["アクション","レース","オンライン対戦"],"gamePlatform":["Webブラウザ","PC","スマートフォン","タブレット"],"applicationCategory":"Game","operatingSystem":"Windows, macOS, iOS, Android","playMode":["SinglePlayer","MultiPlayer","CoOp"],"inLanguage":"ja","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"JPY"}}</script>
 <meta name="google-site-verification" content="jd3enhWTkhZqJ7XFm9us-cS4NOilaq6dSceClpfOu5o" />
-<title>なにが目的なん？ ONLINE</title>
+<title>なにが目的なん？｜無料のオンライン自転車ゲーム（対戦・協力・ブラウザで遊べる）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -537,6 +551,7 @@ body.banned-news #news-modal{z-index:270}
 .banbox{max-width:30em;text-align:center;display:flex;flex-direction:column;gap:.6em;background:#1b1340;border:4px solid #c62828;border-radius:18px;padding:1.2em;color:#fff}.banbox b{font-size:1.3em}
 body.banned-news #ban-ov{display:none}
 /* タイトル画面 */
+#title-ab{position:absolute;left:calc(.8em + var(--sl));bottom:calc(.5em + var(--sb));color:rgba(255,255,255,.7);font-size:12px;text-decoration:underline;z-index:2}
 #title-pp{position:absolute;right:calc(.8em + var(--sr));bottom:calc(.5em + var(--sb));color:rgba(255,255,255,.55);font-size:11px;text-decoration:underline;z-index:2}
 #title{position:fixed;inset:0;z-index:200;background:#120c30;cursor:pointer;transition:opacity .45s,transform .45s}
 #title canvas{width:100%;height:100%;display:block}
@@ -646,6 +661,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 .md-go{align-self:flex-end}
 #md-join{margin-top:.3em}
 </style></head><body>
+<noscript><div style="padding:1em;color:#fff;max-width:40em;margin:auto;line-height:1.8"><h1>なにが目的なん？ ONLINE｜無料のオンライン自転車ゲーム</h1><p>インストール不要・無料で遊べる自転車ゲームです。ランクマッチやフレンド対戦、2人で協力する協力モード、タイムアタック、ミッションなどで遊べます。遊ぶにはJavaScriptをオンにしてください。</p><p><a href="about" style="color:#9fd0ff">このゲームについて・遊び方</a></p></div></noscript>
 <canvas id="c"></canvas>
 
 <!-- ===== ゲーム中HUD（タッチ操作） ===== -->
@@ -1169,7 +1185,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 <div id="lvup" class="hide"><div class="lvup-in"><b>LEVEL UP!</b><span id="lvup-n"></span><span id="lvup-r" class="muted"></span><span id="lvup-u" style="color:#8cf08c;font-size:.85em;text-align:center"></span></div></div>
 <div id="rotate"><div class="ph"></div><b>スマホを横向きにしてください</b><span class="muted">横画面専用です</span></div>
 <div id="boot" class="modal"><b>読み込み中…</b></div>
-<div id="title" class="hide"><canvas id="tcv"></canvas><a id="title-pp" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー・利用規約</a></div>
+<div id="title" class="hide"><canvas id="tcv"></canvas><a id="title-ab" href="about">このゲームについて・遊び方</a><a id="title-pp" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー・利用規約</a></div>
 <div id="toast"></div>
 <audio id="custom-crash-audio" src="マイ録音.m4a" preload="auto"></audio>
 <script src="/sio.min.js"></script>
@@ -5743,10 +5759,10 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v25',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
-$('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp')return;e.preventDefault();hideTitle();});
+$('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
 window.addEventListener('keydown',e=>{if(TITLE&&!TITLE.out&&(e.code==='Space'||e.code==='Enter')){e.preventDefault();hideTitle();}});
 // ロゴからファビコンを作る
 function makeFavicon(){try{const f=document.createElement('canvas');f.width=f.height=64;const g=f.getContext('2d');
@@ -6497,7 +6513,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v25',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7172,7 +7188,7 @@ setInterval(()=>{if(page==='admin'&&ADM_TAB==='dash'&&ADM_R&&!document.hidden)da
      （ふつうは何も起きない。もし表示や音がおかしくなったときに、原因がすぐわかるように）
    ===================================================================== */
 document.addEventListener('securitypolicyviolation',e=>{try{reportErr('CSPで止めました：'+(e.violatedDirective||e.effectiveDirective||'')+' '+String(e.blockedURI||'').slice(0,80),e.sourceFile,e.lineNumber,e.columnNumber,'','csp');}catch(er){}});
-$('title-pp').addEventListener('click',e=>e.stopPropagation());   // タイトル画面の「プライバシーポリシー」を押してもゲームが始まらないように
+$('title-pp').addEventListener('click',e=>e.stopPropagation());$('title-ab').addEventListener('click',e=>e.stopPropagation());   // タイトル画面の「プライバシーポリシー」を押してもゲームが始まらないように
 
 /* =====================================================================
    v24：📅 デイリーチャレンジ・👻 ゴースト・🎄 クリスマス
