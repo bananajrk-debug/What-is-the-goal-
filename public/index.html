@@ -660,6 +660,12 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 .thc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5em}@media (max-width:640px){.thc{grid-template-columns:1fr}}
 .md-go{align-self:flex-end}
 #md-join{margin-top:.3em}
+
+/* ===== v26.1：管理画面のパスワード・操作の記録を消す ===== */
+.apw-box{width:min(24em,92vw)}.apw-box h3{margin:.1em 0 .3em}.apw-box form{display:flex;flex-direction:column;gap:.5em}
+.apw-err{color:#ff8a80;font-weight:800;min-height:1.2em;font-size:.9em}
+.apw-row{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.4em}.apw-row .tx{flex:1;min-width:10em}
+.aa-del{flex:none;margin-left:auto;padding:.1em .5em!important}
 </style></head><body>
 <noscript><div style="padding:1em;color:#fff;max-width:40em;margin:auto;line-height:1.8"><h1>なにが目的なん？ ONLINE｜無料のオンライン自転車ゲーム</h1><p>インストール不要・無料で遊べる自転車ゲームです。ランクマッチやフレンド対戦、2人で協力する協力モード、タイムアタック、ミッションなどで遊べます。遊ぶにはJavaScriptをオンにしてください。</p><p><a href="about" style="color:#9fd0ff">このゲームについて・遊び方</a></p></div></noscript>
 <canvas id="c"></canvas>
@@ -946,10 +952,13 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
             <div class="chips" id="ab-grp"></div><div id="ab-sum" class="adm-note"></div><div id="ab-table"></div></div>
           <div id="an-tip" class="an-tip hide"></div></div>
         <!-- 📜 操作の記録 -->
-        <div class="ap" data-a="audit"><div class="ap-head"><input id="aa-q" class="tx grow" placeholder="名前・内容で検索"><select id="aa-f" class="tx"><option value="">すべて</option><option value="u">ユーザーへの対応</option><option value="dist">配布</option><option value="notice">お知らせ</option><option value="maint">メンテナンス</option><option value="set">イベント・セール・設定</option><option value="rank">ランキング</option><option value="data">データ</option></select><button id="aa-ref" class="btn sm blue">↻</button></div>
-          <div class="muted">だれが・いつ・何をしたかが自動で残ります（新しい順・最大500件）。</div><div class="ap-scroll" id="aa-list"></div></div>
+        <div class="ap" data-a="audit"><div class="ap-head"><input id="aa-q" class="tx grow" placeholder="名前・内容で検索"><select id="aa-f" class="tx"><option value="">すべて</option><option value="u">ユーザーへの対応</option><option value="dist">配布</option><option value="notice">お知らせ</option><option value="maint">メンテナンス</option><option value="set">イベント・セール・設定</option><option value="rank">ランキング</option><option value="data">データ</option></select><button id="aa-ref" class="btn sm blue">↻</button><button id="aa-clear" class="btn sm red">🗑 全部消す</button></div>
+          <div class="muted">だれが・いつ・何をしたかが自動で残ります（新しい順・最大500件）。🗑で1件ずつ消せます。「全部消す」をしたときは、消したことだけが記録に残ります。</div><div class="ap-scroll" id="aa-list"></div></div>
         <!-- 💾 データ（Upstash・バックアップ） -->
         <div class="ap" data-a="data"><div class="ap-scroll">
+          <div class="panel adm-panel"><b>🔑 管理画面のパスワード</b><div class="muted" id="apw-state"></div>
+            <form id="apw-cform" class="apw-row"><input id="apw-old" class="tx" type="password" autocomplete="current-password" maxlength="64" placeholder="今のパスワード"><input id="apw-new" class="tx" type="password" autocomplete="new-password" maxlength="64" placeholder="新しいパスワード（6文字以上）"><input id="apw-new2" class="tx" type="password" autocomplete="new-password" maxlength="64" placeholder="新しいパスワード（もう一度）"><button id="apw-chg" class="btn sm blue">変更する</button></form>
+            <div class="row" style="margin-top:.4em"><button id="apw-lockb" class="btn sm dark">🔒 管理画面をロックする</button><span class="muted">ロックすると、次に開くときにパスワードが必要になります</span></div></div>
           <div class="panel adm-panel"><b>ℹ️ この管理画面について</b><div id="adm-stat"></div></div>
           <div class="panel adm-panel"><b>💾 保存先（Upstash）</b><div id="ad-kv"></div>
             <div class="row"><button id="ad-test" class="btn sm blue">🔌 接続テスト</button><span id="ad-test-r" class="muted"></span></div></div>
@@ -975,6 +984,14 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
 </div></div>
+<div id="apw-modal" class="modal hide"><div class="box apw-box"><form id="apw-form">
+  <h3 id="apw-ttl">🔑 管理画面のパスワード</h3><p id="apw-msg" class="muted"></p>
+  <input type="text" name="username" autocomplete="username" value="admin" class="hide" tabindex="-1" aria-hidden="true">
+  <input id="apw-in" class="tx" type="password" autocomplete="current-password" maxlength="64" placeholder="パスワード">
+  <input id="apw-in2" class="tx hide" type="password" autocomplete="new-password" maxlength="64" placeholder="もう一度（確認）">
+  <div id="apw-err" class="apw-err"></div>
+  <div class="row"><button type="button" id="apw-cancel" class="btn dark grow">やめる</button><button type="submit" id="apw-ok" class="btn green grow">OK</button></div>
+</form></div></div>
 <div id="md-modal" class="modal hide"><div class="box wide md-box">
   <div class="row md-head"><button id="md-back" class="btn sm dark hide">◀ もどる</button><b class="grow" id="md-title">🏃 ひとりで遊ぶ</b><button id="md-close" class="iconbtn" aria-label="閉じる">✕</button></div>
   <div id="md-body"></div>
@@ -5759,7 +5776,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.1.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6479,7 +6496,7 @@ function admExtra(r){
 $('ad-test').onclick=()=>{$('ad-test-r').textContent='テスト中…';socket.emit('adm_kvtest',r=>{if(!r||!r.ok){$('ad-test-r').textContent='失敗しました';return;}
   $('ad-test-r').innerHTML=!r.kv?'<span style="color:#ff8a80">Upstashが設定されていません</span>':r.pass?'<span style="color:#8cf08c">✅ 成功（'+r.ms+'ミリ秒）</span>':'<span style="color:#ff8a80">❌ 失敗：'+(r.err||'読み書きできませんでした')+'（URLとTOKENを確認してください）</span>';});};
 // バックアップの保存（ファイルとしてダウンロード）
-$('ad-save').onclick=async()=>{try{const r=await fetch('/api/adm/backup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid})});
+$('ad-save').onclick=async()=>{try{const r=await fetch('/api/adm/backup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid,at:atokGet()})});
   if(!r.ok){toast('保存できませんでした');return;}const j=await r.json(),txt=JSON.stringify(j),d=new Date();
   const name='nanigamokutekinan-backup-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.json';
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
@@ -6496,7 +6513,7 @@ $('ad-file').onchange=async()=>{const f=$('ad-file').files[0];AD_BK=null;$('ad-l
   catch(e){$('ad-load-r').textContent='❌ バックアップファイルではありません';}};
 $('ad-load').onclick=async()=>{if(!AD_BK)return;const parts=[...document.querySelectorAll('#ad-parts input:checked')].map(c=>c.value);if(!parts.length){toast('戻す項目を選んでください');return;}
   if(!confirmTwice($('ad-load'),'今のデータを上書きする？'))return;$('ad-load-r').textContent='読み込み中…';
-  try{const r=await fetch('/api/adm/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid,backup:AD_BK,parts})});const j=await r.json();
+  try{const r=await fetch('/api/adm/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:SV.uid,at:atokGet(),backup:AD_BK,parts})});const j=await r.json();
     $('ad-load-r').textContent=j.ok?'✅ 戻しました：'+Object.entries(j.done).map(([k,v])=>(AD_PARTS[k]||k).replace(/（.*）/,'')+' '+v).join('・'):'❌ '+(j.err||'失敗しました');if(j.ok){toast('✅ バックアップから戻しました');admOverview();}}
   catch(e){$('ad-load-r').textContent='❌ 送れませんでした（ファイルが大きすぎるかもしれません）';}};
 
@@ -6513,7 +6530,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.1.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7068,8 +7085,8 @@ const AUDN={u_ban:'⛔ 利用停止',u_unban:'✅ 停止を解除',u_warn:'⚠�
   maint_start:'🛠 メンテナンス開始',maint_edit:'🛠 メンテナンスの内容を変更',maint_end:'🛠 メンテナンス終了',maint_auto_start:'🛠 予約したメンテナンスが開始',msched:'📅 メンテナンスを予約',msched_cancel:'📅 メンテナンスの予約を取り消し',
   event:'🎉 イベントを設定',event_end:'🎉 イベントを終了',sale:'🏷 セールを設定',sale_end:'🏷 セールを終了',gcfg:'🎰 ガチャの設定を変更',rank_del:'🏆 ランキングの記録を削除',rank_reset:'🏆 ランキングをリセット',
   fb_adopt:'💡 フィードバックを採用',fb_del:'💡 フィードバックを削除',ng_add:'🚫 NGワードを追加',ng_del:'🚫 NGワードを削除',err_clear:'🐞 エラーを全部消去',stats_reset:'📈 バランスの記録をリセット',items_reset:'📈 人気アイテムの記録をリセット',
-  backup:'💾 バックアップを保存',restore:'💾 バックアップから復元'};
-const audG=a=>/^(u_|fb_)/.test(a)?'u':/^dist/.test(a)?'dist':/^notice|^sched_del/.test(a)?'notice':/^(maint|msched)/.test(a)?'maint':/^rank/.test(a)?'rank':/^(backup|restore)$/.test(a)?'data':'set';
+  backup:'💾 バックアップを保存',restore:'💾 バックアップから復元',apw_set:'🔑 管理画面のパスワードを設定',apw_change:'🔑 管理画面のパスワードを変更',apw_lock:'🔒 パスワードを5回まちがえた（15分ロック）',audit_clear:'🗑 操作の記録を全部消去'};
+const audG=a=>/^(apw_|audit_)/.test(a)?'data':/^(u_|fb_)/.test(a)?'u':/^dist/.test(a)?'dist':/^notice|^sched_del/.test(a)?'notice':/^(maint|msched)/.test(a)?'maint':/^rank/.test(a)?'rank':/^(backup|restore)$/.test(a)?'data':'set';
 let AA_L=[];
 function admAudit(){socket.emit('adm_audit',r=>{if(r&&r.ok){AA_L=r.list;renderAudit();}});}
 function renderAudit(){const q=$('aa-q').value.trim().toLowerCase(),f=$('aa-f').value,box=$('aa-list');box.innerHTML='';
@@ -7078,7 +7095,10 @@ function renderAudit(){const q=$('aa-q').value.trim().toLowerCase(),f=$('aa-f').
   const fr=document.createDocumentFragment();L.slice(0,300).forEach(x=>{const d=document.createElement('div');d.className='aa-row';const t=document.createElement('span');t.className='t';t.textContent=fmtD(x.t);
     const g=document.createElement('div');g.className='grow';const b=document.createElement('b');b.textContent=(AUDN[x.act]||x.act);const by=document.createElement('small');by.className='muted';by.textContent='　by '+x.by;g.append(b,by);
     if(x.tg){const tg=document.createElement('div');tg.className='d';tg.append('→ ');const a=document.createElement('span');a.className='tg';a.textContent=x.tg;a.onclick=()=>{if(x.tpk)openAdmUser(x.tpk);};tg.appendChild(a);g.appendChild(tg);}
-    if(x.d){const dd=document.createElement('div');dd.className='d';dd.textContent=x.d;g.appendChild(dd);}d.append(t,g);fr.appendChild(d);});box.appendChild(fr);}
+    if(x.d){const dd=document.createElement('div');dd.className='d';dd.textContent=x.d;g.appendChild(dd);}
+    const del=document.createElement('button');del.className='btn sm dark aa-del';del.textContent='🗑';del.title='この記録を消す';   // v26.1：1件ずつ消せる
+    del.onclick=e=>{e.stopPropagation();if(!confirmTwice(del,'消す'))return;socket.emit('adm_audit_del',{t:x.t,act:x.act},r=>{if(r&&r.ok){AA_L=r.list;renderAudit();toast('記録を1件消しました');}else toast((r&&r.err)||'消せませんでした');});};
+    d.append(t,g,del);fr.appendChild(d);});box.appendChild(fr);}
 $('aa-ref').onclick=admAudit;$('aa-q').addEventListener('input',renderAudit);$('aa-f').onchange=renderAudit;
 
 /* ----- 📅 メンテナンスの予約（管理者） ----- */
@@ -7715,6 +7735,66 @@ function vmResult(){
 // 観戦の見出し
 {const rs=renderSpecBar;renderSpecBar=function(){rs();try{const k=vmK();if(k)$('spec-kind').textContent={ta:'⏱ タイムアタック',ms:'🎯 ミッション',th:'🚓 ドロボウを追え！',coop:'🤝 協力モード'}[k];}catch(e){}};}
 modeCurUI();
+
+/* =====================================================================
+   v26.1.0：管理画面のパスワード
+   ・管理画面を開くときにパスワードを聞く（はじめてのときは、ここで決める）
+   ・正しく入れると、そのタブを閉じるまで（最大12時間）は聞かない。ロックボタンで、すぐ聞くようにもできる
+   ===================================================================== */
+var ADM_OK=false;
+function atokGet(){try{return sessionStorage.getItem('nm_atok')||'';}catch(e){return '';}}
+function atokSet(t){try{if(t)sessionStorage.setItem('nm_atok',t);else sessionStorage.removeItem('nm_atok');}catch(e){}}
+let APW_NEXT=null,APW_MODE='login';
+function apwAfterOk(tok){ADM_OK=true;if(tok)atokSet(tok);
+  socket.emit('adm_overview',r=>{if(r&&r.ok){ADM_FLAG=r.flagged.length+((r.ecoFlags||[]).length);ADM_FBN=r.fbNew;admDot();}});}
+function apwOpen(next){
+  socket.emit('adm_pw_state',r=>{
+    if(!r||!r.ok){toast('管理者ではありません');return;}
+    if(r.in){apwAfterOk();if(next)next();return;}
+    APW_NEXT=next;APW_MODE=r.set?'login':'new';
+    $('apw-ttl').textContent=r.set?'🔑 管理画面のパスワード':'🔑 管理画面のパスワードを決めよう';
+    $('apw-msg').textContent=r.set?'管理画面を開くには、パスワードを入れてください。':'はじめて管理画面を開くので、パスワードを決めてください（6文字以上）。忘れないようにメモしておこう。';
+    $('apw-in2').classList.toggle('hide',!!r.set);$('apw-in').autocomplete=r.set?'current-password':'new-password';
+    $('apw-in').value='';$('apw-in2').value='';$('apw-err').textContent='';$('apw-ok').disabled=false;
+    $('apw-modal').classList.remove('hide');setTimeout(()=>$('apw-in').focus(),50);
+  });
+}
+function apwClose(){$('apw-modal').classList.add('hide');$('apw-in').value='';$('apw-in2').value='';APW_NEXT=null;}
+$('apw-form').addEventListener('submit',e=>{e.preventDefault();
+  const pw=$('apw-in').value,err=$('apw-err');err.textContent='';
+  if(!pw){err.textContent='パスワードを入れてください';return;}
+  const done=r=>{$('apw-ok').disabled=false;if(r&&r.ok){const n=APW_NEXT;apwAfterOk(r.tok);apwClose();if(AU.ctx)SFX.claim&&SFX.claim();toast('🔓 管理画面を開きました');if(n)n();}else err.textContent=(r&&r.err)||'うまくいきませんでした';};
+  if(APW_MODE==='new'){
+    if(pw.length<6){err.textContent='6文字以上にしてください';return;}
+    if(pw!==$('apw-in2').value){err.textContent='2回入れたパスワードがちがいます';return;}
+    $('apw-ok').disabled=true;socket.emit('adm_pw_new',{pw},done);
+  }else{$('apw-ok').disabled=true;socket.emit('adm_login',{pw},done);}
+});
+$('apw-cancel').onclick=apwClose;
+// 管理画面に入るとき
+{const sp=showPage;showPage=function(p){if(p==='admin'&&IS_ADMIN&&!ADM_OK){apwOpen(()=>sp('admin'));return;}sp(p);};}
+// つなぎなおしたとき：同じタブで12時間以内に入れていれば、そのまま
+socket.on('admin',v=>{
+  if(!v){ADM_OK=false;return;}
+  const t=atokGet();
+  if(!t){ADM_OK=false;if(page==='admin')showPage('home');return;}
+  socket.emit('adm_tok',{tok:t},r=>{if(r&&r.ok)apwAfterOk();else{ADM_OK=false;atokSet('');if(page==='admin'){showPage('home');toast('🔒 もう一度パスワードを入れてください',3000);}}});
+});
+socket.on('adm_locked',()=>{ADM_OK=false;atokSet('');if(page==='admin'){showPage('home');toast('🔒 パスワードが変更されたので、もう一度入れてください',3500);}});
+// データのページ：パスワードの変更・ロック
+function apwStateUI(){socket.emit('adm_pw_state',r=>{if(!r||!r.ok)return;const env=r.env;
+  $('apw-state').textContent=env?'Renderの環境変数 ADMIN_PASSWORD で決めています（変えるときはRenderの設定で）。':'パスワードを変えると、ほかの端末で開いている管理画面はロックされます。忘れたときは、Renderの環境変数に ADMIN_PW_RESET=1 を入れて再起動すると決めなおせます（決めたら消してください）。';
+  $('apw-cform').classList.toggle('hide',!!env);});}
+$('apw-cform').addEventListener('submit',e=>{e.preventDefault();
+  const o=$('apw-old').value,n=$('apw-new').value;
+  if(n.length<6){toast('新しいパスワードは6文字以上にしてください');return;}
+  if(n!==$('apw-new2').value){toast('新しいパスワードが2回でちがいます');return;}
+  socket.emit('adm_pw_change',{old:o,pw:n},r=>{if(r&&r.ok){atokSet(r.tok);['apw-old','apw-new','apw-new2'].forEach(i=>$(i).value='');toast('🔑 パスワードを変更しました',3000);}else toast((r&&r.err)||'変更できませんでした',3000);});
+});
+$('apw-lockb').onclick=()=>{socket.emit('adm_lock',{tok:atokGet()},()=>{});atokSet('');ADM_OK=false;showPage('home');toast('🔒 管理画面をロックしました');};
+{const at=admTab;admTab=function(t){at(t);if(t==='data')apwStateUI();};}
+// 操作の記録：全部消す
+$('aa-clear').onclick=()=>{const b=$('aa-clear');if(!confirmTwice(b,'全部消す'))return;socket.emit('adm_audit_clear',r=>{if(r&&r.ok){AA_L=r.list;renderAudit();toast('操作の記録を全部消しました');}else toast((r&&r.err)||'消せませんでした');});};
 </script>
 </body>
 </html>
