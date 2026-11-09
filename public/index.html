@@ -664,6 +664,9 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 /* ===== v26.1：管理画面のパスワード・操作の記録を消す ===== */
 .apw-box{width:min(24em,92vw)}.apw-box h3{margin:.1em 0 .3em}.apw-box form{display:flex;flex-direction:column;gap:.5em}
 .adm-inst{background:#b71c1c;border:3px solid #ff8a80;border-radius:12px;padding:.5em .8em;margin:0 0 .5em;font-weight:800;line-height:1.5}
+.fg-box{width:min(46em,96vw)!important;max-height:94vh}.fg-head b{font-size:1.15em}.fg-tabs{align-items:center;margin:.3em 0}.fg-quick{flex-wrap:wrap;margin:.4em 0}
+#fg-cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.2em}#fg-cats .chip{flex:none;white-space:nowrap}
+#fg-grid{max-height:40vh;overflow:auto;margin-top:.4em}.fg-pick{margin-top:.5em;background:rgba(0,0,0,.25);border-radius:12px;padding:.4em .6em;align-items:center}
 .rec-box{width:min(26em,92vw)}.rec-box h3{margin:.1em 0 .4em}#rec-msg{font-weight:800;font-size:1.05em}
 .apw-err{color:#ff8a80;font-weight:800;min-height:1.2em;font-size:.9em}
 .apw-row{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.4em}.apw-row .tx{flex:1;min-width:10em}
@@ -986,6 +989,15 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
   <div id="im-body"><div class="cvbox"><canvas id="im-cv"></canvas></div>
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
+</div></div>
+<div id="fg-modal" class="modal hide"><div class="box wide fg-box">
+  <div class="row fg-head"><b class="grow" id="fg-title">🎁 プレゼントを送る</b><button id="fg-close" class="iconbtn" aria-label="閉じる">✕</button></div>
+  <div class="row fg-tabs"><button class="chip on" data-t="nc">💰 NC</button><button class="chip" data-t="item">🎨 アイテム</button><span class="muted grow" id="fg-left"></span></div>
+  <div id="fg-nc"><div class="row"><input id="fg-amt" class="tx" type="number" min="10" step="10" inputmode="numeric" placeholder="送るNC（10〜）"><button id="fg-send-nc" class="btn green">送る</button></div>
+    <div class="row fg-quick"></div><div class="muted" id="fg-have"></div></div>
+  <div id="fg-item" class="hide"><div class="row" id="fg-cats"></div>
+    <div id="fg-pick" class="row fg-pick hide"><span id="fg-pick-t" class="grow"></span><button id="fg-send-item" class="btn green">贈る</button></div><div id="fg-grid" class="grid"></div></div>
+  <div class="muted" style="margin-top:.4em">おたがいにフレンドの人に送れます。1日に合計 5,000 NC分・10回まで。相手がもう持っているアイテムは送れません。</div>
 </div></div>
 <div id="rec-modal" class="modal hide" style="z-index:70"><div class="box rec-box">
   <h3>🔄 前のデータが見つかりました</h3>
@@ -3782,7 +3794,8 @@ function renderFriends(){
     let dt=0;del.onclick=()=>{if(Date.now()-dt>2500){dt=Date.now();del.textContent='本当に削除？';setTimeout(()=>{del.textContent='削除';},2500);return;}if(PK_RE.test(e.k))socket.emit('friend_remove',e.k);SV.friends=SV.friends.filter(x=>x!==e);save();renderFriends();};
     if(wt){j.textContent='👀 観戦する';j.disabled=false;j.className='btn sm';j.onclick=()=>watchFriend(e);}
     const rpb=document.createElement('button');rpb.className='btn sm dark';rpb.textContent='🚩';rpb.title='通報';rpb.onclick=()=>openReport(e.k,nm,'フレンド');
-    if(PK_RE.test(e.k))it.append(fn,j,rpb,del);else it.append(fn,j,del);box.appendChild(it);
+    const gfb=document.createElement('button');gfb.className='btn sm';gfb.textContent='🎁';gfb.title='プレゼントを送る';gfb.onclick=()=>openFGift(e.k,nm);   // v27
+    if(PK_RE.test(e.k))it.append(fn,j,gfb,rpb,del);else it.append(fn,j,del);box.appendChild(it);
   });
   // 自分が送った申請
   if(SV.fout.length){sec('📨 申請中（相手の承認待ち）');
@@ -4966,16 +4979,27 @@ function crashFx(s){
 }
 const maxVOf=()=>mode==='endless'?260:(D&&D.att===slot?285:230);
 // サーバーと同じ式（加速度つきアナログ操作＋カーブの外側への流れ）で自分の位置を先読みし、サーバー位置へ少しずつ寄せる
+// v27：瞬間移動の修正。前は「サーバーの位置を、今の速さで先へのばした位置」と比べていたので、
+//   通信が遅いときに左右へ切りかえると大きくずれたと判断して、一気に引き戻していた（42pxで瞬間移動）。
+//   いまは「自分が少し前（通信の往復ぶん前）にいた位置」とサーバーの位置を比べて、ずれだけを少しずつ直す
 function predictMe(c,t,dt,play,age){
   if(!play){PRED.ok=false;c.x+=(t.x-c.x)*Math.min(1,dt*14);return;}
-  if(!PRED.ok){PRED.x=t.x;PRED.vx=t.vx||0;PRED.ok=true;}
-  const tv=inpS*maxVOf();PRED.vx+=clamp(tv-PRED.vx,-1500*dt,1500*dt);
+  const now=performance.now();
+  if(!PRED.ok){PRED.x=t.x;PRED.vx=t.vx||0;PRED.ok=true;PRED.h=[];PRED.corr=0;PRED.rt=0;}
+  const tv=(typeof predS==='function'?predS():inpS)*maxVOf();PRED.vx+=clamp(tv-PRED.vx,-1500*dt,1500*dt);
   const v=c.v||110,drift=-curvAt(c.z)*v*v*.28;
   const nx=clamp(PRED.x+(PRED.vx+drift)*dt,-HWR+14,HWR-14);
   if((nx<=-HWR+14&&PRED.vx<0)||(nx>=HWR-14&&PRED.vx>0))PRED.vx=0;
   PRED.x=nx;
-  const sx=clamp(t.x+((t.vx||0)+drift)*Math.min(.3,lat+age),-HWR+14,HWR-14),err=sx-PRED.x;
-  if(Math.abs(err)>42)PRED.x=sx;else PRED.x+=err*Math.min(1,dt*3);
+  // 新しいサーバーの位置が届いたら、そのとき（往復の時間ぶん前）の自分の位置とくらべる
+  if(S&&S._rt!==PRED.rt){PRED.rt=S._rt;
+    const tt=S._rt-Math.min(400,lat*2000+25),H=PRED.h;let hx=null;
+    for(let i=H.length-1;i>=0;i--)if(H[i].t<=tt){const a=H[i],b=H[i+1];hx=b?a.x+(b.x-a.x)*clamp((tt-a.t)/Math.max(1,b.t-a.t),0,1):a.x;break;}
+    if(hx==null&&H.length)hx=H[0].x;
+    if(hx!=null){PRED.corr=t.x-hx;if(Math.abs(PRED.corr)>110){PRED.x+=PRED.corr;for(const h of H)h.x+=PRED.corr;PRED.corr=0;}}   // ぶつかって押されたなど、大きくちがうときだけ合わせる
+  }
+  if(PRED.corr){const d=PRED.corr*Math.min(1,dt*6);PRED.x=clamp(PRED.x+d,-HWR+14,HWR-14);PRED.corr-=d;for(const h of PRED.h)h.x+=d;if(Math.abs(PRED.corr)<.05)PRED.corr=0;}
+  PRED.h.push({t:now,x:PRED.x});while(PRED.h.length&&now-PRED.h[0].t>1200)PRED.h.shift();
   c.x=PRED.x;
 }
 function sync(dt){
@@ -5322,7 +5346,7 @@ function drawGame(dt,t){
     if(p&&p.mud>0&&Math.random()<dt*25)addP({x:p.x+(Math.random()-.5)*6,y:2,z:p.z-12,vx:(Math.random()-.5)*30,vy:30+Math.random()*40,vz:-20,l:.45,ml:.45,s:1.6+Math.random(),c:'#5d3b1e',k:'debris',r:0});}
   setCam(me.x,me.z,me.v,dt,false);
   ctx.save();if(shake>0){ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake=Math.max(0,shake-dt*32);}
-  const names=(mode==='versus'||(D.vx&&(D.vx[0]==='coop'||D.vx[0]==='th')))&&D.names?D.names.map((n,i)=>i===slot&&!SPEC?null:n):null;
+  const names=(mode==='versus'||(D.vx&&D.vx[0]==='th'))&&D.names?D.names.map((n,i)=>i===slot&&!SPEC?null:n):null;
   renderWorld(ci,D,t,slot,names);
   ctx.restore();
   if(mode!=='endless'||roomGame)drawBubbles(t);
@@ -5796,7 +5820,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.4.0',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v27.0.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6219,6 +6243,7 @@ function drawProfIcon(cv,ic,bg,t,fr){
 }
 function myProf(){
   return {fr:SV.prof.fr,nc:SV.prof.nc,pb:SV.prof.pb,lv:SV.lv,ic:SV.prof.ic,msg:SV.prof.msg,bg:SV.prof.bg,look:myLook(),ttl:myTitle(),pl:myPlate(),rp:SV.rp,sBest:SV.sBest,rkTop:SV.rkTop,seaTop:SV.seaTop,tro:trophies(),
+    own:Object.fromEntries(Object.keys(CAT).map(c=>[c,SV.inv[c]||[]])),frs:SV.friends.map(e=>e.k).filter(k=>PK_RE.test(k)),   // v27：プレゼント用（サーバーだけが使う）
     st:{wins:SV.stats.wins||0,plays:SV.stats.plays||0,best:SV.best,dist:SV.stats.dist||0,items:itemCount(),login:SV.lb.total,over:SV.stats.overtake||0,fr:SV.friends.length}};
 }
 let profTm=null;
@@ -6550,7 +6575,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.4.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v27.0.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7385,7 +7410,7 @@ const MODES={
   tut:{g:'solo',ic:'🔰',n:'練習',d:'操作を覚えよう（弱いCPU）',c:'BR'},
   rank:{g:'multi',ic:'🏆',n:'ランクマッチ',d:'同じくらいの強さの人と対戦',c:'PK'},
   room:{g:'multi',ic:'🏠',n:'ルームで対戦',d:'フレンドと1対1（コードで招待）',c:'BL'},
-  coop:{g:'multi',ic:'🤝',n:'協力モード',d:'2人でいっしょに逃げきれ！ アウトでも相棒が10秒耐えれば復活',c:'TE',nw:1}
+  coop:{g:'multi',ic:'🤝',n:'協力モード',d:'2人で1台の自転車！ 1人は右とブースト、もう1人は左とブレーキ',c:'TE',nw:1}
 };
 const fmtSec=ms=>(ms/1000).toFixed(2)+'秒';
 const vmK=()=>D&&D.vx?D.vx[0]:null;
@@ -7562,10 +7587,12 @@ socket.on('connect',()=>setTimeout(()=>vmFetch(),1800));
 {const db=dailyBtnUI;dailyBtnUI=function(){db();try{if(SEL&&SEL.k==='daily')modeCurUI();}catch(e){}};}
 // ルームロビー：協力モードのルームは見出しを変える
 {const so=showRoom;showRoom=function(info){so(info);try{closeModes();$('rm-ttl').textContent=info&&info.coop?'🤝 協力モードのルーム':'🏠 ルームロビー';
-  if(info&&info.coop&&info.me===0){const op=info.players[1];$('rm-hint').textContent=!op?'相棒の参加を待っています…（コードを教えよう）':op.ready?'相棒の準備ができました！スタートを押そう':'相棒の「準備OK」を待っています';}}catch(e){}};}
+  if(info&&info.coop){const op=info.players[1],role=info.me===0?'あなた：➡ 右へ動く＋🚀ブースト（相棒：⬅ 左＋🛑ブレーキ）':'あなた：⬅ 左へ動く＋🛑ブレーキ（相棒：➡ 右＋🚀ブースト）';
+    $('rm-hint').textContent=(info.me===0?(!op?'相棒の参加を待っています…（コードを教えよう）':op.ready?'相棒の準備ができました！スタートを押そう':'相棒の「準備OK」を待っています'):$('rm-hint').textContent)+'　｜　2人で1台の自転車を動かします。'+role;}}catch(e){}};}
 
 /* ----- ゲーム中 ----- */
-{const eg=enterGame;enterGame=function(d){VM=(d&&d.vm)||null;closeModes();eg(d);};}
+var COOP_ROLE=null;
+{const eg=enterGame;enterGame=function(d){VM=(d&&d.vm)||null;COOP_ROLE=d&&d.vm==='coop'?(d.role|0):null;closeModes();eg(d);};}
 {const st=stopGame;stopGame=function(){st();VM=null;};}
 // ゴースト：新しいモードではエンドレスのゴーストを出さない（タイムアタックは今週のゴースト）
 const TA_GH='nm_ghost_ta';
@@ -7588,15 +7615,13 @@ socket.on('endless_over',d=>{
     }
   }catch(e){}
 });
-// 協力モードの「倒れている」「復活したて」を、描くときに使えるようにする
-{const dg=drawGame;drawGame=function(dt,t){
-  if(D&&D.P&&D.vx&&D.vx[0]==='coop'){const a=D.vx[1]||[];D.P.forEach((p,i)=>{if(!p)return;const s=a[i]||[0,0,0];p._dn=s[0];p._inv=s[2];});}
-  dg(dt,t);};}
-{const dr=drawRider;drawRider=function(p,team,t,name,alpha){
-  if(p&&p._dn)alpha=.28;else if(p&&p._inv&&alpha==null)alpha=Math.floor(t/110)%2?.35:.9;
-  return dr(p,team,t,name,alpha);};}
+// v27：協力モードは2人で1台。自分の操作（担当の向きだけ）＋相棒の操作（サーバーから届く）で、先読みする
+function predS(){
+  if(COOP_ROLE==null||!D||!D.vx||D.vx[0]!=='coop')return inpS;
+  return COOP_ROLE===0?Math.max(0,inpS)+(D.vx[2]||0):(D.vx[1]||0)+Math.min(0,inpS);
+}
 // ミッションで使えないボタンは暗くする
-{const ut=updateTouchUI;updateTouchUI=function(){ut();try{const d=D&&D.vx&&D.vx[0]==='ms'&&msList()[D.vx[1]];if(d&&d.r){if(d.r.noboost)$('b-boost').classList.add('off');if(d.r.nobrake)$('b-brake').classList.add('off');}}catch(e){}};}
+{const ut=updateTouchUI;updateTouchUI=function(){ut();try{if(COOP_ROLE!=null&&inGame){$(COOP_ROLE===0?'b-brake':'b-boost').classList.add('off');}const d=D&&D.vx&&D.vx[0]==='ms'&&msList()[D.vx[1]];if(d&&d.r){if(d.r.noboost)$('b-boost').classList.add('off');if(d.r.nobrake)$('b-brake').classList.add('off');}}catch(e){}};}
 // ゴール（タイムアタック）を道に描く
 function vmItems(st,t,zNear,zFar){
   if(st!==D||!D||!D.vx||D.vx[0]!=='ta')return [];
@@ -7618,20 +7643,15 @@ function drawGoal(z,t){
 // 試合中のお知らせ（禁止ボタン・ドロボウ・協力モードの アウト／復活）
 {const os=onSnap;onSnap=function(s){os(s);if(!inGame||!s||REPLAYING)return;
   for(const e of s.ev||[]){
-    if(e.t==='deny'&&e.i===slot&&!SPEC&&!pops.some(p=>p._dn))pops.push({_dn:1,t:e.k==='boost'?'ブースト禁止のミッション！':'ブレーキ禁止のミッション！',x:W/2,y:H*.3,l:1.2,ml:1.2,c:'#ffb3a7',s:22});
+    if(e.t==='deny'&&e.co&&e.i===COOP_ROLE&&!SPEC&&!pops.some(p=>p._dn))pops.push({_dn:1,t:COOP_ROLE===0?'あなたは ➡右 と 🚀ブースト 担当！':'あなたは ⬅左 と 🛑ブレーキ 担当！',x:W/2,y:H*.3,l:1.2,ml:1.2,c:'#ffb3a7',s:22});
+    else if(e.t==='deny'&&!e.co&&e.i===slot&&!SPEC&&!pops.some(p=>p._dn))pops.push({_dn:1,t:e.k==='boost'?'ブースト禁止のミッション！':'ブレーキ禁止のミッション！',x:W/2,y:H*.3,l:1.2,ml:1.2,c:'#ffb3a7',s:22});
     if(e.t==='th_hit'){pops.push({t:'ドロボウが車にぶつかった！',sub:'今がチャンス！',x:W/2,y:H*.3,l:1.4,ml:1.4,c:'#8cf08c',s:24});if(AU.ctx)SFX.crash();}
-    if(e.t==='down'){
-      if(e.i===slot&&!SPEC){shake=14;flash=.45;if(AU.ctx){SFX.crash();if(e.k==='cop')SFX.whistle();}pops.push({t:'アウト！',sub:'相棒が10秒生き残れば復活',x:W/2,y:H*.32,l:2,ml:2,c:'#ff6b5e',s:34});try{navigator.vibrate&&navigator.vibrate(160);}catch(er){}}
-      else{if(AU.ctx)SFX.crash();pops.push({t:'相棒がアウト！',sub:'10秒生き残れば復活するよ',x:W/2,y:H*.32,l:2,ml:2,c:'#ffd23f',s:30});}
-      const q=D&&D.P[e.i];if(q&&e.k!=='cop')burst(q.x,q.z,e.k);
-    }
-    if(e.t==='rev'){if(AU.ctx)(SFX.claim||SFX.point)();pops.push({t:e.i===slot?'💫 復活！':'💫 相棒が復活！',sub:'+'+e.b,x:W/2,y:H*.3,l:1.6,ml:1.6,c:'#8cf08c',s:30});spawnConfetti(30);}
   }};}
 function vmTip(){const k=VM||vmK();
   if(k==='ta')return '2km（2,000m）を走りきるタイムを競う！ ぶつかったらリタイア。全員同じ車の並び';
   if(k==='ms'){const d=D&&D.vx&&msList()[D.vx[1]];return d?'お題：'+msTxt(d.g)+(d.r&&d.r.lim?'（'+d.r.lim+'秒以内）':'')+'　'+msRuleTxt(d.r):'';}
   if(k==='th')return '前を逃げるドロボウに追いついて、横に並んでつかまえろ！（60秒以内）';
-  if(k==='coop')return '2人で協力！ ぶつかってアウトになっても、相棒が10秒生き残れば復活';
+  if(k==='coop')return '2人で1台の自転車！ あなたは '+(COOP_ROLE===1?'⬅ 左へ動く ＋ 🛑ブレーキ':'➡ 右へ動く ＋ 🚀ブースト')+' 担当。息を合わせよう！';
   return '';}
 
 /* ----- HUD ----- */
@@ -7695,15 +7715,17 @@ function hudTH(T,me,t){
   const st=VMD&&VMD.th&&VMD.th.lv[D.vx[1]];if(st)txt('★★ '+st.s[0]+'秒以内　★★★ '+st.s[1]+'秒以内',W/2,y0+84,12,'#ffe56b','center',true,800);
 }
 function hudCoop(T,me,t){
-  const x0=12,y0=8,a=D.vx[1]||[],o=1-slot,mine=a[slot]||[0,0,0],his=a[o]||[0,0,0],nm=(D.names&&D.names[o])||'相棒';
+  const x0=12,y0=8,r=COOP_ROLE==null?0:COOP_ROLE,o=1-r,nm=(D.names&&D.names[o])||'相棒',a=D.vx[1]||0,b=D.vx[2]||0;
   hudBox(x0,y0,230,70);txt('TEAM SCORE',x0+14,y0+20,11,'#cfd6ff','left',false,800);txt((D.score||0).toLocaleString(),x0+14,y0+48,28,'#ffe56b','left');
-  const lead=Math.max(...D.P.filter(Boolean).map(p=>p.z||0));txt(Math.floor(lead/10).toLocaleString()+' m',x0+216,y0+22,13,'#fff','right',false,800);hudSpeed(me,x0+216,y0+42);
-  txt('💫 復活 '+(D.vx[2]||0)+'回',x0+216,y0+61,12,'#80cbc4','right',false,800);
-  const s=his[0]?'💥 '+nm+'：復活まで '+his[1].toFixed(1)+'秒':'🤝 '+nm+'：走行中';
-  ctx.save();ctx.font='800 14px '+FONT;const w=ctx.measureText(s).width+26;ctx.restore();pill(W/2-w/2,y0,w,30,his[0]?'#b71c1c':'#00695c');txt(s,W/2,y0+21,14,'#fff','center',false,800);
+  txt(Math.floor((me.z||0)/10).toLocaleString()+' m',x0+216,y0+22,13,'#fff','right',false,800);hudSpeed(me,x0+216,y0+42);
+  txt('🤝 協力モード',x0+216,y0+61,12,'#80cbc4','right',false,800);
+  // だれが今どっちへ動かしているか（左＝ゲスト、右＝ホスト）
+  const cx=W/2,cy=y0+22,bw=Math.min(150,W*.17);
+  const side=(dir,on,who,col)=>{const x=cx+dir*(bw/2+8);ctx.save();ctx.globalAlpha=on?1:.45;pill(x-bw/2,cy-16,bw,32,on?col:'#2a2f55');txt((dir<0?'⬅ ':'')+who+(dir>0?' ➡':''),x,cy+6,13,'#fff','center',false,800);ctx.restore();};
+  const meName='あなた';
+  side(-1,b<-.05,r===1?meName:nm,'#1565c0');side(1,a>.05,r===0?meName:nm,'#e65100');
+  txt(r===0?'あなた：➡右 ＋ 🚀ブースト':'あなた：⬅左 ＋ 🛑ブレーキ',cx,cy+34,12,'#ffe56b','center',true,800);
   if(D.combo>1){const sc=1+Math.sin(t/90)*.05;ctx.save();ctx.translate(x0+170,y0+92);ctx.scale(sc,sc);pill(-60,-14,120,28,'#1f8f3a');txt('COMBO ×'+D.combo,0,6,15,'#fff','center',false);ctx.restore();}
-  if(mine[0]&&D.s==='play'){const p=1+Math.sin(t/140)*.04;ctx.save();ctx.translate(W/2,H*.62);ctx.scale(p,p);ctx.fillStyle='rgba(8,12,34,.8)';rr(ctx,-190,-36,380,72,18);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();
-    txt('💫 復活まで '+mine[1].toFixed(1)+'秒',0,-4,24,'#ffe56b','center');txt(nm+' を応援しよう！ 2人ともアウトで終わり',0,24,13,'#fff','center',false,800);ctx.restore();}
 }
 // カウントダウンの説明
 {const dh=drawHUD;drawHUD=function(T,me,t,dt){dh(T,me,t,dt);
@@ -7719,7 +7741,7 @@ function hudCoop(T,me,t){
     if(k==='ta'||k==='th')txt(END.ok?fmtSec(END.ms):'--',W/2,y+120,44,'#ffe56b');
     else txt((END.score||0).toLocaleString(),W/2,y+120,44,'#ffe56b');
     if(END.stars){const s=END.stars;for(let i=0;i<3;i++){const sx=W/2+(i-1)*44,on=s[i];ctx.save();ctx.translate(sx,y+158);const sc=on?1+Math.max(0,.4-Math.max(0,age-.3-i*.2))*1.5:1;ctx.scale(sc,sc);txt('★',0,12,34,on?'#ffd23f':'#3a3f5a','center');ctx.restore();}}
-    else txt(k==='coop'?'復活 '+(END.rev||0)+'回　+'+(END.coins||0)+' NC':'+'+(END.coins||0)+' NC',W/2,y+165,15,'#fff','center',false,800);
+    else txt('+'+(END.coins||0)+' NC',W/2,y+165,15,'#fff','center',false,800);
     if(END.improved){const s=1+Math.sin(t/120)*.06;ctx.save();ctx.translate(x+pw-50,y+26);ctx.rotate(.18);ctx.scale(s,s);pill(-58,-16,116,32,'#e53935');txt('NEW RECORD!',0,6,14,'#fff','center',false);ctx.restore();}
   }
   ctx.restore();};}
@@ -7741,7 +7763,7 @@ function vmResult(){
     $('res-score').textContent=ok?fmtSec(E.ms):(E.stars?'☆☆☆':'');if(ok&&E.stars)st.push(E.stars.map(v=>v?'★':'☆').join(''));
     if(E.best)st.push('ベスト '+fmtSec(E.best));const L=VMD&&VMD.th&&VMD.th.lv[E.lv];if(L)st.push('★★ '+L.s[0]+'秒以内・★★★ '+L.s[1]+'秒以内');}
   if(k==='coop'){T.textContent=ok?'CLEAR!':'GAME OVER';$('res-mode').textContent='🤝 協力モード　'+((E.names||[]).join(' ＆ '));$('res-score').textContent=(E.score||0).toLocaleString();
-    st.push('距離 '+E.dist.toLocaleString()+'m','ボーナス '+E.bonus.toLocaleString(),'ニアミス '+E.near,'💫 復活 '+(E.rev||0)+'回');}
+    st.push('距離 '+E.dist.toLocaleString()+'m','ボーナス '+E.bonus.toLocaleString(),'ニアミス '+E.near);}
   $('res-sub').textContent=E.reason||'';
   if(E.coins)st.push('+'+E.coins+' NC');
   if(MLOG&&MLOG.lvBonus)st.push('🎖️ レベルアップ +'+MLOG.lvBonus+' NC');
@@ -7893,6 +7915,59 @@ function tabStale(){if(TAB_STALE)return;TAB_STALE=true;
 const lsNewer=j=>{try{const o=JSON.parse(j);return o&&SV&&o.id===SV.id&&(o.ts||0)>(SV.ts||0)+500;}catch(e){return false;}};
 addEventListener('storage',e=>{if(e.key===SAVE_KEY&&e.newValue&&lsNewer(e.newValue))tabStale();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SV){const j=LS.get(SAVE_KEY,null);if(j&&lsNewer(j))tabStale();}});
+
+/* =====================================================================
+   v27.0.0：フレンドへのプレゼント
+   ・フレンドの一覧の 🎁 から、NC か アイテム（ショップで買えるもの）を贈れる
+   ・相手がもう持っているアイテム・まだ受け取っていない同じアイテムは送れない（サーバーが確かめる）
+   ・NCは送った分だけ減る。アイテムはショップの値段を払って贈る
+   ===================================================================== */
+let FG=null;
+const giftable=(c,k)=>{const it=CAT[c][k];return it&&it.p>0&&!it.g&&!isSpecial(it)&&!(it.xm&&!xmasNow());};
+function openFGift(pk,name){
+  initAudio();if(!SV.nameReg){toast('ユーザー名を登録すると送れます');return;}
+  FG={pk,name:name||'フレンド',tab:'nc',cat:'skin',pick:null,info:null};
+  $('fg-title').textContent='🎁 '+FG.name+' にプレゼント';$('fg-left').textContent='確認中…';$('fg-amt').value='';
+  $('fg-modal').classList.remove('hide');fgRender();
+  socket.emit('gift_info',{to:pk},r=>{if(!FG||FG.pk!==pk)return;
+    if(!r||!r.ok){$('fg-modal').classList.add('hide');toast((r&&r.err)||'送れません',3500);FG=null;return;}
+    FG.info=r;fgRender();});
+}
+function fgRender(){
+  if(!FG)return;const I=FG.info;
+  document.querySelectorAll('.fg-tabs .chip').forEach(b=>b.classList.toggle('on',b.dataset.t===FG.tab));
+  $('fg-nc').classList.toggle('hide',FG.tab!=='nc');$('fg-item').classList.toggle('hide',FG.tab!=='item');
+  $('fg-left').textContent=I?'今日あと '+I.left.toLocaleString()+' NC分・'+I.nLeft+'回':'確認中…';
+  $('fg-have').textContent='持っているNC：'+SV.coins.toLocaleString();
+  const q=document.querySelector('.fg-quick');q.innerHTML='';
+  [50,100,300,500,1000].forEach(v=>{const b=document.createElement('button');b.className='chip';b.textContent=v+' NC';b.onclick=()=>{$('fg-amt').value=v;};q.appendChild(b);});
+  if(FG.tab!=='item')return;
+  const cats=Object.keys(CATN).filter(c=>Object.keys(CAT[c]).some(k=>giftable(c,k)));if(!cats.includes(FG.cat))FG.cat=cats[0];
+  chips($('fg-cats'),cats,FG.cat,c=>{FG.cat=c;FG.pick=null;fgRender();});
+  const own=(I&&I.own&&I.own[FG.cat])||[],pend=(I&&I.pend)||[],grid=$('fg-grid');grid.innerHTML='';
+  Object.keys(CAT[FG.cat]).filter(k=>giftable(FG.cat,k)).sort((a,b)=>CAT[FG.cat][a].p-CAT[FG.cat][b].p).forEach(k=>{
+    const has=own.includes(k),pd=pend.includes(FG.cat+':'+k);
+    const card=itemCard(FG.cat,k,{owned:has||pd,ownLabel:has?'相手が持っている':'送ったばかり',sel:FG.pick&&FG.pick.k===k,sub:has||pd?'送れません':priceTag(FG.cat,k),onClick:()=>{
+      if(has){toast(FG.name+' はもう持っています');return;}if(pd){toast('このアイテムは、もうプレゼントが届いています');return;}
+      FG.pick={c:FG.cat,k};fgRender();}});
+    if(has||pd)card.style.opacity='.45';grid.appendChild(card);});
+  const pk=$('fg-pick');pk.classList.toggle('hide',!FG.pick);
+  if(FG.pick){const p=priceOf(FG.pick.c,FG.pick.k);$('fg-pick-t').textContent='「'+CAT[FG.pick.c][FG.pick.k].n+'」を '+p.toLocaleString()+' NC で贈る（持っているNC：'+SV.coins.toLocaleString()+'）';}
+}
+function fgSend(body,cost,label){
+  if(!FG)return;if(SV.coins<cost){toast('NCが足りません');return;}
+  socket.emit('gift_send',Object.assign({to:FG.pk},body),r=>{
+    if(!r||!r.ok){toast((r&&r.err)||'送れませんでした',3500);return;}
+    SV.coins-=r.cost;saveNow();updateTop();if(page==='home')updateHome();setTimeout(ecoSoon,300);if(AU.ctx)SFX.coin();
+    toast('🎁 '+FG.name+' に '+label+' を贈りました！',3500);
+    if(FG.info){FG.info.left=r.left;FG.info.nLeft=Math.max(0,FG.info.nLeft-1);if(body.item)FG.info.pend.push(body.item.c+':'+body.item.k);}
+    FG.pick=null;fgRender();
+  });
+}
+$('fg-send-nc').onclick=()=>{const v=Math.floor(Number($('fg-amt').value)||0);if(v<10){toast('10NC以上にしてください');return;}fgSend({nc:v},v,v.toLocaleString()+' NC');};
+$('fg-send-item').onclick=()=>{if(!FG||!FG.pick)return;const {c,k}=FG.pick,p=priceOf(c,k);fgSend({item:{c,k,p}},p,'「'+CAT[c][k].n+'」');};
+document.querySelectorAll('.fg-tabs .chip').forEach(b=>b.onclick=()=>{if(!FG)return;FG.tab=b.dataset.t;fgRender();});
+$('fg-close').onclick=()=>{$('fg-modal').classList.add('hide');FG=null;};
 </script>
 </body>
 </html>
