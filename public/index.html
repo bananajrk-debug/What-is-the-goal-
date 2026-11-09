@@ -663,6 +663,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 
 /* ===== v26.1：管理画面のパスワード・操作の記録を消す ===== */
 .apw-box{width:min(24em,92vw)}.apw-box h3{margin:.1em 0 .3em}.apw-box form{display:flex;flex-direction:column;gap:.5em}
+.adm-inst{background:#b71c1c;border:3px solid #ff8a80;border-radius:12px;padding:.5em .8em;margin:0 0 .5em;font-weight:800;line-height:1.5}
 .rec-box{width:min(26em,92vw)}.rec-box h3{margin:.1em 0 .4em}#rec-msg{font-weight:800;font-size:1.05em}
 .apw-err{color:#ff8a80;font-weight:800;min-height:1.2em;font-size:.9em}
 .apw-row{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.4em}.apw-row .tx{flex:1;min-width:10em}
@@ -806,6 +807,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
         <button data-a="data"><span class="ic">💾</span><span class="lb">データ</span><i id="at-data" class="hide">!</i></button>
       </nav>
       <div class="adm-main">
+        <div id="adm-inst" class="adm-inst hide"></div>
         <div class="adm-quick" id="adm-quick"></div>
       <div class="adm-body">
         <!-- 📊 ダッシュボード -->
@@ -1598,7 +1600,8 @@ function migrateV3(data){ // 旧バージョン（v3以前）のデータを引�
 }
 let SV=null,saveTimer=null;
 var IDB_HOLD=false;   // v26.3：IndexedDBの読み込みが終わるまで、そこへは書かない（古い記録で新しい記録を消さないため）
-function saveNow(){if(!SV)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);if(!IDB_HOLD)IDB.put(SAVE_KEY,j);
+var TAB_STALE=false;   // v26.4：ほかのタブで新しく保存された → この画面は古いので保存しない（新しい記録を古い記録で消さないため）
+function saveNow(){if(!SV||TAB_STALE)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);if(!IDB_HOLD)IDB.put(SAVE_KEY,j);
   try{ecoSoon();pushProfile();}catch(e){}}   // NCの検算・プロフィールの更新（v16）
 function save(){if(!saveTimer)saveTimer=setTimeout(saveNow,250);}
 async function loadSave(){
@@ -3642,6 +3645,7 @@ function loadRanking(){
   renderSeasonBar();
   socket.emit(rp?'rank_top':'ranking',{},r=>{
     if(r&&r.season){SEASONI=r.season;renderSeasonBar();}
+    if(r&&r.me&&recApply(rp?null:r.me,rp?r.me:null,rp&&r.season?r.season.id:null))$('my-best').textContent=rp?'あなた：'+rankInfo(SV.rp).name+'（'+SV.rp+' RP）':'あなたのベスト：'+SV.best.toLocaleString();   // v26.4：サーバーの記録に合わせる
     const ol=$('rank-list');ol.innerHTML='';const top=(r&&r.top)||[];
     if(!top.length){const li=document.createElement('li');li.textContent=rp?'まだ記録がありません。ランクマッチで最初の殿堂入りを目指そう！':'まだ記録がありません。最初の1位を狙おう！';ol.appendChild(li);return;}
     top.forEach((e,i)=>{
@@ -5792,7 +5796,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.3.0',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.4.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6043,7 +6047,7 @@ function admMaintState(){const m=MAINT,e=$('am-state');
   $('am-start').textContent=m.on?'内容を更新する':'メンテナンス開始';$('am-end').disabled=!m.on;tabBadge('at-maint',m.on?1:0,'中');}
 function card(box,label,val,cls,tab){const c=document.createElement('button');c.className='acard'+(cls?' '+cls:'');const s=document.createElement('small');s.textContent=label;const b=document.createElement('b');b.textContent=val;c.append(s,b);if(tab)c.onclick=()=>admTab(tab);box.appendChild(c);}
 function admOverview(quiet){
-  socket.emit('adm_overview',r=>{if(!r||!r.ok)return;ADM_R=r;MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
+  socket.emit('adm_overview',r=>{if(!r||!r.ok)return;ADM_R=r;try{instUI(r.inst);}catch(e){}MAINT=r.maint||MAINT;admMaintState();setFbn(r.fbNew);
     const todo=r.flagged.length+(r.ecoFlags||[]).length;ADM_FLAG=todo;admDot();tabBadge('at-todo',todo);tabBadge('at-live',r.live||0);
     // 📊 ダッシュボード・上のバーは v22（dashRender／quickBar）で作る
     if(typeof admExtra==='function')admExtra(r);
@@ -6546,7 +6550,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.3.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.4.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7855,6 +7859,40 @@ $('rec-yes').onclick=async()=>{
   catch(e){$('rec-yes').disabled=false;toast('元に戻せませんでした。運営にお問い合わせください',3500);}
 };
 $('rec-no').onclick=()=>{LS.set('nm_rec_no','1');$('rec-modal').classList.add('hide');RECV=null;CODE_LAST='';codeSync();};
+
+/* =====================================================================
+   v26.4.0：記録の同期
+   ・自分のベストスコア・RPを、サーバーのランキングが持っている値に合わせる
+     （端末の記録が消えた・前のコードで戻した・別の端末で記録を出した、などでずれていた）
+   ・同じデータを2つのサーバーが使っていたら、管理画面に赤い注意を出す
+   ===================================================================== */
+function recApply(run,rpE,season){
+  if(!SV)return false;let ch=false;
+  if(run&&Number(run.score)>(SV.best||0)){SV.best=Number(run.score);if(run.c!=null)SV.bestC=run.c;ch=true;}
+  if(rpE&&season&&SV.season===season&&Number(rpE.rp)>(SV.rp||0)){SV.rp=Number(rpE.rp);SV.rpBest=Math.max(SV.rpBest||0,SV.rp);SV.sBest=Math.max(SV.sBest||0,SV.rp);ch=true;}
+  if(ch){save();try{updateHome();}catch(e){}}
+  return ch;
+}
+function recFetch(){if(!SV||!socket.connected)return;socket.emit('my_rec',r=>{if(r)recApply(r.run,r.rp,r.season);});}
+socket.on('name_status',()=>setTimeout(recFetch,1500));
+socket.on('endless_over',d=>{if(d&&!d.vm&&!d.daily&&d.best)recApply({score:d.best,c:(D&&D.course)},null,null);});
+// ランキング画面：「あなた」の行とベストを合わせる
+// 管理画面：同じデータを使う別のサーバー
+function instUI(w){const b=$('adm-inst');if(!w){b.classList.add('hide');return;}
+  b.textContent='⚠ 別のサーバー（'+(w.host||'URL不明')+'）が、同じデータ（Upstash）を使って動いています。おたがいに上書きし合って、ランキングやデータの数値がずれる原因になります。Renderで使っていないほうのサービスを止めてください（このサーバー：'+(w.me||location.origin)+'）';
+  b.classList.remove('hide');}
+socket.on('adm_inst',w=>{if(!IS_ADMIN)return;instUI(w);toast('⚠ 別のサーバーが同じデータを使っています（🛠 管理画面）',6000);});
+// 同じゲームを2つのタブ（画面）で開いていると、あとから保存したほうが前の記録を消してしまっていた
+// → ほかのタブが新しく保存したら、この画面は「古い」として保存をやめ、再読み込みしてもらう
+function tabStale(){if(TAB_STALE)return;TAB_STALE=true;
+  try{if(inGame){socket.emit('leave');stopGame();}}catch(e){}
+  const m=document.createElement('div');m.className='modal';m.style.zIndex='90';
+  m.innerHTML='<div class="box" style="width:min(24em,92vw);text-align:center"><h3 style="margin:.2em 0">📑 ほかの画面で遊んでいます</h3><p>このゲームを別のタブ・画面でも開いていて、そちらで記録が保存されました。記録が消えないように、この画面では保存をやめました。</p><button class="btn green big" id="stale-rl">最新の記録で開きなおす</button></div>';
+  document.body.appendChild(m);document.getElementById('stale-rl').onclick=()=>location.reload();
+}
+const lsNewer=j=>{try{const o=JSON.parse(j);return o&&SV&&o.id===SV.id&&(o.ts||0)>(SV.ts||0)+500;}catch(e){return false;}};
+addEventListener('storage',e=>{if(e.key===SAVE_KEY&&e.newValue&&lsNewer(e.newValue))tabStale();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SV){const j=LS.get(SAVE_KEY,null);if(j&&lsNewer(j))tabStale();}});
 </script>
 </body>
 </html>
