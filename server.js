@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v26.3.0 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v26.4.0 — Express + Socket.io（サーバー権威型）
+// v26.4.0：自分のベスト・RPをサーバーの記録に合わせる・ランキングのレベル/名前を最新に・同じデータを2つのサーバーが使っていたら知らせる
 // v26.3.0：記録が消える問題の対策（読み込みが遅いときに古い記録で上書きしない・消えてもこのブラウザのデータを見つけて復元できる）
 // v26.2.0：運営がプレイヤーの引き継ぎコードを見られる・iPadで起きていた音とセーブ読み込み前のエラーを修正
 // v26.1.0：管理画面のパスワード・操作の記録を消せる・クリスマスのエモートが表示されないのを修正
@@ -96,7 +97,8 @@ app.use((req, res, next) => {
   let file = ZALIAS[p];
   if (!file) { if (!ZTYPES[path.extname(p)] || p.includes('\0')) return next(); file = path.join(PUB, p); if (!file.startsWith(PUB + path.sep)) return next(); }
   const e0 = zEntry(file); if (!e0) return next();
-  const e = zSite(e0, file, siteOf(req));
+  const site = siteOf(req); if (site && p === '/index.html') LAST_SITE = site;
+  const e = zSite(e0, file, site);
   res.setHeader('Content-Type', e.type); res.setHeader('ETag', e.etag); res.setHeader('Vary', 'Accept-Encoding');
   res.setHeader('Cache-Control', p.endsWith('.html') || p.endsWith('sw.js') ? 'no-cache' : 'public, max-age=86400');
   if (e.csp) res.setHeader('Content-Security-Policy', e.csp(req));
@@ -291,6 +293,25 @@ const STORE = {
     return Promise.resolve();
   }
 };
+// v26.4：同じデータ（Upstash）を2つのサーバーが使っていないか見張る（5分ごと）
+//   例：Renderで新しいサービスを作り、前のサービスも動いたまま → おたがいに上書きして数値がずれる
+const INST = crypto.randomBytes(6).toString('hex'); let instSeen = 0, INST_WARN = null, LAST_SITE = '';
+async function instCheck() {
+  if (!useKV) return;
+  const kv = cmd => { kvCount(); return fetch(KV_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + KV_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(cmd) }).then(r => r.json()); };
+  try {
+    const j = await kv(['GET', 'nm:inst']), o = j && j.result ? JSON.parse(j.result) : null, now = Date.now();
+    if (o && o.id !== INST && now - o.t < 11 * 60e3) {
+      if (++instSeen === 2) {   // デプロイの入れかわり（数分）ではなく、ずっと2つ動いている
+        INST_WARN = { host: o.host || '', me: LAST_SITE, t: now };
+        console.warn('⚠ 別のサーバー（' + (o.host || '不明') + '）が同じデータを使っています');
+        try { for (const s of adminSockets()) s.emit('adm_inst', INST_WARN); } catch (e) { }
+      }
+    } else { instSeen = 0; INST_WARN = null; }
+    await kv(['SET', 'nm:inst', JSON.stringify({ id: INST, t: now, host: LAST_SITE })]);
+  } catch (e) { }
+}
+setInterval(instCheck, 5 * 60e3); setTimeout(instCheck, 20e3);
 // まとめて保存（3秒ごと）。サーバーが止められるとき（再起動・スリープ）は、待っている保存をすぐ書き出す
 const PENDING = new Map();
 const saver = (key, file, get, ms) => { let t = null; return () => { if (t) return; PENDING.set(key, () => { clearTimeout(t); t = null; PENDING.delete(key); return STORE.save(key, file, get(), true); }); t = setTimeout(() => { t = null; PENDING.delete(key); STORE.save(key, file, get()); }, ms || 3000); }; };
@@ -365,6 +386,16 @@ function submitScore(id, name, score, lv, c) {
   return { best, rank: ranking.findIndex(r => r.h === h) + 1, improved };
 }
 // 公開するランキングにはログインIDを含めない（自分の行だけ me:true を付ける）
+// v26.4：ランキングに出ているレベル・名前を、今のものに合わせる（記録を出したときのままだった）
+function boardsRefresh(sk, lv) {
+  if (!sk || !sk.nmId) return; const h = hidOf(sk.nmId), nm = sk.nmRegName || '';
+  lv = Math.floor(lv); if (!(lv >= 1 && lv <= 999)) return;
+  const fix = arr => { let ch = false; for (const e of arr) if (e.h === h && (e.lv !== lv || (nm && e.name !== nm))) { e.lv = lv; if (nm) e.name = nm; ch = true; } return ch; };
+  if (fix(ranking)) saveRanking();
+  if (fix(rpBoard)) saveRp();
+  try { if (fix(DAILY.top)) saveDaily(); } catch (e) { }
+  try { if (fix(TA.top)) saveTA(); } catch (e) { }
+}
 const topN = (n, me) => ranking.slice(0, n).map(r => ({ name: r.name, score: r.score, lv: r.lv || 1, c: courseOk(r.c) ? r.c : undefined, me: same(r, me) }));   // c=記録を出したコース
 // チャリランク（RP）ランキング：ランクマッチ終了直後の1回だけ報告を受け付け、1試合で増やせる量にも上限をかける
 const RP_FILE = process.env.RP_FILE || path.join(__dirname, 'ranking_rp.json');
@@ -2005,6 +2036,7 @@ io.on('connection', socket => {
     const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
     const now = Date.now(); if (now - (socket.profT || 0) < 2500) return; socket.profT = now;
     getProf(pk).then(old => { const p = Object.assign(cleanProf(d), { t: now }); if (old) { p._dv = old._dv; p._dvs = old._dvs; } putProf(pk, p); });
+    boardsRefresh(socket, Number(d.lv));   // v26.4：ランキングのレベル・名前も今のものに
   });
   socket.on('profile_get', async (d, cb) => {
     cb = rp(cb); if (!d || typeof d !== 'object') return cb({ ok: false });
@@ -2129,7 +2161,7 @@ io.on('connection', socket => {
   });
   // ----- ここから管理者だけ -----
   const adm = fn => (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } if (!socket.isAdmin) return rp(cb)({ ok: false, err: '管理者ではありません' }); if (!socket.admOk) return rp(cb)({ ok: false, err: 'パスワードを入れてください', lock: 1 }); try { fn(d || {}, rp(cb)); } catch (e) { console.error(e); rp(cb)({ ok: false, err: 'エラー' }); } };
-  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c, why: ECO[pk].flag.why || [] })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
+  socket.on('adm_overview', adm((d, cb) => cb({ ok: true, inst: INST_WARN, pushN: Object.keys(PUSH).filter(pk => PUSH[pk].subs && PUSH[pk].subs.length).length, errN: ERRS.filter(e => Date.now() - (e.last || 0) < 864e5).length, ev: evInfo(), sched: MOD.sched || [], kvs: { kv: useKV, boot: KVSTAT.n, since: KVSTAT.since, month: MOD.kvm || null, err: KVSTAT.err, lastErr: KVSTAT.lastErr, lastErrT: KVSTAT.lastErrT }, live: [...rooms.values()].filter(canWatch).length, born: MOD.born, ng: MOD.ng || [], ngBase: NG_ANY.length + NG_KATA.length, ecoFlags: Object.keys(ECO).filter(pk => ECO[pk].flag).map(pk => Object.assign(userRow(pk), { w: ECO[pk].flag.w, bound: ECO[pk].flag.bound, coins: ECO[pk].c, why: ECO[pk].flag.why || [] })).sort((a, b) => (b.w - b.bound) - (a.w - a.bound)).slice(0, 50), maint: maintInfo(), fbNew: MOD.feedback.filter(f => f.st === 'new').length, online: io.sockets.sockets.size, users: new Set([...[...nameReg.values()].map(e => e.pk), ...Object.keys(MOD.seen)]).size, rooms: [...rooms.values()].filter(R => R.state !== 'lobby').length, flagged: flagged(), notices: MOD.notices,
     banned: Object.keys(MOD.bans).filter(pk => banOf(pk)).map(userRow), kv: useKV, dau: usageDay().set.size, nu: usageDay().nset.size, sale: saleInfo(), bgN: (MOD.bgifts || []).filter(g => g.until > Date.now()).length,
     today: usageToday(), days: Object.keys(USAGE.days).sort().slice(-13).map(d => ({ d, dau: USAGE.days[d].dau || 0, nu: USAGE.days[d].nu || 0 })), audit: (MOD.audit || []).slice(0, 5),
     bgifts: (MOD.bgifts || []).filter(g => g.until > Date.now()).map(g => ({ id: g.id, title: g.title, until: g.until, got: (MOD.bclaims[g.id] || []).length })) })));
@@ -2513,7 +2545,9 @@ io.on('connection', socket => {
     if (k.length >= 1) for (const [kk, e] of nameReg) { if (out.length >= 8) break; if (kk !== k && kk.startsWith(k)) add(e); }
     rp(cb)({ list: out });
   });
-  socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId) }); });
+  socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId), me: myEntry('run', socket.nmId) }); });
+  // v26.4：自分の記録（サーバーが持っている正しい値）。端末の記録が消えた・古いときに合わせる
+  socket.on('my_rec', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ run: myEntry('run', socket.nmId), rp: myEntry('rp', socket.nmId), season: SEASON.id }); });
   socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
   // 端末バックアップ用の署名つきランキング／復元
   socket.on('rank_backup', (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } const v = RK_BOOT + ':' + RKV + ':' + SEASON.id;
@@ -2524,7 +2558,7 @@ io.on('connection', socket => {
     socket.restored = true;
     rp(cb)({ added: restoreSigned('run', d.run) + restoreSigned('rp', d.rp) });
   });
-  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId), season: seasonInfo() }); });
+  socket.on('rank_top', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: rpTop(30, socket.nmId), season: seasonInfo(), me: myEntry('rp', socket.nmId) }); });
   socket.on('rank_report', (d, cb) => {
     if (!socket.rkOk || !d) return rp(cb)({ ok: false });
     socket.rkOk = false;
