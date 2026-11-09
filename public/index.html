@@ -1064,6 +1064,9 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
     <div class="au-sec"><b>⛔ 利用停止</b><div class="row"><select id="au-days" class="tx"><option value="1">1日</option><option value="3">3日</option><option value="7" selected>7日</option><option value="14">14日</option><option value="30">30日</option><option value="0">無期限</option></select><input id="au-reason" class="tx grow" maxlength="300" placeholder="停止の理由（本人に表示されます）"></div>
       <div class="row"><button id="au-ban" class="btn sm red">停止する</button><button id="au-unban" class="btn sm">停止を解除</button></div></div>
     <div class="au-sec"><b>📱 端末情報</b><div id="au-dev" class="au-dev"></div></div>
+    <div class="au-sec"><b>🔑 引き継ぎコード</b><div class="muted">プレイヤーがなくしたときのサポート用。表示すると操作の記録に残ります。このコードを知っている人はだれでもこのアカウントを使えるので、本人以外に教えないでください。</div>
+      <div class="row"><button id="au-code-btn" class="btn sm blue">表示する</button><button id="au-code-copy" class="btn sm dark hide">コピー</button><span id="au-code-t" class="muted"></span></div>
+      <textarea id="au-code" class="tx hide" readonly rows="3" style="width:100%;font-size:.75em;word-break:break-all"></textarea></div>
     <div class="au-sec" id="au-same"></div>
     <div class="au-sec au-wide" id="au-hist"></div>
   </div></div></div>
@@ -1762,10 +1765,10 @@ function initAudio(){
     AU.dist.curve=cv;AU.dist.connect(AU.bgmG);
     applyVol();loadSoundFiles();
   }
-  if(AU.ctx.state==='suspended')AU.ctx.resume();
+  if(AU.ctx.state==='suspended')AU.ctx.resume().catch(()=>{});   // v26.2：iPadなどで音の装置が使えないときは、次にさわったときにもう一度ためす
 }
 function applyVol(){
-  if(!AU.ctx)return;
+  if(!AU.ctx||!SV)return;   // v26.2：セーブの読み込みが終わる前にさわられても止まらないように
   AU.master.gain.value=SV.mute?0:.9*SV.vol.all;   // 全体・ミュート
   AU.bgmG.gain.value=SV.vol.bgm*.5*(BG.lobby?.7:1);
   AU.seG.gain.value=SV.vol.se;
@@ -1871,7 +1874,7 @@ function loadVoice(k){
   if(AU['vp_'+k])return AU['vp_'+k];
   return AU['vp_'+k]=fetch(VOICES[k]).then(r=>r.arrayBuffer()).then(ab=>new Promise((res,rej)=>AU.ctx.decodeAudioData(ab,res,rej))).then(buf=>{AU.files['se_'+k]=buf;return buf;}).catch(()=>null);
 }
-function playVoice(k,vol){initAudio();if(!AU.ctx||SV.mute||!SV.vol.voice)return;if(AU.files['se_'+k]){playFile('se_'+k,vol==null?1:vol,AU.voG);return;}loadVoice(k).then(b=>{if(b)playFile('se_'+k,vol==null?1:vol,AU.voG);});}
+function playVoice(k,vol){initAudio();if(!AU.ctx||!SV||SV.mute||!SV.vol.voice)return;if(AU.files['se_'+k]){playFile('se_'+k,vol==null?1:vol,AU.voG);return;}loadVoice(k).then(b=>{if(b)playFile('se_'+k,vol==null?1:vol,AU.voG);});}
 function playSE(id){
   const s=SES[id];if(!s||id==='none')return;initAudio();if(!AU.ctx)return;
   if(s.voice){playVoice(s.voice,1.1);return;}
@@ -1969,7 +1972,7 @@ function bgmTick(){
     BG.next+=spb*(tr.swing?(s%2===0?1+tr.swing:1-tr.swing):1);BG.step=(st+1)%64;
   }
 }
-document.addEventListener('visibilitychange',()=>{if(!AU.ctx)return;if(document.hidden)AU.ctx.suspend();else AU.ctx.resume();});
+document.addEventListener('visibilitychange',()=>{if(!AU.ctx)return;if(document.hidden)AU.ctx.suspend().catch(()=>{});else AU.ctx.resume().catch(()=>{});});
 
 /* ===== 衝突音のカスタム音声（マイ録音.m4a / 管理者のアップロード） ===== */
 const customCrashAudio=$('custom-crash-audio');let customOk=false;
@@ -5517,7 +5520,7 @@ function loop(t){
 /* ===== 起動：セーブデータを読み込んでからロビーを表示 ===== */
 (async function boot(){
   try{await loadSave();}catch(e){console.error(e);SV=fixSave(null);saveNow();}
-  ensureDaily();ensureWeekly();grantUnlocks();lastClaimable=claimable();
+  ensureDaily();ensureWeekly();grantUnlocks();lastClaimable=claimable();applyVol();
   if(SV.rkPend)setTimeout(()=>rankPenalty('前回のランクマッチを途中で抜けたため敗北扱いになりました'),1200);
   resize();showPage('home');updateTop();
   $('boot').classList.add('hide');
@@ -5776,7 +5779,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.1.0',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.2.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6530,7 +6533,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.1.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.2.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7080,7 +7083,7 @@ function renderItems(){miniChips($('ai-src'),AIS,AI_S,v=>{AI_S=v;renderItems();}
 $('ai-reset').onclick=()=>{if(!confirmTwice($('ai-reset'),'リセットする？'))return;socket.emit('adm_items_reset',r=>{if(r&&r.ok){AI_D=r.st;renderItems();toast('記録をリセットしました');}});};
 
 /* ----- 📜 操作の記録 ----- */
-const AUDN={u_ban:'⛔ 利用停止',u_unban:'✅ 停止を解除',u_warn:'⚠️ 警告',u_msg:'✉️ 個別メッセージ',u_clearrep:'🧹 通報を消去',u_ncfix:'💰 NCを修正',u_ncok:'💰 NCは問題なしにした',u_gift:'🎁 個別にプレゼント',
+const AUDN={u_code:'🔑 引き継ぎコードを表示',u_ban:'⛔ 利用停止',u_unban:'✅ 停止を解除',u_warn:'⚠️ 警告',u_msg:'✉️ 個別メッセージ',u_clearrep:'🧹 通報を消去',u_ncfix:'💰 NCを修正',u_ncok:'💰 NCは問題なしにした',u_gift:'🎁 個別にプレゼント',
   notice:'📢 お知らせを送信',notice_sched:'📅 お知らせを予約',notice_del:'🗑 お知らせを削除',sched_del:'🗑 予約したお知らせを取り消し',dist:'🎁 一斉配布',dist_stop:'⏹ 配布を終了',
   maint_start:'🛠 メンテナンス開始',maint_edit:'🛠 メンテナンスの内容を変更',maint_end:'🛠 メンテナンス終了',maint_auto_start:'🛠 予約したメンテナンスが開始',msched:'📅 メンテナンスを予約',msched_cancel:'📅 メンテナンスの予約を取り消し',
   event:'🎉 イベントを設定',event_end:'🎉 イベントを終了',sale:'🏷 セールを設定',sale_end:'🏷 セールを終了',gcfg:'🎰 ガチャの設定を変更',rank_del:'🏆 ランキングの記録を削除',rank_reset:'🏆 ランキングをリセット',
@@ -7795,6 +7798,26 @@ $('apw-lockb').onclick=()=>{socket.emit('adm_lock',{tok:atokGet()},()=>{});atokS
 {const at=admTab;admTab=function(t){at(t);if(t==='data')apwStateUI();};}
 // 操作の記録：全部消す
 $('aa-clear').onclick=()=>{const b=$('aa-clear');if(!confirmTwice(b,'全部消す'))return;socket.emit('adm_audit_clear',r=>{if(r&&r.ok){AA_L=r.list;renderAudit();toast('操作の記録を全部消しました');}else toast((r&&r.err)||'消せませんでした');});};
+
+/* =====================================================================
+   v26.2.0：引き継ぎコードの控え
+   ・ゲームを開いているあいだ、最新の引き継ぎコードを自動でサーバーに送る（変わったときだけ。3分ごと＋画面を閉じるとき）
+   ・運営はユーザーの画面の「🔑 引き継ぎコード」から見られる（見たことは操作の記録に残る）
+   ===================================================================== */
+let CODE_LAST='';
+async function codeSync(){
+  try{if(!SV||!SV.name||!socket.connected||typeof CompressionStream==='undefined')return;
+    const c=await makeCode();if(!c||c===CODE_LAST)return;CODE_LAST=c;socket.emit('code_sync',{c});}catch(e){}
+}
+socket.on('connect',()=>{CODE_LAST='';setTimeout(codeSync,6000);});
+setInterval(codeSync,180000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)codeSync();});
+// 運営：ユーザーの画面
+{const ou=openAdmUser;openAdmUser=function(pk,quiet){if(!quiet){$('au-code').classList.add('hide');$('au-code').value='';$('au-code-copy').classList.add('hide');$('au-code-t').textContent='';}return ou(pk,quiet);};}
+$('au-code-btn').onclick=()=>{if(!AU_CUR)return;socket.emit('adm_code',{pk:AU_CUR.pk},r=>{
+  if(!r||!r.ok){$('au-code-t').textContent=(r&&r.err)||'見られませんでした';return;}
+  const t=$('au-code');t.value=r.c;t.classList.remove('hide');$('au-code-copy').classList.remove('hide');$('au-code-t').textContent=ago(r.t)+'の時点（'+r.c.length+'文字）';});};
+$('au-code-copy').onclick=()=>copyText($('au-code').value,'コピーしました');
 </script>
 </body>
 </html>
