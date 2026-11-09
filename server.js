@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v26.4.0 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v27.0.0 — Express + Socket.io（サーバー権威型）
+// v27.0.0：協力モードを「2人で1台」に（ホスト＝右＋ブースト、ゲスト＝左＋ブレーキ）・フレンドにNC/アイテムをプレゼント・横移動の瞬間移動を修正
 // v26.4.0：自分のベスト・RPをサーバーの記録に合わせる・ランキングのレベル/名前を最新に・同じデータを2つのサーバーが使っていたら知らせる
 // v26.3.0：記録が消える問題の対策（読み込みが遅いときに古い記録で上書きしない・消えてもこのブラウザのデータを見つけて復元できる）
 // v26.2.0：運営がプレイヤーの引き継ぎコードを見られる・iPadで起きていた音とセーブ読み込み前のエラーを修正
@@ -949,7 +950,7 @@ function snapE(R) {
    ・🎯 ミッション（ms）：お題をクリアして⭐を集める。⭐は「クリア」「条件A」「条件B」の3つで、別々の挑戦で取ってもOK。
      前のステージをクリアすると次が遊べる。はじめて取った⭐にはNC
    ・🚓 ドロボウを追え！（th）：前を逃げるドロボウ（自転車）に追いついてつかまえる。60秒以内。むずかしさは3段階
-   ・🤝 協力モード（coop）：2人で同じ道を走る。片方がぶつかっても、もう1人が10秒生き残れば復活。2人ともアウトで終わり
+   ・🤝 協力モード（coop）：v27から、2人で1台の自転車を動かす。ホスト＝右へ動く＋ブースト、ゲスト＝左へ動く＋ブレーキ。ぶつかったら終わり
    ※どれもエンドレスの仕組み（車・パトカー・泥）の上に作っている。記録・ごほうびはサーバーで決める
    ===================================================================== */
 const TA_FILE = process.env.TA_FILE || path.join(__dirname, 'ta.json');
@@ -1039,10 +1040,10 @@ function resetVM(R) {
   if (R.vm === 'ta') { R.rngS = mulberry32(R.seed); R.nextCop = 9 + R.rngS() * 4; }
   if (R.vm === 'ms') { const cm = R.rule.cop == null ? 1 : R.rule.cop; R.nextCop = cm ? rnd(9, 13) * cm : 1e9; }
   if (R.vm === 'th') { R.P[1] = vmRider(R, 1, LANES[1 + Math.floor(Math.random() * 2)], 360); R.P[1].tb = rnd(2, 4); R.P[1].st = 0; R.nextCop = 1e9; }
-  if (R.vm === 'coop') { R.P = [vmRider(R, 0, -40, 0), vmRider(R, 1, 40, 0)]; R.P.forEach(p => { p.dn = 0; p.rt = 0; p.inv = 0; }); R.revN = 0; }
+  if (R.vm === 'coop') { R.P = [vmRider(R, 0, 0, 0)]; R.cs = [0, 0]; R.revN = 0; }   // v27：2人で1台
 }
 const alive = p => p && !p.dn;
-const vmPl = R => R.vm === 'coop' ? [0, 1] : [0];   // 人が動かす自転車
+const vmPl = R => [0];   // 人が動かす自転車（v27：協力モードも1台）
 function vmLead(R) { let b = null; for (const i of vmPl(R)) { const p = R.P[i]; if (alive(p) && (!b || p.z > b.z)) b = p; } if (R.vm === 'th' && R.P[1] && R.P[1].z > b.z) b = R.P[1]; return b || R.P[0]; }
 function vmVal(R, k) {
   const p = R.P[0], m = R.mx;
@@ -1115,7 +1116,7 @@ function vmOver(R, ok, reason, kind) {
     Object.assign(base, { lv: R.lv, stars: st, got: st.map((v, k) => v && !(old & (1 << k)) ? 1 : 0), best, improved, coins: give(0, nc), lim: TH_LIM });
   } else if (R.vm === 'coop') {
     const c = Math.floor(R.score / 40);
-    base.rev = R.revN; base.names = R.names.slice(0, 2);
+    base.names = R.names.slice(0, 2);
     for (const i of [0, 1]) if (R.ids[i]) { const g = give(i, c); prog(R, i, 'run', { score: R.score, dist: base.dist, vm: 'coop' }); io.to(R.ids[i]).emit('endless_over', Object.assign({}, base, { coins: g })); }
     return;
   }
@@ -1128,30 +1129,31 @@ function stepVM(R, dt) {
   R.el += dt;
   const rule = R.rule || {}, spd = rule.spd || 0;
   const target = Math.min(EN.MAX + spd, EN.BASE + spd + R.el * EN.ACC);
+  if (R.vm === 'coop') {   // v27：2人で1台。ホストは右とブースト、ゲストは左とブレーキだけ
+    R.cs = [Math.max(0, inS(R.inp[0])), Math.min(0, inS(R.inp[1]))];
+    const p = R.P[0];
+    for (const i of [0, 1]) {
+      if (!R.act[i]) continue;
+      const k = R.actK[i], mine = i === 0 ? 'boost' : 'brake';
+      if (k !== mine) { R.ev.push({ t: 'deny', k, i, co: 1 }); continue; }
+      if (k === 'brake') { if (p.bcd <= 0) { p.brk = 0.7; p.bcd = 1.3; R.mx.brk++; prog(R, i, 'brake'); } }
+      else if (p.cd <= 0 && p.boost <= 0) { p.boost = 1.3; p.cd = 4; R.mx.bst++; prog(R, i, 'boost'); }
+    }
+    R.act = [false, false];
+  }
   for (const i of vmPl(R)) {
     const p = R.P[i]; if (!p) continue;
-    steerRider(R, p, R.inp[i], EN.STEER, dt);
+    steerRider(R, p, R.vm === 'coop' ? { s: R.cs[0] + R.cs[1] } : R.inp[i], EN.STEER, dt);
     if (R.act[i] && !p.dn) {
       if (R.actK[i] === 'brake') { if (rule.nobrake) R.ev.push({ t: 'deny', k: 'brake', i }); else if (p.bcd <= 0) { p.brk = 0.7; p.bcd = 1.3; R.mx.brk++; prog(R, i, 'brake'); } }
       else if (rule.noboost) R.ev.push({ t: 'deny', k: 'boost', i });
       else if (p.cd <= 0 && p.boost <= 0) { p.boost = 1.3; p.cd = 4; R.mx.bst++; prog(R, i, 'boost'); }
     }
     let tg = target;
-    if (R.vm === 'coop' && !p.dn) { const q = R.P[1 - i]; if (alive(q) && q.z - p.z > 220) tg += Math.min(70, (q.z - p.z - 220) * 0.25); }   // 2人が離れすぎないように、後ろの人は少し速く
     if (p.brk > 0) { p.brk -= dt; p.v = Math.max(tg * 0.35, p.v - 420 * dt); }
     else if (p.boost > 0) { p.boost -= dt; p.v = Math.min(tg + 160, p.v + 520 * dt); }
     else { const df = tg - p.v; p.v += Math.sign(df) * Math.min(Math.abs(df), 170 * dt); }
     p.cd = Math.max(0, p.cd - dt); p.bcd = Math.max(0, p.bcd - dt); p.inv = Math.max(0, (p.inv || 0) - dt);
-    if (p.dn) {   // 倒れている間は、相棒の少し後ろを（見えない姿で）ついていく
-      const q = R.P[1 - i]; p.z = q.z - 70; p.v = q.v; p.mm = 1; p.mud = 0; p.boost = 0; p.brk = 0;
-      p.rt -= dt;
-      if (p.rt <= 0) {   // 💫 復活！
-        p.dn = 0; p.inv = 2.2; p.z = q.z - 40; R.revN++; R.bonus += 100;
-        const free = LANES.filter(x => clearAt(R, x, p.z, 10, 30)); p.x = free.length ? free.sort((a, b) => Math.abs(a - q.x) - Math.abs(b - q.x))[0] : q.x;
-        p.vx = 0; R.ev.push({ t: 'rev', i, b: 100 });
-      }
-      continue;
-    }
     const m0 = p.mud || 0; mudCheck(R, i, p, dt); if (p.mud > m0 + 0.5) R.mx.mud++;
     p.mm = moveMul(R, p); p.z += p.v * p.mm * dt;
   }
@@ -1192,11 +1194,6 @@ function stepVM(R, dt) {
       if (o.k === 'cop') { if (copRule(o, p, true)) hit = { k: 'cop', why: 'パトカーの進路妨害で逮捕！' }; }
       else if (hitObs(o, p)) hit = { k: 'car', why: o.k === 'cone' ? '工事現場に突っ込んだ！' : o.k === 'bus' ? 'バスに激突！' : '車と衝突！' };
       if (hit) {
-        if (R.vm === 'coop') {
-          p.dn = 1; p.rt = 10; R.combo = 0; R.ev.push({ t: 'down', i, k: hit.k });
-          if (!alive(R.P[1 - i])) return vmOver(R, false, '2人ともアウト！', { k: hit.k, who: [i] });
-          break;
-        }
         return vmOver(R, false, R.vm === 'ta' ? 'リタイア：' + hit.why : hit.why, { k: hit.k, who: [0] });
       }
       const bit = 1 << i;
@@ -1229,13 +1226,13 @@ function vmSnap(R) {   // 画面に出すモードの情報（毎回送る。短
   if (R.vm === 'ta') return ['ta', TA_GOAL];
   if (R.vm === 'ms') return ['ms', R.st, Math.floor(vmVal(R, MS[R.st].g[0]) * 10) / 10, m.brk, m.bst, m.mud, m.maxc, m.cop, R.nearN];
   if (R.vm === 'th') return ['th', R.lv, TH_LIM];
-  if (R.vm === 'coop') return ['coop', R.P.map(p => p ? [p.dn ? 1 : 0, r1(p.rt || 0), p.inv > 0 ? 1 : 0] : 0), R.revN];
+  if (R.vm === 'coop') return ['coop', Math.round((R.cs ? R.cs[0] : 0) * 20) / 20, Math.round((R.cs ? R.cs[1] : 0) * 20) / 20];   // v27：2人それぞれの操作（先読みと表示に使う）
   return 0;
 }
 function startCoop(R) {
   R.mode = 'endless'; R.vm = 'coop'; R.sentOver = false;
   resetVM(R);
-  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: i, course: R.course, mode: 'endless', room: true, vm: 'coop', opp: oppInfo(R, 1 - i) });
+  for (const i of [0, 1]) io.to(R.ids[i]).emit('start', { slot: 0, role: i, course: R.course, mode: 'endless', room: true, vm: 'coop', opp: oppInfo(R, 1 - i) });   // v27：画面は2人とも同じ自転車（slot 0）を見る。role＝担当
 }
 function coopToLobby(R) { R.mode = 'versus'; R.vm = null; R.state = 'lobby'; R.ready = [false, false]; R.P = []; R.obs = []; R.mud = []; }
 
@@ -1851,7 +1848,10 @@ function cleanGiftBody(d) {
   const items = (Array.isArray(d.items) ? d.items : []).filter(x => x && /^[\w-]{1,24}$/.test(x.c) && /^[\w-]{1,24}$/.test(x.k)).slice(0, 10).map(x => ({ c: x.c, k: x.k, n: txt(x.n, 30) }));
   return { amount: n(d.amount, GIFT_MAX), tk: n(d.tk, 100), shard: n(d.shard, 10000), items };
 }
-const giftWorth = g => (g.amount || 0) + (g.tk || 0) * 30 + (g.items || []).length * ITEM_VALUE;
+// v27：フレンドへのプレゼント（NC・アイテム）。1日に送れるのは合計 GIFT_DAY NC 分・10回まで
+const GIFT_CATS = ['bike', 'skin', 'hair', 'fit', 'acc', 'trail', 'emote', 'se', 'bgm', 'wfx'], GIFT_DAY = 5000;
+const giftDay = pk => { const d = dayJ(Date.now()); MOD.gsent = MOD.gsent || {}; let e = MOD.gsent[pk]; if (!e || e.d !== d) e = MOD.gsent[pk] = { d, n: 0, v: 0 }; return e; };
+const giftWorth = g => g.wv != null ? g.wv : (g.amount || 0) + (g.tk || 0) * 30 + (g.items || []).length * ITEM_VALUE;
 function bgiftOk(g, pk, socket) {   // この人が「全員配布」をもらえるか
   if (Date.now() > g.until) return false;
   if (g.regOnly && !nameOfPk(pk)) return false;
@@ -2003,6 +2003,48 @@ io.on('connection', socket => {
     if (l.includes(pk)) return rp(cb)({ ok: false, err: 'もう受け取っています' });
     l.push(pk); saveMod(); ecoAdd(pk, 'gift', n.gift); rp(cb)({ ok: true, amount: n.gift, id });
   });
+  // v27：フレンドへのプレゼント
+  async function giftCheck(to) {   // おたがいにフレンドか・相手の持ち物
+    const me = socket.nmPk; to = cleanPk(to);
+    if (!me || !to || me === to) return { err: '相手が正しくありません' };
+    if (!nameOfPk(me)) return { err: 'ユーザー名を登録すると送れます' };
+    const [a, b] = await Promise.all([getProf(me), getProf(to)]);
+    if (!a || !b || !(a._fr || []).includes(to) || !(b._fr || []).includes(me)) return { err: 'おたがいにフレンドの人にだけ送れます（相手がしばらく遊んでいないときも送れません）' };
+    return { to, b };
+  }
+  socket.on('gift_info', async (d, cb) => {
+    cb = rp(cb); const r = await giftCheck(d && d.to); if (r.err) return cb({ ok: false, err: r.err });
+    const g = giftDay(socket.nmPk), pend = (MOD.gifts[r.to] || []).flatMap(x => x.items || []).map(x => x.c + ':' + x.k);
+    cb({ ok: true, own: r.b._own || {}, pend, left: Math.max(0, GIFT_DAY - g.v), nLeft: Math.max(0, 10 - g.n), name: nameOfPk(r.to) });
+  });
+  socket.on('gift_send', async (d, cb) => {
+    cb = rp(cb); if (!d || typeof d !== 'object') return cb({ ok: false });
+    const now = Date.now(); if (now - (socket.giftT || 0) < 3000) return cb({ ok: false, err: '少し待ってから送ってください' }); socket.giftT = now;
+    const r = await giftCheck(d.to); if (r.err) return cb({ ok: false, err: r.err });
+    const me = socket.nmPk, E = ECO[me], g = giftDay(me);
+    const nc = Math.floor(Number(d.nc) || 0), it = d.item && typeof d.item === 'object' ? d.item : null;
+    let cost = 0, items = null;
+    if (it) {
+      const c = String(it.c || ''), k = String(it.k || ''), p = Math.floor(Number(it.p) || 0);
+      if (!GIFT_CATS.includes(c) || !/^[\w-]{1,32}$/.test(k) || !(p >= 1 && p <= 50000)) return cb({ ok: false, err: 'アイテムが正しくありません' });
+      if (((r.b._own || {})[c] || []).includes(k)) return cb({ ok: false, err: '相手はもう持っています' });
+      if ((MOD.gifts[r.to] || []).some(x => (x.items || []).some(y => y.c === c && y.k === k))) return cb({ ok: false, err: 'このアイテムは、もう相手にプレゼントが届いています（まだ受け取っていません）' });
+      cost = p; items = [{ c, k }];
+    } else {
+      if (!(nc >= 10 && nc <= GIFT_DAY)) return cb({ ok: false, err: 'NCは10〜' + GIFT_DAY + 'で送れます' });
+      cost = nc;
+    }
+    if (g.n >= 10) return cb({ ok: false, err: '今日はもう10回送りました。明日また送れます' });
+    if (g.v + cost > GIFT_DAY) return cb({ ok: false, err: '1日に送れるのは合計 ' + GIFT_DAY.toLocaleString() + ' NC分までです（今日はあと ' + Math.max(0, GIFT_DAY - g.v).toLocaleString() + ' NC分）' });
+    if (!E || now - (E.t || 0) > 30 * 60e3 || (E.c || 0) < cost) return cb({ ok: false, err: 'NCが足りません' });
+    const from = nameOfPk(me) || 'フレンド';
+    const gg = giveGift(r.to, items ? 0 : cost, '🎁 ' + from + ' からのプレゼント', from + ' さんからプレゼントが届きました！', items ? { items } : null);
+    if (!gg) return cb({ ok: false, err: '送れませんでした' });
+    gg.wv = items ? Math.max(cost, ITEM_VALUE) : cost; gg.from = me;   // 受け取った人のNCの検算では、アイテムは多めに見る
+    E.c -= cost; E.gift = (E.gift || 0) - cost; saveEco();   // 送った人のNCの上限は、そのぶん下げる
+    g.n++; g.v += cost; saveMod();
+    cb({ ok: true, cost, left: Math.max(0, GIFT_DAY - g.v) });
+  });
   socket.on('gift_claim', (d, cb) => {
     const pk = socket.nmPk, id = parseInt(d && d.id, 10), l = pk && MOD.gifts[pk], g = l && l.find(x => x.id === id);
     if (!g) {   // 全員への配布
@@ -2035,7 +2077,11 @@ io.on('connection', socket => {
   socket.on('profile_set', d => {
     const pk = socket.nmPk; if (!pk || !d || typeof d !== 'object') return;
     const now = Date.now(); if (now - (socket.profT || 0) < 2500) return; socket.profT = now;
-    getProf(pk).then(old => { const p = Object.assign(cleanProf(d), { t: now }); if (old) { p._dv = old._dv; p._dvs = old._dvs; } putProf(pk, p); });
+    getProf(pk).then(old => { const p = Object.assign(cleanProf(d), { t: now }); if (old) { p._dv = old._dv; p._dvs = old._dvs; }
+      // v27：プレゼント用（持っているアイテムと、フレンドの一覧。ほかの人には見せない）
+      const own = {}; if (d.own && typeof d.own === 'object') for (const c of GIFT_CATS) if (Array.isArray(d.own[c])) own[c] = d.own[c].filter(k => typeof k === 'string' && /^[\w-]{1,32}$/.test(k)).slice(0, 400);
+      p._own = own; p._fr = Array.isArray(d.frs) ? d.frs.map(cleanPk).filter(Boolean).slice(0, 300) : (old && old._fr) || [];
+      putProf(pk, p); });
     boardsRefresh(socket, Number(d.lv));   // v26.4：ランキングのレベル・名前も今のものに
   });
   socket.on('profile_get', async (d, cb) => {
@@ -2044,7 +2090,7 @@ io.on('connection', socket => {
     if (!pk && typeof d.name === 'string') { const e = nameReg.get(nkey(validName(d.name) || '')); if (e) pk = e.pk; }
     if (!pk) return cb({ ok: false, err: 'プレイヤーが見つかりません' });
     const p = await getProf(pk), name = nameOfPk(pk) || (MOD.seen[pk] || {}).n || 'プレイヤー', sk = sockOf(byPk.get(pk));
-    const out = p ? Object.assign({}, p) : null; if (out) { delete out._dv; delete out._dvs; }   // 端末情報は管理者以外には見せない
+    const out = p ? Object.assign({}, p) : null; if (out) { delete out._dv; delete out._dvs; delete out._own; delete out._fr; }   // 端末情報は管理者以外には見せない
     cb({ ok: true, pk, name, reg: !!nameOfPk(pk), online: !!sk, st: sk ? statusOf(sk.id) : 'offline', p: out, ban: !!banOf(pk) });
   });
   // ===== NCの検算（端末から「NC＋持ち物の価値」が届く） =====
