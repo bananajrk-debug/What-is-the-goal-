@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v26.2.0 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v26.3.0 — Express + Socket.io（サーバー権威型）
+// v26.3.0：記録が消える問題の対策（読み込みが遅いときに古い記録で上書きしない・消えてもこのブラウザのデータを見つけて復元できる）
 // v26.2.0：運営がプレイヤーの引き継ぎコードを見られる・iPadで起きていた音とセーブ読み込み前のエラーを修正
 // v26.1.0：管理画面のパスワード・操作の記録を消せる・クリスマスのエモートが表示されないのを修正
 //   （バージョンの決め方：大きい変更＝1つめの数字、修正など＝2つめ、それ以外＝3つめ）
@@ -99,6 +100,9 @@ app.use((req, res, next) => {
   res.setHeader('Content-Type', e.type); res.setHeader('ETag', e.etag); res.setHeader('Vary', 'Accept-Encoding');
   res.setHeader('Cache-Control', p.endsWith('.html') || p.endsWith('sw.js') ? 'no-cache' : 'public, max-age=86400');
   if (e.csp) res.setHeader('Content-Security-Policy', e.csp(req));
+  if (p === '/index.html' && !/(?:^|;\s*)nm_dt=[\w-]{20,}/.test(String(req.headers.cookie || ''))) {   // v26.3：ブラウザの合い言葉（記録が消えたときに、このブラウザのデータを見つけるため）
+    res.setHeader('Set-Cookie', 'nm_dt=' + crypto.randomBytes(18).toString('base64url') + '; Max-Age=34560000; Path=/; HttpOnly; SameSite=Lax' + (siteOf(req).startsWith('https') ? '; Secure' : ''));
+  }
   if (String(req.headers['if-none-match'] || '').split(/\s*,\s*/).includes(e.etag)) return res.status(304).end();
   const ae = String(req.headers['accept-encoding'] || '');
   let body = e.raw; if (/\bbr\b/.test(ae)) { body = e.br; res.setHeader('Content-Encoding', 'br'); } else if (/\bgzip\b/.test(ae)) { body = e.gz; res.setHeader('Content-Encoding', 'gzip'); }
@@ -726,6 +730,13 @@ const CODES_FILE = process.env.CODES_FILE || path.join(__dirname, 'codes.json');
 let CODES = {};   // フレンド用キー → { c: コード, t: 送られた時刻 }
 const saveCodes = saver('codes', CODES_FILE, () => CODES, 120000);
 function loadCodes(j) { if (j && typeof j === 'object' && !Array.isArray(j)) CODES = j; }
+// v26.3：ブラウザの合い言葉（クッキー）→ そのブラウザで遊んでいたアカウント。iPadなどでブラウザの保存データが消えても、ここから元に戻せる
+const DEVK_FILE = process.env.DEVK_FILE || path.join(__dirname, 'devk.json');
+let DEVK = {};   // 合い言葉のハッシュ → { pk, t }
+const saveDevk = saver('devk', DEVK_FILE, () => DEVK, 120000);
+function loadDevk(j) { if (j && typeof j === 'object' && !Array.isArray(j)) DEVK = j; }
+const dtOf = sk => { const m = /(?:^|;\s*)nm_dt=([\w-]{20,64})/.exec(String((sk.handshake && sk.handshake.headers.cookie) || '')); return m ? crypto.createHash('sha256').update('dt:' + m[1]).digest('base64url').slice(0, 24) : ''; };
+setInterval(() => { const old = Date.now() - 400 * 864e5; let n = 0; for (const k in DEVK) if (DEVK[k].t < old) { delete DEVK[k]; n++; } if (n) saveDevk(); }, 6 * 3600e3);
 function loadDaily(j) { if (j && typeof j === 'object' && typeof j.id === 'string') DAILY = Object.assign({ top: [], tries: {}, gh: {}, prev: null }, j); }
 function loadGhost(j) { if (j && typeof j === 'object') GHOST = { list: j.list && typeof j.list === 'object' ? j.list : {} }; }
 const SNOW_COURSE = 6;
@@ -2136,8 +2147,18 @@ io.on('connection', socket => {
     const pk = socket.nmPk, c = d && d.c; if (!pk || typeof c !== 'string') return;
     if (c.length > 6000 || !/^NM5u?[\w-]+$/.test(c)) return;
     const now = Date.now(); if (now - (socket.codeT || 0) < 15000) return; socket.codeT = now;
+    const dt = dtOf(socket);   // このブラウザで遊んでいるのはこのアカウント（はじめたばかりのデータでは、前のアカウントを上書きしない）
+    if (dt) { const o = DEVK[dt]; if (!o || o.pk === pk || d.own) { DEVK[dt] = { pk, t: now }; saveDevk(); } }
     if (CODES[pk] && CODES[pk].c === c) { CODES[pk].t = now; return; }
     CODES[pk] = { c, t: now }; saveCodes();
+  });
+  socket.on('code_recover', async (d, cb) => {   // v26.3：このブラウザで前に遊んでいたデータがあれば教える
+    if (typeof d === 'function') cb = d; cb = rp(cb);
+    const dt = dtOf(socket), o = dt && DEVK[dt];
+    if (!o || o.pk === socket.nmPk || !CODES[o.pk]) return cb({ ok: false });
+    let name = '', lv = 0; try { const p = await getProf(o.pk); if (p) { name = p.name || ''; lv = p.lv || 0; } } catch (e) { }
+    if (!name) { const r = userRow(o.pk); name = r.name; lv = r.lv; }
+    cb({ ok: true, c: CODES[o.pk].c, t: CODES[o.pk].t, name, lv });
   });
   socket.on('adm_code', adm((d, cb) => {   // 運営：プレイヤーの引き継ぎコードを見る（見たことは操作の記録に残る）
     const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false, err: '相手がいません' });
@@ -2808,7 +2829,7 @@ const PORT = process.env.PORT || 3000;
       SIGN_KEY = k.k; SIGN_T = k.t || 0;
     } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
   }
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss], ['codes', CODES_FILE, loadCodes]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss], ['codes', CODES_FILE, loadCodes], ['devk', DEVK_FILE, loadDevk]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason(); taRoll();
