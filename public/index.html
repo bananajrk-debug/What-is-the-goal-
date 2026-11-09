@@ -663,6 +663,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 
 /* ===== v26.1：管理画面のパスワード・操作の記録を消す ===== */
 .apw-box{width:min(24em,92vw)}.apw-box h3{margin:.1em 0 .3em}.apw-box form{display:flex;flex-direction:column;gap:.5em}
+.rec-box{width:min(26em,92vw)}.rec-box h3{margin:.1em 0 .4em}#rec-msg{font-weight:800;font-size:1.05em}
 .apw-err{color:#ff8a80;font-weight:800;min-height:1.2em;font-size:.9em}
 .apw-row{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.4em}.apw-row .tx{flex:1;min-width:10em}
 .aa-del{flex:none;margin-left:auto;padding:.1em .5em!important}
@@ -983,6 +984,12 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
   <div id="im-body"><div class="cvbox"><canvas id="im-cv"></canvas></div>
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
+</div></div>
+<div id="rec-modal" class="modal hide" style="z-index:70"><div class="box rec-box">
+  <h3>🔄 前のデータが見つかりました</h3>
+  <p id="rec-msg"></p>
+  <p class="muted">「元に戻す」を押すと、そのときのレベル・コイン・持ち物で続きから遊べます。「新しく始める」を押すと、もう聞きません。</p>
+  <div class="row"><button id="rec-no" class="btn dark grow">新しく始める</button><button id="rec-yes" class="btn green grow">元に戻す</button></div>
 </div></div>
 <div id="apw-modal" class="modal hide"><div class="box apw-box"><form id="apw-form">
   <h3 id="apw-ttl">🔑 管理画面のパスワード</h3><p id="apw-msg" class="muted"></p>
@@ -1590,15 +1597,21 @@ function migrateV3(data){ // 旧バージョン（v3以前）のデータを引�
   return s;
 }
 let SV=null,saveTimer=null;
-function saveNow(){if(!SV)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);IDB.put(SAVE_KEY,j);
+var IDB_HOLD=false;   // v26.3：IndexedDBの読み込みが終わるまで、そこへは書かない（古い記録で新しい記録を消さないため）
+function saveNow(){if(!SV)return;clearTimeout(saveTimer);saveTimer=null;SV.ts=Date.now();const j=JSON.stringify(SV);LS.set(SAVE_KEY,j);LS.set(SAVE_KEY+'_b',j);if(!IDB_HOLD)IDB.put(SAVE_KEY,j);
   try{ecoSoon();pushProfile();}catch(e){}}   // NCの検算・プロフィールの更新（v16）
 function save(){if(!saveTimer)saveTimer=setTimeout(saveNow,250);}
 async function loadSave(){
   const parse=j=>{try{const o=JSON.parse(j);return o&&o.v>=4?o:null;}catch(e){return null;}};
   let s=parse(LS.get(SAVE_KEY,null))||parse(LS.get(SAVE_KEY+'_b',null));
-  let idb=null;try{idb=parse(await Promise.race([IDB.get(SAVE_KEY),new Promise(r=>setTimeout(()=>r(null),1500))]));}catch(e){}
-  if(idb&&(!s||(idb.id===s.id&&(idb.ts||0)>(s.ts||0))))s=idb;   // ブラウザの片方が消えてももう片方から復元
+  let idb=null,late=false;const ig=IDB.get(SAVE_KEY).catch(()=>null);
+  try{idb=parse(await Promise.race([ig,new Promise(r=>setTimeout(()=>{late=true;r(null);},2500))]));}catch(e){}
+  const newer=(a,b)=>a&&(!b||(a.id===b.id&&(a.ts||0)>(b.ts||0))||(a.id!==b.id&&!b.nameReg&&a.nameReg&&(b.lv||1)<=1));
+  if(newer(idb,s))s=idb;   // ブラウザの片方が消えてももう片方から復元
   if(!s)s=migrateV3();
+  if(late){   // v26.3：IndexedDBが遅いとき：終わるまでそこへは書かず、あとで中身をくらべる（新しければそちらに切りかえる）
+    IDB_HOLD=true;ig.then(j=>{const o=parse(j);IDB_HOLD=false;if(newer(o,SV)){SV=fixSave(o);LS.set(SAVE_KEY,JSON.stringify(SV));LS.set(SAVE_KEY+'_b',JSON.stringify(SV));toast('保存された記録を読みこみました',2500);setTimeout(()=>location.reload(),700);}else saveNow();});
+  }
   SV=fixSave(s);saveNow();
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
 }
@@ -5779,7 +5792,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.2.0',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v26.3.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6533,7 +6546,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.2.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v26.3.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7807,7 +7820,7 @@ $('aa-clear').onclick=()=>{const b=$('aa-clear');if(!confirmTwice(b,'全部消�
 let CODE_LAST='';
 async function codeSync(){
   try{if(!SV||!SV.name||!socket.connected||typeof CompressionStream==='undefined')return;
-    const c=await makeCode();if(!c||c===CODE_LAST)return;CODE_LAST=c;socket.emit('code_sync',{c});}catch(e){}
+    const c=await makeCode();if(!c||c===CODE_LAST)return;CODE_LAST=c;socket.emit('code_sync',{c,own:(SV.lv||1)>=2||LS.get('nm_rec_no','')==='1'});}catch(e){}
 }
 socket.on('connect',()=>{CODE_LAST='';setTimeout(codeSync,6000);});
 setInterval(codeSync,180000);
@@ -7818,6 +7831,30 @@ $('au-code-btn').onclick=()=>{if(!AU_CUR)return;socket.emit('adm_code',{pk:AU_CU
   if(!r||!r.ok){$('au-code-t').textContent=(r&&r.err)||'見られませんでした';return;}
   const t=$('au-code');t.value=r.c;t.classList.remove('hide');$('au-code-copy').classList.remove('hide');$('au-code-t').textContent=ago(r.t)+'の時点（'+r.c.length+'文字）';});};
 $('au-code-copy').onclick=()=>copyText($('au-code').value,'コピーしました');
+
+/* =====================================================================
+   v26.3.0：記録が消えたときの復元
+   iPad・iPhoneのブラウザは、しばらく開かないとページの保存データを消すことがある。
+   サーバーには「このブラウザで遊んでいたアカウント」と、その最新の引き継ぎコードが残っているので、
+   はじめたばかりの状態になっていたら「前のデータが見つかりました」と聞いて、元に戻せるようにする
+   ===================================================================== */
+let RECV=null;
+const recFresh=()=>!!SV&&(SV.lv||1)<=1&&!(SV.xp>0)&&!(SV.coins>0)&&LS.get('nm_rec_no','')!=='1';
+function recCheck(){
+  if(!recFresh()||inGame||ROOM)return;
+  socket.emit('code_recover',r=>{
+    if(!r||!r.ok||!recFresh()||inGame)return;RECV=r;
+    $('rec-msg').textContent='このブラウザで遊んでいた「'+(r.lv?'Lv'+r.lv+'　':'')+(r.name||'プレイヤー')+'」のデータが残っています（'+ago(r.t)+'の時点）。元に戻しますか？';
+    $('rec-modal').classList.remove('hide');
+  });
+}
+socket.on('connect',()=>setTimeout(recCheck,2500));
+$('rec-yes').onclick=async()=>{
+  if(!RECV)return;$('rec-yes').disabled=true;
+  try{const s=await readCode(RECV.c);SV=fixSave(s);saveNow();LS.set('nm_rec_no','');toast('元に戻しました。再読み込みします…',2500);setTimeout(()=>location.reload(),900);}
+  catch(e){$('rec-yes').disabled=false;toast('元に戻せませんでした。運営にお問い合わせください',3500);}
+};
+$('rec-no').onclick=()=>{LS.set('nm_rec_no','1');$('rec-modal').classList.add('hide');RECV=null;CODE_LAST='';codeSync();};
 </script>
 </body>
 </html>
