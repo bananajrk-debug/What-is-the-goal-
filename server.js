@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v26.1.0 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v26.2.0 — Express + Socket.io（サーバー権威型）
+// v26.2.0：運営がプレイヤーの引き継ぎコードを見られる・iPadで起きていた音とセーブ読み込み前のエラーを修正
 // v26.1.0：管理画面のパスワード・操作の記録を消せる・クリスマスのエモートが表示されないのを修正
 //   （バージョンの決め方：大きい変更＝1つめの数字、修正など＝2つめ、それ以外＝3つめ）
 // v26：検索エンジン対策（タイトル・説明文・紹介ページ /about・robots.txt・sitemap.xml・OGP・構造化データ）
@@ -720,6 +721,11 @@ let DAILY = { id: '', course: 0, seed: 0, top: [], tries: {}, gh: {}, prev: null
 let GHOST = { list: {} };   // エンドレスのランキング上位10人のゴースト（h → 走り）
 const saveDaily = saver('daily', DAILY_FILE, () => DAILY, 120000);
 const saveGhost = saver('ghost', GHOST_FILE, () => GHOST, 120000);
+// v26.2：引き継ぎコードの控え（プレイヤーの端末が自動で送ってくる最新のもの。運営がサポートのときに見られる）
+const CODES_FILE = process.env.CODES_FILE || path.join(__dirname, 'codes.json');
+let CODES = {};   // フレンド用キー → { c: コード, t: 送られた時刻 }
+const saveCodes = saver('codes', CODES_FILE, () => CODES, 120000);
+function loadCodes(j) { if (j && typeof j === 'object' && !Array.isArray(j)) CODES = j; }
 function loadDaily(j) { if (j && typeof j === 'object' && typeof j.id === 'string') DAILY = Object.assign({ top: [], tries: {}, gh: {}, prev: null }, j); }
 function loadGhost(j) { if (j && typeof j === 'object') GHOST = { list: j.list && typeof j.list === 'object' ? j.list : {} }; }
 const SNOW_COURSE = 6;
@@ -2126,6 +2132,18 @@ io.on('connection', socket => {
     list.sort((a, b) => sort === 'rep' ? b.rep - a.rep : sort === 'lv' ? b.lv - a.lv : sort === 'nc' ? (b.nc || 0) - (a.nc || 0) : (b.online - a.online) || (b.seen - a.seen));
     cb({ ok: true, total: list.length, list: list.slice(0, 5000) });   // 全員を表示
   }));
+  socket.on('code_sync', d => {   // v26.2：端末の最新の引き継ぎコードを控えておく
+    const pk = socket.nmPk, c = d && d.c; if (!pk || typeof c !== 'string') return;
+    if (c.length > 6000 || !/^NM5u?[\w-]+$/.test(c)) return;
+    const now = Date.now(); if (now - (socket.codeT || 0) < 15000) return; socket.codeT = now;
+    if (CODES[pk] && CODES[pk].c === c) { CODES[pk].t = now; return; }
+    CODES[pk] = { c, t: now }; saveCodes();
+  });
+  socket.on('adm_code', adm((d, cb) => {   // 運営：プレイヤーの引き継ぎコードを見る（見たことは操作の記録に残る）
+    const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false, err: '相手がいません' });
+    const e = CODES[pk]; if (!e) return cb({ ok: false, err: 'まだ控えがありません（v26.2以降のゲームを開くと届きます）' });
+    audit(socket, 'u_code', tgOf(pk)); cb({ ok: true, c: e.c, t: e.t });
+  }));
   socket.on('adm_user', adm(async (d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
     const p = await getProf(pk), net = (MOD.seen[pk] || {}).net, e = ECO[pk];
     const same = net ? Object.keys(MOD.seen).filter(x => x !== pk && MOD.seen[x].net === net).slice(0, 20).map(userRow) : [];
@@ -2790,7 +2808,7 @@ const PORT = process.env.PORT || 3000;
       SIGN_KEY = k.k; SIGN_T = k.t || 0;
     } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
   }
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss], ['codes', CODES_FILE, loadCodes]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason(); taRoll();
