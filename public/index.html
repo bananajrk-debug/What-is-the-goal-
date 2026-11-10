@@ -667,6 +667,8 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
 .fg-box{width:min(46em,96vw)!important;max-height:94vh}.fg-head b{font-size:1.15em}.fg-tabs{align-items:center;margin:.3em 0}.fg-quick{flex-wrap:wrap;margin:.4em 0}
 #fg-cats{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.2em}#fg-cats .chip{flex:none;white-space:nowrap}
 #fg-grid{max-height:40vh;overflow:auto;margin-top:.4em}.fg-pick{margin-top:.5em;background:rgba(0,0,0,.25);border-radius:12px;padding:.4em .6em;align-items:center}
+.del-box{width:min(26em,92vw)}.del-box h3{margin:.1em 0 .4em;color:#ff8a80}.del-box ul{margin:.2em 0 .6em;padding-left:1.3em}
+.geo-list{display:flex;flex-direction:column;gap:.25em}.geo-row{display:grid;grid-template-columns:6.5em 1fr 3.5em;gap:.5em;align-items:center;font-size:.92em}.geo-bar{height:.9em;border-radius:6px;background:#26a69a;min-width:2px}.geo-row span:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .rec-box{width:min(26em,92vw)}.rec-box h3{margin:.1em 0 .4em}#rec-msg{font-weight:800;font-size:1.05em}
 .apw-err{color:#ff8a80;font-weight:800;min-height:1.2em;font-size:.9em}
 .apw-row{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.4em}.apw-row .tx{flex:1;min-width:10em}
@@ -954,6 +956,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
         <div class="ap" data-a="bal"><div class="ap-head"><div class="chips grow" id="an-sub"></div><button id="an-ref" class="btn sm blue">↻ 更新</button></div>
           <div class="ap-scroll an-v" data-v="use"><div id="au-kpi" class="adm-cards"></div><div id="au-charts" class="an-charts"></div></div>
           <div class="ap-scroll an-v hide" data-v="items"><div class="row" style="align-items:center"><div class="chips grow" id="ai-src"></div><button id="ai-reset" class="btn sm dark">記録をリセット</button></div><div id="ai-sum" class="adm-note"></div><div id="ai-list" class="ai-list"></div></div>
+          <div class="ap-scroll an-v hide" data-v="geo"><div class="row" style="align-items:center"><div class="chips grow" id="ag-span"></div></div><div id="ag-note" class="adm-note"></div><div id="ag-net" class="adm-cards"></div><div id="ag-list" class="geo-list"></div></div>
           <div class="ap-scroll an-v hide" data-v="bal"><div class="row" style="align-items:center"><b class="grow">⚖ ラウンドの決着のしかた</b><button id="ab-reset" class="btn sm dark">記録をリセット</button></div>
             <div class="chips" id="ab-grp"></div><div id="ab-sum" class="adm-note"></div><div id="ab-table"></div></div>
           <div id="an-tip" class="an-tip hide"></div></div>
@@ -989,6 +992,15 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
   <div id="im-body"><div class="cvbox"><canvas id="im-cv"></canvas></div>
     <div id="im-info"><span id="im-rar"></span><b id="im-name"></b><span id="im-desc" class="muted"></span><span id="im-price"></span>
       <button id="im-buy" class="btn big green">購入する</button><button id="im-close" class="btn dark">閉じる</button></div></div>
+</div></div>
+<div id="del-modal" class="modal hide" style="z-index:75"><div class="box del-box">
+  <h3>🗑 アカウントを消す</h3>
+  <p>このアカウントのデータを<b>すべて消します。元に戻せません。</b></p>
+  <ul class="muted"><li>レベル・NC・持ち物・クエスト・フレンド・ランキングの記録</li><li>ユーザー名（ほかの人が使えるようになります）</li><li>サーバーに残っている引き継ぎコードの控え</li></ul>
+  <p>本当に消すなら、下に <b>けす</b> と入れてください。</p>
+  <input id="del-in" class="tx" maxlength="4" placeholder="けす" autocomplete="off">
+  <div id="del-err" class="apw-err"></div>
+  <div class="row"><button id="del-no" class="btn dark grow">やめる</button><button id="del-yes" class="btn grow" style="background:#c62828;color:#fff">消す</button></div>
 </div></div>
 <div id="fg-modal" class="modal hide"><div class="box wide fg-box">
   <div class="row fg-head"><b class="grow" id="fg-title">🎁 プレゼントを送る</b><button id="fg-close" class="iconbtn" aria-label="閉じる">✕</button></div>
@@ -1214,6 +1226,7 @@ body:not(.touch) .stg b{font-size:.95em}body:not(.touch) .stg small{font-size:.7
     <span id="bk-len" class="muted"></span><textarea id="bk-code" class="tx hide" readonly></textarea>
     <div class="row"><button id="btn-copy-code" class="btn sm blue hide">コピー</button><button id="btn-import" class="btn sm">コードから復元</button></div>
     <div class="muted">ブラウザのデータ削除・機種変更に備えて、コードをメモしておくと安心です。</div>
+    <button id="btn-acct-del" class="btn sm dark" style="margin-top:.5em;color:#ff8a80">🗑 アカウントを消す</button>
   </div>
   <div id="admin-audio-section" class="sm-sec hide">
     <b style="color:#ffe56b">🎵 管理者用：衝突音ファイル変更</b>
@@ -4035,7 +4048,7 @@ function drawRoom(t){
 /* =====================================================================
    描画基盤：横画面に自動フィット（論理サイズ W×H、高さ基準 540）
    ===================================================================== */
-const socket=io({auth:{zv:1}});   // v23：軽い送り方（'z'）を使える画面だとサーバーに伝える
+const socket=io({auth:{zv:1},transports:['websocket','polling'],tryAllTransports:true});   // v27.1：はじめからWebSocketでつなぐ（だめな回線ならロングポーリング）   // v23：軽い送り方（'z'）を使える画面だとサーバーに伝える
 const cv=$('c');let ctx=cv.getContext('2d');
 let W=960,H=540,SC=1,DPR=1,QUAL=1;
 function resize(){
@@ -4895,7 +4908,7 @@ let GAME={ranked:false,opp:null,course:0},MLOG=null,RES=null,VS=null,MM=null,end
 const DFONT='"Lilita One","Arial Black",'+FONT;
 function resetLog(){MLOG={xp0:SV.xp,lv0:SV.lv,xp:0,coins:0,lvBonus:0,ov:0,bh:0,cop:0,near:0,maxCombo:0,rk:null};endPending=false;resShown=false;}
 const resultBusy=()=>!!RES||endPending;
-const PRED={x:0,vx:0,ok:false};let lat=.06;
+const PRED={x:0,vx:0,ok:false};let lat=.06,INSEQ=0;const INPT=new Map();   // INPT：操作の番号 → 送った時刻
 let SPEC=null,specN=0;   // 観戦中ならその情報／自分の試合を見ている人数
 const youAre=()=>SPEC?(((D&&D.names&&D.names[slot])||'プレイヤー')+' は'):'あなたは';
 
@@ -4993,13 +5006,13 @@ function predictMe(c,t,dt,play,age){
   PRED.x=nx;
   // 新しいサーバーの位置が届いたら、そのとき（往復の時間ぶん前）の自分の位置とくらべる
   if(S&&S._rt!==PRED.rt){PRED.rt=S._rt;
-    const tt=S._rt-Math.min(400,lat*2000+25),H=PRED.h;let hx=null;
+    const t0=S._ak!=null&&INPT.get(S._ak),tt=t0?t0+(S._ad||0):S._rt-Math.min(1000,lat*2000+25),H=PRED.h;let hx=null;   // v27.1：サーバーが受け取った操作の番号から、くらべる時刻を正確に決める
     for(let i=H.length-1;i>=0;i--)if(H[i].t<=tt){const a=H[i],b=H[i+1];hx=b?a.x+(b.x-a.x)*clamp((tt-a.t)/Math.max(1,b.t-a.t),0,1):a.x;break;}
     if(hx==null&&H.length)hx=H[0].x;
-    if(hx!=null){PRED.corr=t.x-hx;if(Math.abs(PRED.corr)>110){PRED.x+=PRED.corr;for(const h of H)h.x+=PRED.corr;PRED.corr=0;}}   // ぶつかって押されたなど、大きくちがうときだけ合わせる
+    if(hx!=null){PRED.corr=t.x-hx;if(Math.abs(PRED.corr)>170){PRED.x+=PRED.corr;for(const h of H)h.x+=PRED.corr;PRED.corr=0;}}   // ぶつかって押されたなど、大きくちがうときだけ合わせる
   }
-  if(PRED.corr){const d=PRED.corr*Math.min(1,dt*6);PRED.x=clamp(PRED.x+d,-HWR+14,HWR-14);PRED.corr-=d;for(const h of PRED.h)h.x+=d;if(Math.abs(PRED.corr)<.05)PRED.corr=0;}
-  PRED.h.push({t:now,x:PRED.x});while(PRED.h.length&&now-PRED.h[0].t>1200)PRED.h.shift();
+  if(PRED.corr){const d=PRED.corr*Math.min(1,dt*(Math.abs(PRED.corr)>40?10:6));PRED.x=clamp(PRED.x+d,-HWR+14,HWR-14);PRED.corr-=d;for(const h of PRED.h)h.x+=d;if(Math.abs(PRED.corr)<.05)PRED.corr=0;}
+  PRED.h.push({t:now,x:PRED.x});while(PRED.h.length&&now-PRED.h[0].t>2500)PRED.h.shift();
   c.x=PRED.x;
 }
 function sync(dt){
@@ -5030,7 +5043,7 @@ function sync(dt){
   });
   Object.assign(D,{s:S.s,t:S.t,rd:S.rd,att:S.att,sc:S.sc,hist:S.hist,msg:S.msg,sub:S.sub,el:S.el,P,obs,mud:S.mud||[],bgGap:S.bgGap,bgBx:S.bgBx,bgBoost:S.bgBoost,names:S.names,lvs:S.lvs,course:S.course,fx:S.fx,score:S.score,combo:S.combo,mode:S.mode,vx:S.vx,ok:S.ok});
 }
-setInterval(()=>{if(!inGame||!socket.connected)return;const t0=performance.now();socket.emit('pg',0,()=>{const r=(performance.now()-t0)/1000;lat=clamp(lat*.7+(r/2)*.3,0,.3);});},2000);
+setInterval(()=>{if(!inGame||!socket.connected)return;const t0=performance.now();socket.emit('pg',0,()=>{const r=(performance.now()-t0)/1000;lat=clamp(lat*.7+(r/2)*.3,0,1);try{NETS.push(r*1000);if(NETS.length>15)NETS.shift();}catch(e){}});},2000);
 
 /* =====================================================================
    入力（フローティング・ジョイスティック / キーボード / アクションボタン）
@@ -5046,7 +5059,7 @@ function sendInp(force){
   inpS=computeS();if(!inGame||SPEC)return;
   const q=Math.round(inpS*20)/20,nowT=performance.now();   // v23：0.05きざみ・1秒20回まで（大きく切ったときと、まっすぐに戻したときはすぐ送る）
   if(q===lastS&&!force)return;
-  if(force||q===0||nowT-lastSendT>=50||Math.abs(q-(lastS||0))>.3){lastS=q;lastSendT=nowT;socket.emit('inp',q);}
+  if(force||q===0||nowT-lastSendT>=50||Math.abs(q-(lastS||0))>.3){lastS=q;lastSendT=nowT;const k=++INSEQ;INPT.set(k,nowT);if(INPT.size>200)INPT.delete(INPT.keys().next().value);socket.emit('inp',[q,k]);}   // v27.1：操作に番号をつける
   else if(!sendInp.tm)sendInp.tm=setTimeout(()=>{sendInp.tm=0;sendInp();},55);   // 間引いた分も、少しあとで必ず送る
 }
 const roleKind=()=>mode==='endless'?'boost':(D&&D.att===slot?'brake':'boost');
@@ -5491,7 +5504,7 @@ socket.on('z',z=>{
   const P=(f[2]||[]).map((a,i)=>{if(!a)return null;const c=cos[i]||[];
     return {x:a[0],z:a[1],v:a[2],mud:a[3],vx:a[4],brk:a[5]&1,boost:(a[5]>>1)&1,cd:a[6],bcd:a[7],brakes:brakes[i]||0,bike:c[0],skin:c[1],hair:c[2],fit:c[3],acc:c[4],trail:c[5]};});
   const obs=(f[3]||[]).map(a=>({id:a[0],k:typeof a[1]==='number'?OBN[a[1]]:a[1],x:a[2],z:a[3],c:a[4]<0?undefined:a[4],vz:a[5],d:a[6]||undefined}));
-  const S={mode:md,s:st,t:f[0],el:f[1],rd,att,sc,hist,msg,sub,course,names,lvs,ranked:!!ranked,fx:fx||null,P,obs,mud:ZU.map(a=>({id:a[0],x:a[1],z:a[2]}))};
+  const S={mode:md,s:st,t:f[0],el:f[1],rd,att,sc,hist,msg,sub,course,names,lvs,ranked:!!ranked,fx:fx||null,P,obs,mud:ZU.map(a=>({id:a[0],x:a[1],z:a[2]})),_ak:z.a?z.a[0]:null,_ad:z.a?z.a[1]:0};
   const x=f[4]||[];if(md==='versus'){S.bgGap=x[0];S.bgBx=x[1];S.bgBoost=!!x[2];}else{S.score=x[0];S.combo=x[1];S.ev=x[2]||[];S.vx=x[3]||null;S.ok=!!x[4];}
   onSnap(S);
 });
@@ -5820,7 +5833,7 @@ function drawTitle(t){
   const tag='抜くか、抜かれるか。追いかけっこ自転車バトル！';g.globalAlpha=Math.min(1,Math.max(0,el-.4)*2);g.strokeText(tag,w/2,h*.62);g.fillStyle='#fff';g.fillText(tag,w/2,h*.62);
   const pa=.55+.45*Math.sin(t/260);g.globalAlpha=Math.min(1,Math.max(0,el-.8)*2)*pa;g.font='900 '+(Math.min(w*.04,h*.06)|0)+'px '+LOGO_JP;
   g.strokeText('タップしてスタート',w/2,h*.8);g.fillStyle='#ffe56b';g.fillText('タップしてスタート',w/2,h*.8);
-  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v27.0.0',w-10,h-12);g.globalAlpha=1;
+  g.globalAlpha=.7;g.font='800 '+(h*.026|0)+'px '+LOGO_JP;g.textAlign='right';g.fillStyle='#fff';g.fillText('v27.1.0',w-10,h-12);g.globalAlpha=1;
   ctx=sCtx;W=sW;H=sH;CURP=sP;CURCI=sCI;RMz=NaN;
 }
 $('title').addEventListener('pointerdown',e=>{if(e.target.id==='title-pp'||e.target.id==='title-ab')return;e.preventDefault();hideTitle();});
@@ -6154,6 +6167,7 @@ function openAdmUser(pk,quiet){
     const dv=r.dv,de=$('au-dev');de.innerHTML='';
     if(dv){const L=[['機種',dv.model||'不明'],['OS',dv.os],['ブラウザ',dv.br+(dv.pwa?'（ホーム画面から）':'')],['画面',dv.scr+(dv.dpr?' ×'+dv.dpr:'')],['言語・地域',dv.lang+' / '+dv.tz],['回線ID',dv.net+'（同じWi-Fiなどだと同じになります）'],['最終接続',fmtD(dv.t)],['UA',dv.ua]];
       L.forEach(([a,b])=>{const d=document.createElement('div');d.innerHTML='<b></b> ';d.firstChild.textContent=a+'：';d.appendChild(document.createTextNode(b||'—'));de.appendChild(d);});
+      {const q=r.netq,d=document.createElement('div');d.innerHTML='<b>通信・地域：</b>';d.appendChild(document.createTextNode((q?(q.tr==='polling'?'⚠ ロングポーリング（WebSocketが使えない回線）':'WebSocket')+'・往復 '+q.rtt+'ms（ゆれ '+q.j+'ms）・'+q.fps+'fps・'+fmtD(q.t):'まだ情報がありません')+(r.geo?' ／ 地域：'+geoName(r.geo):'')));de.appendChild(d);}   // v27.1
       if(r.dvs&&r.dvs.length>1){const d=document.createElement('div');d.innerHTML='<b>使ったことのある端末：</b>';d.appendChild(document.createTextNode(r.dvs.map(x=>x.s+'（回線 '+x.net+'・'+fmtD(x.t)+'）').join(' ／ ')));de.appendChild(d);}}
     else de.textContent='まだ情報がありません（v16以降にログインすると記録されます）';
     const e=r.eco,ee=$('au-eco');ee.innerHTML='';
@@ -6575,7 +6589,7 @@ function reportErr(msg,src,line,col,stack,where){
   try{
     msg=String(msg||'');if(!msg||/ResizeObserver|^Script error\.?$/i.test(msg))return;
     const sig=msg+'|'+line;if(CERR_SEEN.has(sig)||CERR_SEEN.size>=10)return;CERR_SEEN.add(sig);
-    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v27.0.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
+    const d={msg:msg.slice(0,300),src:String(src||'').split('/').pop().split('?')[0].slice(0,120),line:line|0,col:col|0,stack:String(stack||'').slice(0,800),ver:'v27.1.0',where:(where||'')+(typeof page!=='undefined'?' / '+page:'')+(inGame?' / 試合中':'')};
     if(socket.connected)socket.emit('cerr',d);else socket.once('connect',()=>socket.emit('cerr',d));
   }catch(e){}
 }
@@ -7049,9 +7063,9 @@ $('ar-reset').onclick=()=>{const nm=AR_B==='run'?'エンドレス':'チャリラ
 
 /* ----- 📈 分析（利用状況・人気のアイテム・バランス） ----- */
 let AN_V='use';
-function anSub(v){AN_V=v;miniChips($('an-sub'),[['use','👥 利用状況'],['items','🎁 人気のアイテム'],['bal','⚖ バランス']],v,anSub);
+function anSub(v){AN_V=v;miniChips($('an-sub'),[['use','👥 利用状況'],['geo','📍 地域・通信'],['items','🎁 人気のアイテム'],['bal','⚖ バランス']],v,anSub);
   document.querySelectorAll('#pg-admin .an-v').forEach(p=>p.classList.toggle('hide',p.dataset.v!==v));tipHide();
-  if(v==='use')admUsage();if(v==='items')admItems();if(v==='bal')admBal();}
+  if(v==='use')admUsage();if(v==='items')admItems();if(v==='bal')admBal();if(v==='geo')admGeo();}
 $('an-ref').onclick=()=>anSub(AN_V);
 // グラフ（SVG）：1つのグラフに1つの色。棒・点にさわると数字が出る
 const SVGNS='http://www.w3.org/2000/svg',AN_C='#4a94f0';
@@ -7968,6 +7982,57 @@ $('fg-send-nc').onclick=()=>{const v=Math.floor(Number($('fg-amt').value)||0);if
 $('fg-send-item').onclick=()=>{if(!FG||!FG.pick)return;const {c,k}=FG.pick,p=priceOf(c,k);fgSend({item:{c,k,p}},p,'「'+CAT[c][k].n+'」');};
 document.querySelectorAll('.fg-tabs .chip').forEach(b=>b.onclick=()=>{if(!FG)return;FG.tab=b.dataset.t;fgRender();});
 $('fg-close').onclick=()=>{$('fg-modal').classList.add('hide');FG=null;};
+
+/* =====================================================================
+   v27.1.0
+   ・自分のアカウントを消す（運営のアカウントは消せない）
+   ・管理画面「分析」→「📍 地域・通信」：都道府県の分布と、通信の状態
+   ・通信の状態をサーバーに知らせる（WebSocketかどうか・往復の時間・fps）
+   ===================================================================== */
+const PREF=['','北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬','埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山','鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄'];
+function geoName(c){if(!c)return '不明';if(c==='LOCAL')return 'テスト（ローカル）';if(c==='JP')return '日本（都道府県不明）';
+  if(/^JP\d\d$/.test(c)){const n=PREF[+c.slice(2)];return n?(n+(n==='北海道'?'':n==='東京'?'都':(n==='大阪'||n==='京都')?'府':'県')):'日本（都道府県不明）';}
+  return '海外（'+c+'）';}
+// ----- アカウント削除 -----
+$('btn-acct-del').onclick=()=>{initAudio();if(IS_ADMIN){toast('運営のアカウントは消せません',3000);return;}
+  $('del-in').value='';$('del-err').textContent='';$('del-modal').classList.remove('hide');setTimeout(()=>$('del-in').focus(),50);};
+$('del-no').onclick=()=>$('del-modal').classList.add('hide');
+$('del-yes').onclick=()=>{
+  const v=$('del-in').value.trim();if(v!=='けす'){$('del-err').textContent='「けす」と入れてください';return;}
+  if(!socket.connected){$('del-err').textContent='サーバーにつながっていません';return;}
+  $('del-yes').disabled=true;
+  socket.emit('acct_delete',{yes:'けす'},async r=>{
+    if(!r||!r.ok){$('del-yes').disabled=false;$('del-err').textContent=(r&&r.err)||'消せませんでした';return;}
+    TAB_STALE=true;   // もう保存しない
+    try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(SAVE_KEY+'_b');['nm_ghost_me','nm_ghost_ta','nm_rec_no','nm_mode','nm_rbk'].forEach(k=>localStorage.removeItem(k));}catch(e){}
+    try{await new Promise(res=>{const q=indexedDB.deleteDatabase('nm_game');q.onsuccess=q.onerror=q.onblocked=()=>res();setTimeout(res,1500);});}catch(e){}
+    $('del-modal').classList.add('hide');toast('アカウントを消しました。はじめからになります',3000);setTimeout(()=>location.reload(),1500);
+  });
+};
+// ----- 通信の状態を知らせる -----
+var NETS=[];let FPSN=0,FPST=performance.now(),FPSV=0;
+(function fpsLoop(){FPSN++;const n=performance.now();if(n-FPST>=2000){FPSV=Math.round(FPSN*1000/(n-FPST));FPSN=0;FPST=n;}requestAnimationFrame(fpsLoop);})();
+setInterval(()=>{if(!socket.connected||!inGame||NETS.length<3)return;
+  const a=NETS.slice().sort((x,y)=>x-y),med=a[Math.floor(a.length/2)],j=a[Math.floor(a.length*.9)]-a[0];
+  let tr='websocket';try{tr=socket.io.engine.transport.name;}catch(e){}
+  socket.emit('net_rep',{tr,rtt:med,j,fps:FPSV});},20000);
+socket.io.on('error',()=>{});
+// ----- 管理画面：地域・通信 -----
+let GEO_SPAN='today',GEO_R=null;
+function admGeo(){socket.emit('adm_geo',r=>{if(!r||!r.ok)return;GEO_R=r;agRender();});}
+function agRender(){
+  const r=GEO_R;if(!r)return;
+  miniChips($('ag-span'),[['today','今日'],['d7','7日間（のべ）'],['d30','30日間（のべ）'],['all','全員（最後の接続）']],GEO_SPAN,v=>{GEO_SPAN=v;agRender();});
+  $('ag-note').textContent=(r.on?'IPアドレスから都道府県を調べて、人数だけを数えています（IPアドレスは保存していません）。モバイル回線は、実際の場所とちがう都道府県になることがあります。':'地域の記録はオフです（環境変数 GEO_OFF=1）')+'　通信は、この24時間に試合をした人の状態です。「ポーリング」はWebSocketが使えない回線（学校・会社のネットなど）で、ラグが大きくなります。「遅れ」はサーバーが30回/秒の計算に間に合わなかった回数です。';
+  const n=r.net,nc=$('ag-net');nc.innerHTML='';
+  card(nc,'📶 WebSocket',n.websocket+'人','ok');card(nc,'⚠ ポーリング',n.polling+'人',n.polling?'warn':'');card(nc,'🐢 往復250ms〜',n.slow+'人',n.slow?'warn':'');card(nc,'⏱ 往復（中央）',n.n?n.med+'ms':'—');
+  const sv=r.srv;if(sv){card(nc,'🖥 遅れ（'+sv.mins+'分）',sv.late+'回',sv.late>20?'warn':'');card(nc,'🖥 最大の遅れ',sv.max+'ms',sv.max>200?'warn':'');card(nc,'🖥 計算の重さ',sv.busy+'ms');}
+  const m=r[GEO_SPAN]||{},L=Object.entries(m).sort((a,b)=>b[1]-a[1]),max=L.length?L[0][1]:1,tot=L.reduce((a,b)=>a+b[1],0),box=$('ag-list');box.innerHTML='';
+  if(!L.length){box.textContent='まだデータがありません';return;}
+  L.forEach(([c,v])=>{const row=document.createElement('div');row.className='geo-row';const a=document.createElement('span');a.textContent=geoName(c);
+    const bw=document.createElement('div');const bar=document.createElement('div');bar.className='geo-bar';bar.style.width=(v/max*100)+'%';bw.appendChild(bar);
+    const z=document.createElement('span');z.textContent=v+'人';z.title=Math.round(v/tot*100)+'%';row.append(a,bw,z);box.appendChild(row);});
+}
 </script>
 </body>
 </html>
