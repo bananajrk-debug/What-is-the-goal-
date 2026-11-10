@@ -1,4 +1,5 @@
-// なにが目的なん？ ONLINE v27.0.0 — Express + Socket.io（サーバー権威型）
+// なにが目的なん？ ONLINE v27.1.0 — Express + Socket.io（サーバー権威型）
+// v27.1.0：自分のアカウントを消せる（運営は消せない・停止できない）・都道府県の分布・通信の状態・先読みの答え合わせを操作の番号で（瞬間移動の修正）
 // v27.0.0：協力モードを「2人で1台」に（ホスト＝右＋ブースト、ゲスト＝左＋ブレーキ）・フレンドにNC/アイテムをプレゼント・横移動の瞬間移動を修正
 // v26.4.0：自分のベスト・RPをサーバーの記録に合わせる・ランキングのレベル/名前を最新に・同じデータを2つのサーバーが使っていたら知らせる
 // v26.3.0：記録が消える問題の対策（読み込みが遅いときに古い記録で上書きしない・消えてもこのブラウザのデータを見つけて復元できる）
@@ -316,6 +317,34 @@ setInterval(instCheck, 5 * 60e3); setTimeout(instCheck, 20e3);
 // まとめて保存（3秒ごと）。サーバーが止められるとき（再起動・スリープ）は、待っている保存をすぐ書き出す
 const PENDING = new Map();
 const saver = (key, file, get, ms) => { let t = null; return () => { if (t) return; PENDING.set(key, () => { clearTimeout(t); t = null; PENDING.delete(key); return STORE.save(key, file, get(), true); }); t = setTimeout(() => { t = null; PENDING.delete(key); STORE.save(key, file, get()); }, ms || 3000); }; };
+// v27.1：接続している地域（都道府県）の分布
+//   IPアドレスから外部サービス（ipapi.co、だめなら ipwho.is）で都道府県を調べる。IPアドレスそのものは保存せず、都道府県だけを数える
+const GEO_FILE = process.env.GEO_FILE || path.join(__dirname, 'geo.json');
+let GEO = { d: '', m: {}, days: {}, u: {} };   // m：今日（人→地域）、days：日ごと（地域→人数）、u：人ごとの最新の地域
+const saveGeo = saver('geo', GEO_FILE, () => GEO, 300000);
+function loadGeo(j) { if (j && typeof j === 'object' && j.days) GEO = Object.assign({ d: '', m: {}, days: {}, u: {} }, j); }
+const GEO_ON = process.env.GEO_OFF !== '1', GEOC = new Map(); let geoN = 0, geoDay = '';
+function geoRoll() { const d = dayJ(Date.now()); if (GEO.d === d) return; if (GEO.d) { const c = {}; for (const v of Object.values(GEO.m)) c[v] = (c[v] || 0) + 1; GEO.days[GEO.d] = c; const ks = Object.keys(GEO.days).sort(); while (ks.length > 90) delete GEO.days[ks.shift()]; } GEO.d = d; GEO.m = {}; }
+async function geoLookup(ip) {
+  if (!ip || /^(127\.|10\.|192\.168\.|::1|::ffff:127\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return 'LOCAL';
+  const c = GEOC.get(ip); if (c && Date.now() - c.t < 864e5) return c.v;
+  const d = dayJ(Date.now()); if (geoDay !== d) { geoDay = d; geoN = 0; } if (++geoN > 800) return '';   // 1日に調べる回数の上限
+  const get = async u => { const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 4000); try { const r = await fetch(u, { signal: ac.signal, headers: { 'User-Agent': 'nanigamokutekinan-game' } }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(tm); } };
+  let v = '';
+  let j = await get('https://ipapi.co/' + encodeURIComponent(ip) + '/json/');
+  if (j && j.country_code) v = j.country_code === 'JP' ? 'JP' + String(j.region_code || '').padStart(2, '0') : j.country_code;
+  if (!v) { j = await get('https://ipwho.is/' + encodeURIComponent(ip) + '?fields=success,country_code,region_code'); if (j && j.success && j.country_code) v = j.country_code === 'JP' ? 'JP' + String(j.region_code || '').padStart(2, '0') : j.country_code; }
+  if (v === 'JP00') v = 'JP';
+  GEOC.set(ip, { v, t: Date.now() }); if (GEOC.size > 5000) GEOC.delete(GEOC.keys().next().value);
+  return v;
+}
+async function geoSeen(pk, ip) {
+  if (!GEO_ON || !pk) return; geoRoll(); if (GEO.m[pk]) return;
+  const v = await geoLookup(ip); if (!v) return;
+  geoRoll(); GEO.m[pk] = v; GEO.u[pk] = v; const ks = Object.keys(GEO.u); if (ks.length > 20000) delete GEO.u[ks[0]]; saveGeo();
+}
+// v27.1：通信の状態（WebSocketか、つながりにくい回線用のロングポーリングか・往復の時間）
+const NETI = new Map();   // pk → { tr, rtt, j, t }
 let stopping = false;
 async function flushAndExit(sig) {
   if (stopping) return; stopping = true;
@@ -1265,6 +1294,7 @@ function zSend(sk, R, s, Z, due) {   // sk：送り先、Z：zRoom の結果、d
   if (!sk.zv) { if (due || sk.zLegacyS !== s.s) { sk.zLegacyS = s.s; sk.emit('st', s); } return; }   // 古い画面には今までの形で
   const c = sk.zc || (sk.zc = { m: '', l: '', u: '', n: 0 });
   const out = { f: zFast(s) };
+  const ik = R.ik && sk.data && R.ik[sk.data.slot]; if (ik) out.a = [ik.k, Date.now() - ik.t];   // v27.1：最後に受け取った操作の番号と、そこからの時間
   const key = ++c.n % 90 === 0;   // 3秒に1回は全部送る（もし受け取りそこねても直る）
   if (c.l !== Z.ls || key) { out.l = Z.l; c.l = Z.ls; }
   if (!out.l && !due) return;   // 状態が変わっていなくて、送る番でもないなら送らない
@@ -1274,8 +1304,22 @@ function zSend(sk, R, s, Z, due) {   // sk：送り先、Z：zRoom の結果、d
   sk.emit('z', out);
 }
 const Z_CHECK = process.env.Z_CHECK === '1';
-/* ===== ゲームループ（30Hz） ===== */
+/* ===== ゲームループ（30Hz） =====
+   v27.1：サーバーが一瞬重くなって遅れたときは、遅れた分をまとめて進めて追いつく（前は遅れたぶんだけゲームがゆっくりになり、
+   画面の先読みとずれて、ラグ・瞬間移動の原因になっていた）。重さの記録は管理画面の「地域・通信」で見られる */
+let LOOP_T = Date.now(), LOOP_ACC = 0;
+const LOOPM = { w: [], cur: { t: Date.now(), n: 0, late: 0, max: 0, busy: 0 } };
+function loopStat(gap, busy) {
+  const c = LOOPM.cur; c.n++; if (gap > 70) c.late++; if (gap > c.max) c.max = gap; c.busy += busy;
+  if (Date.now() - c.t >= 60e3) { LOOPM.w.push(c); if (LOOPM.w.length > 10) LOOPM.w.shift(); LOOPM.cur = { t: Date.now(), n: 0, late: 0, max: 0, busy: 0 }; }
+}
 setInterval(() => {
+  const now = Date.now(), gap = now - LOOP_T; LOOP_T = now; LOOP_ACC += gap;
+  let k = 0; while (LOOP_ACC >= TICK * 500 && k < 4) { LOOP_ACC -= TICK * 1000; loopOnce(); k++; }
+  if (LOOP_ACC > TICK * 4000 || LOOP_ACC < -TICK * 1000) LOOP_ACC = 0;
+  loopStat(gap, Date.now() - now);
+}, TICK * 1000);
+function loopOnce() {
   for (const R of rooms.values()) {
     if (R.state === 'lobby') continue;
     if (R.mode === 'endless') {
@@ -1296,7 +1340,7 @@ setInterval(() => {
     for (const i of [0, 1]) if (R.ids[i]) { const sv = snapV(R, i); Z = Z || zRoom(R, sv); zSend(sockOf(R.ids[i]), R, sv, Z, dueP); }
     if (R.spec && R.spec.size) { const sv = snapV(R, -1); Z = Z || zRoom(R, sv); for (const sid of R.spec) zSend(sockOf(sid), R, sv, Z, tk % 2 === 0); }   // 観戦者には両方の位置を見せる
   }
-}, TICK * 1000);
+}
 
 /* =====================================================================
    ルーム・フレンド・チャット
@@ -1768,6 +1812,8 @@ const txt = (v, n) => typeof v === 'string' ? v.replace(/[\u0000-\u0008\u000b-\u
 const banOf = pk => { const b = pk && MOD.bans[pk]; if (!b) return null; if (b.until && b.until < Date.now()) { delete MOD.bans[pk]; saveMod(); return null; } return b; };
 const repCount = pk => { const r = MOD.reports[pk]; return r ? new Set(r.list.map(x => x.from)).size : 0; };
 const adminSockets = () => [...io.sockets.sockets.values()].filter(s => s.isAdmin);
+// v27.1：運営アカウントかどうか（運営は利用停止・アカウント削除ができない）
+function isAdminPk(pk) { const sk = sockOf(byPk.get(pk)); if (sk && sk.isAdmin) return true; const k = pkKey.get(pk), e = k && nameReg.get(k); return !!(e && isAdminUid(e.uid)); }
 function userRow(pk) {
   const name = nameOfPk(pk), sid = byPk.get(pk), sk = sockOf(sid), seen = MOD.seen[pk] || {}, b = banOf(pk);
   const ec = ECO[pk];
@@ -1955,6 +2001,7 @@ function applyBan(sk, b) {
 function deliverMod(socket) {
   const pk = socket.nmPk; if (!pk) return;
   usageSeen(pk, !MOD.seen[pk]);   // 利用状況（今日来た人・新しい人）
+  geoSeen(pk, socket.nmIp).catch(() => { });   // v27.1：都道府県
   MOD.seen[pk] = Object.assign(MOD.seen[pk] || { c: Date.now() }, { t: Date.now(), n: socket.nmRegName || socket.nmName || (MOD.seen[pk] || {}).n || '', lv: socket.nmLv });
   const dv = socket.nmDv;
   if (dv) {   // 端末の要約だけ名簿に、くわしい情報はプロフィールの中（管理者だけが見られる）に保存
@@ -1976,7 +2023,7 @@ function deliverMod(socket) {
   if (socket.isAdmin) socket.emit('adm_fbn', MOD.feedback.filter(f => f.st === 'new').length);
   const ws = (MOD.warns[pk] || []).filter(w => !w.ack); if (ws.length) socket.emit('warns', ws);
   const ms = MOD.pmsg[pk] || []; if (ms.length) socket.emit('pmsgs', ms);
-  const b = banOf(pk); if (b) applyBan(socket, b); else socket.banned = null;
+  const b = banOf(pk); if (b && !socket.isAdmin) applyBan(socket, b); else { socket.banned = null; if (b) { delete MOD.bans[pk]; saveMod(); } }   // 運営は停止されない
 }
 
 io.on('connection', socket => {
@@ -2246,11 +2293,12 @@ io.on('connection', socket => {
   socket.on('adm_user', adm(async (d, cb) => { const pk = cleanPk(d.pk); if (!pk) return cb({ ok: false });
     const p = await getProf(pk), net = (MOD.seen[pk] || {}).net, e = ECO[pk];
     const same = net ? Object.keys(MOD.seen).filter(x => x !== pk && MOD.seen[x].net === net).slice(0, 20).map(userRow) : [];
-    cb({ ok: true, u: userRow(pk), dv: p && p._dv ? p._dv : null, dvs: (p && p._dvs) || [], same, eco: e ? { c: e.c, w: e.w, bound: e.bound, flag: e.flag || null, fix: e.fix } : null, reports: ((MOD.reports[pk] || {}).list || []).slice(-30).reverse(), warns: (MOD.warns[pk] || []).slice(-20).reverse(), msgs: (MOD.pmsg[pk] || []).slice(-20).reverse() }); }));
+    cb({ ok: true, netq: NETI.get(pk) || null, geo: GEO.u[pk] || '', u: userRow(pk), dv: p && p._dv ? p._dv : null, dvs: (p && p._dvs) || [], same, eco: e ? { c: e.c, w: e.w, bound: e.bound, flag: e.flag || null, fix: e.fix } : null, reports: ((MOD.reports[pk] || {}).list || []).slice(-30).reverse(), warns: (MOD.warns[pk] || []).slice(-20).reverse(), msgs: (MOD.pmsg[pk] || []).slice(-20).reverse() }); }));
   socket.on('adm_action', adm((d, cb) => {
     const pk = cleanPk(d.pk), act = d.act, text = txt(d.text, 300), now = Date.now();
     if (!pk) return cb({ ok: false, err: '相手がいません' });
     const sk = sockOf(byPk.get(pk));
+    if (act === 'ban' && isAdminPk(pk)) return cb({ ok: false, err: '運営のアカウントは利用停止にできません' });
     if (act === 'ban') {
       const days = Number(d.days), until = days > 0 ? now + days * 864e5 : 0;   // 0=無期限
       MOD.bans[pk] = { until, reason: text || '利用規約違反', by: socket.nmRegName || '運営', t: now }; applyBan(sk, MOD.bans[pk]);
@@ -2594,7 +2642,47 @@ io.on('connection', socket => {
   socket.on('ranking', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ top: topN(30, socket.nmId), me: myEntry('run', socket.nmId) }); });
   // v26.4：自分の記録（サーバーが持っている正しい値）。端末の記録が消えた・古いときに合わせる
   socket.on('my_rec', (d, cb) => { if (typeof d === 'function') cb = d; rp(cb)({ run: myEntry('run', socket.nmId), rp: myEntry('rp', socket.nmId), season: SEASON.id }); });
-  socket.on('pg', (d, cb) => rp(cb)(1));   // 通信の遅れを測る（操作の先読み補正に使用）
+  socket.on('pg', (d, cb) => rp(cb)(1));
+  socket.on('net_rep', d => {   // v27.1：通信の状態（管理画面で見る）
+    if (!socket.nmPk || !d) return; const tr = d.tr === 'polling' ? 'polling' : 'websocket';
+    NETI.set(socket.nmPk, { tr, rtt: clamp(Math.round(Number(d.rtt) || 0), 0, 9999), j: clamp(Math.round(Number(d.j) || 0), 0, 9999), fps: clamp(Math.round(Number(d.fps) || 0), 0, 240), t: Date.now() });
+    if (NETI.size > 5000) NETI.delete(NETI.keys().next().value);
+  });
+  socket.on('adm_geo', adm((d, cb) => {
+    geoRoll(); const today = {}; for (const v of Object.values(GEO.m)) today[v] = (today[v] || 0) + 1;
+    const sum = n => { const o = {}; const ks = Object.keys(GEO.days).sort().slice(-n); for (const k of ks) for (const [c, v] of Object.entries(GEO.days[k])) o[c] = (o[c] || 0) + v; return o; };
+    const all = {}; for (const v of Object.values(GEO.u)) all[v] = (all[v] || 0) + 1;
+    const net = { websocket: 0, polling: 0, slow: 0, n: 0, rtt: [] }; const now = Date.now();
+    for (const [pk, e] of NETI) if (now - e.t < 864e5) { net.n++; net[e.tr]++; if (e.rtt >= 250) net.slow++; net.rtt.push(e.rtt); }
+    net.rtt.sort((a, b) => a - b); net.med = net.rtt.length ? net.rtt[Math.floor(net.rtt.length / 2)] : 0; delete net.rtt;
+    const W = LOOPM.w.concat([LOOPM.cur]), N = W.reduce((x, c) => x + c.n, 0) || 1;
+    const srv = { late: W.reduce((x, c) => x + c.late, 0), max: Math.max(0, ...W.map(c => c.max)), busy: Math.round(W.reduce((x, c) => x + c.busy, 0) / N * 10) / 10, rooms: rooms.size, mins: W.length };
+    cb({ ok: true, on: GEO_ON, today, d7: sum(7), d30: sum(30), all, net, srv });
+  }));
+  // v27.1：自分のアカウントを消す（運営アカウントは消せない）
+  socket.on('acct_delete', async (d, cb) => {
+    cb = rp(cb); const pk = socket.nmPk;
+    if (!pk || !socket.nmUid) return cb({ ok: false, err: 'もう一度ためしてください' });
+    if (socket.isAdmin || isAdminPk(pk)) return cb({ ok: false, err: '運営のアカウントは消せません' });
+    if (!d || d.yes !== 'けす') return cb({ ok: false, err: '確認の文字がちがいます' });
+    const h = hidOf(socket.nmId), name = nameOfPk(pk) || '';
+    leaveRoom(socket); qRemove(socket.id);
+    const k = pkKey.get(pk); if (k) { const e = nameReg.get(k); if (e && e.pk === pk) nameReg.delete(k); pkKey.delete(pk); saveNames(); }   // 名前をあける
+    const drop = arr => { const n = arr.length; for (let i = arr.length - 1; i >= 0; i--) if (arr[i].h === h) arr.splice(i, 1); return arr.length !== n; };
+    if (drop(ranking)) saveRanking(); if (drop(rpBoard)) saveRp();
+    try { if (drop(DAILY.top)) { delete DAILY.gh[h]; saveDaily(); } } catch (e) { }
+    try { if (drop(TA.top)) { delete TA.gh[h]; saveTA(); } } catch (e) { }
+    try { if (GHOST.list && GHOST.list[h]) { delete GHOST.list[h]; saveGhost(); } } catch (e) { }
+    delete CODES[pk]; saveCodes(); delete MISS[pk]; saveMiss(); delete ECO[pk]; saveEco(); delete PUSH[pk]; savePush();
+    for (const x in DEVK) if (DEVK[x].pk === pk) delete DEVK[x]; saveDevk();
+    delete GEO.u[pk]; delete GEO.m[pk]; NETI.delete(pk);
+    for (const [to, m] of freq) { m.delete(pk); } freq.delete(pk); saveFriends();
+    delete MOD.gifts[pk]; delete MOD.warns[pk]; delete MOD.pmsg[pk]; delete MOD.reports[pk]; delete MOD.seen[pk]; delete MOD.bans[pk]; saveMod();
+    PROF.set(pk, { _miss: 1 }); if (useKV) { PENDING.delete('prof:' + pk); clearTimeout(profTimers.get(pk)); profTimers.delete(pk); STORE.save('prof:' + pk, null, null, true).catch(() => { }); } else saveProfFile();
+    console.log('アカウント削除:', name || '(名前なし)');
+    cb({ ok: true });
+    setTimeout(() => socket.disconnect(true), 300);
+  });   // 通信の遅れを測る（操作の先読み補正に使用）
   // 端末バックアップ用の署名つきランキング／復元
   socket.on('rank_backup', (d, cb) => { if (typeof d === 'function') { cb = d; d = {}; } const v = RK_BOOT + ':' + RKV + ':' + SEASON.id;
     if (d && d.v === v) return rp(cb)({ same: 1, v });   // v23：前に送ったときから変わっていない
@@ -2793,6 +2881,7 @@ io.on('connection', socket => {
   });
   socket.on('inp', d => {
     const R = myRoom(); if (!R) return;
+    if (Array.isArray(d)) { const sl = socket.data.slot; R.inp[sl] = { s: clamp(Number(d[0]) || 0, -1, 1) }; (R.ik || (R.ik = []))[sl] = { k: d[1] | 0, t: Date.now() }; return; }   // v27.1：[操作, 番号]（先読みの答え合わせに使う）
     R.inp[socket.data.slot] = Number.isFinite(d) ? { s: clamp(d, -1, 1) } : (d && Number.isFinite(d.s)) ? { s: clamp(d.s, -1, 1) } : { l: !!(d && d.l), r: !!(d && d.r) };   // v23：数字だけでもOK
   });
   socket.on('act', d => {
@@ -2909,7 +2998,7 @@ const PORT = process.env.PORT || 3000;
       SIGN_KEY = k.k; SIGN_T = k.t || 0;
     } catch (e) { console.warn('署名の鍵を読み込めませんでした（今回は今までの鍵を使います）:', e.message); }
   }
-  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss], ['codes', CODES_FILE, loadCodes], ['devk', DEVK_FILE, loadDevk]]) {
+  for (const [key, file, fn] of [['names', NAMES_FILE, loadNames], ['ranking', RANK_FILE, loadRanking], ['rp', RP_FILE, loadRp], ['friends', FR_FILE, loadFriends], ['mod', MOD_FILE, loadMod], ['season', SEASON_FILE, loadSeason], ['eco', ECO_FILE, loadEco], ['prof', PROF_FILE, loadProf], ['push', PUSH_FILE, loadPush], ['errs', ERR_FILE, loadErrs], ['stats', STATS_FILE, loadStats], ['usage', USAGE_FILE, loadUsage], ['items', ITEMS_FILE, loadIstat], ['daily', DAILY_FILE, loadDaily], ['ghost', GHOST_FILE, loadGhost], ['ta', TA_FILE, loadTA], ['miss', MISS_FILE, loadMiss], ['codes', CODES_FILE, loadCodes], ['devk', DEVK_FILE, loadDevk], ['geo', GEO_FILE, loadGeo]]) {
     try { fn(await STORE.load(key, file)); } catch (e) { console.warn('読み込みエラー(' + key + '):', e.message); }
   }
   checkSeason(); taRoll();
